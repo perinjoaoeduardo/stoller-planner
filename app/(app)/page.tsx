@@ -228,7 +228,7 @@ async function DsmHome() {
                     {index > 0 ? <ItemSeparator /> : null}
                     <Item
                       size="sm"
-                      render={<Link href="/canais" />}
+                      render={<Link href={`/canais/${channel.id}`} />}
                       className="hover:bg-muted/60"
                     >
                       <ItemMedia variant="icon">

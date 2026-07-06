@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
-import { toast } from "sonner";
 
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import { Button } from "@/components/ui/button";
@@ -88,22 +87,20 @@ export function GlobalSearch({ role }: { role: Role }) {
               </CommandItem>
             ))}
           </CommandGroup>
-          <CommandSeparator />
-          <CommandGroup heading="Ações">
-            <CommandItem
-              onSelect={() =>
-                runCommand(() =>
-                  toast("Nova atividade", {
-                    description: "Ação disponível em um próximo bloco.",
-                  })
-                )
-              }
-            >
-              <Plus />
-              Nova atividade
-              <CommandShortcut>Em breve</CommandShortcut>
-            </CommandItem>
-          </CommandGroup>
+          {role === "DSM" || role === "CX" ? (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Ações">
+                <CommandItem
+                  onSelect={() => runCommand(() => router.push("/canais"))}
+                >
+                  <Plus />
+                  Nova atividade
+                  <CommandShortcut>via canal</CommandShortcut>
+                </CommandItem>
+              </CommandGroup>
+            </>
+          ) : null}
         </CommandList>
       </CommandDialog>
     </>
