@@ -10,6 +10,7 @@ import {
   getCurrentProfile,
   type CurrentProfile,
 } from "@/lib/auth/scope";
+import { logActivityEvent } from "@/lib/db/events";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -50,20 +51,7 @@ function revalidatePlanPages(channelId: string, activityId?: string) {
   if (activityId) revalidatePath(`/atividades/${activityId}`);
 }
 
-async function logEvent(input: {
-  activityId: string;
-  profileId: string;
-  type: "criada" | "editada" | "status_alterado" | "foto_adicionada" | "foto_removida";
-  description?: string;
-}) {
-  const supabase = await createClient();
-  await supabase.from("activity_events").insert({
-    activity_id: input.activityId,
-    profile_id: input.profileId,
-    type: input.type,
-    description: input.description ?? null,
-  });
-}
+const logEvent = logActivityEvent;
 
 // ─── Problemas ───────────────────────────────────────────────────────────────
 
@@ -366,11 +354,15 @@ export async function changeActivityStatus(input: {
     .eq("id", input.activityId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
+  const reopened =
+    activity.status === "concluida" && input.status !== "concluida";
   await logEvent({
     activityId: input.activityId,
     profileId: profile.id,
-    type: "status_alterado",
-    description: `Status alterado de "${STATUS_LABELS[activity.status as ActivityStatus]}" para "${STATUS_LABELS[input.status]}" por ${profile.fullName}`,
+    type: reopened ? "reaberta" : "status_alterado",
+    description: reopened
+      ? `Atividade reaberta (${STATUS_LABELS[input.status]}) por ${profile.fullName}`
+      : `Status alterado de "${STATUS_LABELS[activity.status as ActivityStatus]}" para "${STATUS_LABELS[input.status]}" por ${profile.fullName}`,
   });
 
   revalidatePlanPages(activity.plan.channel_id, input.activityId);

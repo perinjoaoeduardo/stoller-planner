@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -44,22 +45,28 @@ export function StatusCard({
   const [selected, setSelected] = React.useState<ActivityStatus>(status);
   const [pending, startTransition] = React.useTransition();
 
-  function handleConfirm() {
+  function submitStatus(next: ActivityStatus) {
     startTransition(async () => {
       const result = await changeActivityStatus({
         activityId,
-        status: selected,
+        status: next,
       });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
-      toast.success(
-        selected === "concluida"
-          ? "Atividade concluída. Bom trabalho!"
-          : `Status alterado para "${STATUS_LABELS[selected]}".`
-      );
+      if (next === "concluida") {
+        toast.success("Atividade concluída. Bom trabalho!");
+      } else if (status === "concluida") {
+        toast.success("Atividade reaberta — de volta ao andamento.");
+      } else {
+        toast.success(`Status alterado para "${STATUS_LABELS[next]}".`);
+      }
     });
+  }
+
+  function handleConfirm() {
+    submitStatus(selected);
   }
 
   return (
@@ -70,6 +77,25 @@ export function StatusCard({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <StatusBadge status={status} className="w-fit px-3 py-1 text-sm" />
+        {canChange && status === "concluida" ? (
+          <Button
+            variant="outline"
+            onClick={() => submitStatus("em_andamento")}
+            disabled={pending}
+          >
+            {pending ? (
+              <>
+                <Spinner />
+                Reabrindo...
+              </>
+            ) : (
+              <>
+                <RotateCcw />
+                Reabrir atividade
+              </>
+            )}
+          </Button>
+        ) : null}
         {canChange ? (
           <div className="flex flex-col gap-2">
             <Select

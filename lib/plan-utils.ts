@@ -1,8 +1,11 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
+import { differenceInCalendarDays, parseISO } from "date-fns";
 
 /**
  * Regras puras do plano, compartilhadas entre servidor e client
  * (sem dependências de next/headers).
+ *
+ * A regra de status derivado/atraso vive em /lib/db/status.ts
+ * (getDisplayStatus / isLateActivity) — única implementação.
  */
 
 export type ChannelHealth = "em_dia" | "atencao" | "critico";
@@ -16,24 +19,18 @@ export const HEALTH_CONFIG: Record<
   critico: { label: "Crítico", dotClass: "bg-red-500" },
 };
 
-const PENDING_STATUSES: ActivityStatus[] = ["planejada", "em_andamento"];
-
-export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 /**
- * Uma atividade conta como "atrasada" quando o status é `atrasada` OU
- * quando ainda está pendente (planejada/em andamento) com prazo vencido.
+ * Prazo relativo em português para os cards de campo:
+ * "vence hoje", "vence em 3 dias", "venceu há 2 dias", "Sem prazo".
  */
-export function isLateActivity(activity: {
-  status: ActivityStatus;
-  dueDate: string | null;
-}): boolean {
-  if (activity.status === "atrasada") return true;
-  if (!PENDING_STATUSES.includes(activity.status)) return false;
-  if (!activity.dueDate) return false;
-  return activity.dueDate < todayISO();
+export function formatRelativeDue(dueDate: string | null): string {
+  if (!dueDate) return "Sem prazo";
+  const diff = differenceInCalendarDays(parseISO(dueDate), new Date());
+  if (diff === 0) return "vence hoje";
+  if (diff === 1) return "vence amanhã";
+  if (diff > 1) return `vence em ${diff} dias`;
+  if (diff === -1) return "venceu ontem";
+  return `venceu há ${-diff} dias`;
 }
 
 /** Verde ≤10% atrasadas, âmbar 10–30%, vermelho >30%. */

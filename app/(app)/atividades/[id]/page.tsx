@@ -5,10 +5,12 @@ import {
   CalendarCheck,
   CalendarClock,
   CirclePlus,
+  ClipboardCheck,
   ImageMinus,
   ImagePlus,
   Pencil,
   RefreshCw,
+  RotateCcw,
   SearchX,
   type LucideIcon,
 } from "lucide-react";
@@ -47,7 +49,7 @@ import {
   getScopedChannelIds,
 } from "@/lib/auth/scope";
 import { getActivityDetail } from "@/lib/db/channels";
-import { isLateActivity } from "@/lib/plan-utils";
+import { isLateActivity } from "@/lib/db/status";
 
 import { PhotosCard } from "./photos-card";
 import { StatusCard } from "./status-card";
@@ -69,6 +71,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   status_alterado: RefreshCw,
   foto_adicionada: ImagePlus,
   foto_removida: ImageMinus,
+  execucao_registrada: ClipboardCheck,
+  reaberta: RotateCcw,
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -77,6 +81,8 @@ const EVENT_LABELS: Record<string, string> = {
   status_alterado: "Status alterado",
   foto_adicionada: "Foto adicionada",
   foto_removida: "Foto removida",
+  execucao_registrada: "Execução registrada",
+  reaberta: "Atividade reaberta",
 };
 
 function ActivityNotFound() {

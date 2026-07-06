@@ -62,7 +62,7 @@ import type {
   ProblemRow,
   ResponsibleOption,
 } from "@/lib/db/channels";
-import { isLateActivity, todayISO } from "@/lib/plan-utils";
+import { isLateActivity, todayISO } from "@/lib/db/status";
 
 const PENDING = new Set(["planejada", "em_andamento", "atrasada"]);
 

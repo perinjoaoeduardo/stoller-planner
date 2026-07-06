@@ -1,9 +1,6 @@
 import type { ActivityStatus } from "@/components/app/status-badge";
-import {
-  computeHealth,
-  isLateActivity,
-  type ChannelHealth,
-} from "@/lib/plan-utils";
+import { computeHealth, type ChannelHealth } from "@/lib/plan-utils";
+import { getDisplayStatus, isLateActivity } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";
 
 export { HEALTH_CONFIG, type ChannelHealth } from "@/lib/plan-utils";
@@ -208,7 +205,10 @@ export async function getPlanBoard(
       id: activity.id,
       title: activity.title,
       description: activity.description,
-      status: activity.status as ActivityStatus,
+      status: getDisplayStatus({
+        status: activity.status as ActivityStatus,
+        dueDate: activity.due_date,
+      }),
       dueDate: activity.due_date,
       createdAt: activity.created_at,
       problemId: activity.problem_id,
@@ -289,7 +289,10 @@ export async function getScopedActivities(
     id: activity.id,
     title: activity.title,
     description: activity.description,
-    status: activity.status as ActivityStatus,
+    status: getDisplayStatus({
+      status: activity.status as ActivityStatus,
+      dueDate: activity.due_date,
+    }),
     dueDate: activity.due_date,
     createdAt: activity.created_at,
     problemId: activity.problem_id,
@@ -368,7 +371,10 @@ export async function getActivityDetail(
     id: data.id,
     title: data.title,
     description: data.description,
-    status: data.status as ActivityStatus,
+    status: getDisplayStatus({
+      status: data.status as ActivityStatus,
+      dueDate: data.due_date,
+    }),
     dueDate: data.due_date,
     createdAt: data.created_at,
     completedAt: data.completed_at,
