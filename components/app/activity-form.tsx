@@ -256,6 +256,10 @@ export function ActivityForm({
                 <Select
                   value={field.value}
                   onValueChange={(value) => field.onChange(value)}
+                  items={ACTIVITY_STATUSES.map((status) => ({
+                    value: status,
+                    label: STATUS_LABELS[status],
+                  }))}
                 >
                   <SelectTrigger id="activity-status" className="w-full">
                     <SelectValue />

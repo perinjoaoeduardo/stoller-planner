@@ -75,6 +75,10 @@ export function StatusCard({
             <Select
               value={selected}
               onValueChange={(value) => setSelected(value as ActivityStatus)}
+              items={ACTIVITY_STATUSES.map((item) => ({
+                value: item,
+                label: STATUS_LABELS[item],
+              }))}
             >
               <SelectTrigger className="w-full" aria-label="Novo status">
                 <SelectValue />

@@ -204,7 +204,10 @@ export function ChannelView({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {plan ? (
-            <Select value={plan.id}>
+            <Select
+              value={plan.id}
+              items={[{ value: plan.id, label: plan.harvest }]}
+            >
               <SelectTrigger size="sm" aria-label="Safra do plano">
                 <SelectValue />
               </SelectTrigger>
