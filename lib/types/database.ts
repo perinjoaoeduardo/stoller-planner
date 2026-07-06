@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -72,6 +72,7 @@ export type Database = {
       activities: {
         Row: {
           branch_id: string | null
+          category: string | null
           completed_at: string | null
           created_at: string
           description: string | null
@@ -85,6 +86,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          category?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
@@ -98,6 +100,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          category?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null

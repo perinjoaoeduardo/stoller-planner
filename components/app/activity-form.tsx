@@ -4,7 +4,6 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { DatePicker } from "@/components/app/date-picker";
 import { FormShell } from "@/components/app/form-shell";
@@ -36,25 +35,19 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { createActivity, updateActivity } from "@/lib/actions/plan";
+import {
+  buildActivitySchema,
+  isProblemRequired,
+  type ActivityFormValues,
+} from "@/lib/activities/rules";
+import {
+  ACTIVITY_CATEGORIES,
+  CATEGORY_LABELS,
+  type ActivityCategory,
+} from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 
-const activitySchema = z.object({
-  title: z
-    .string()
-    .trim()
-    .min(3, "Informe um título com pelo menos 3 caracteres."),
-  problemId: z.string().nullable(),
-  branchId: z.string().nullable(),
-  responsibleId: z.string().nullable(),
-  dueDate: z.string().nullable(),
-  description: z.string(),
-  status: z.enum(
-    ["planejada", "em_andamento", "concluida", "atrasada", "nao_feita"],
-    "Selecione um status válido."
-  ),
-});
-
-type ActivityValues = z.infer<typeof activitySchema>;
+type ActivityValues = ActivityFormValues;
 
 export type ActivityFormOptions = {
   problems: SelectOption[];
@@ -82,10 +75,21 @@ export function ActivityForm({
 }) {
   const isEditing = !!activity;
 
+  // Regras centrais: problema é obrigatório se o plano tem problemas;
+  // sem problemas cadastrados, o campo some do formulário.
+  const problemRequired = isProblemRequired({
+    problemCount: options.problems.length,
+  });
+  const activitySchema = React.useMemo(
+    () => buildActivitySchema({ problemCount: options.problems.length }),
+    [options.problems.length]
+  );
+
   const form = useForm<ActivityValues>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
       title: "",
+      category: undefined as unknown as ActivityCategory,
       problemId: null,
       branchId: null,
       responsibleId: null,
@@ -99,6 +103,7 @@ export function ActivityForm({
     if (open) {
       form.reset({
         title: activity?.title ?? "",
+        category: (activity?.category ?? undefined) as ActivityCategory,
         problemId: activity?.problemId ?? null,
         branchId: activity?.branchId ?? null,
         responsibleId: activity?.responsibleId ?? null,
@@ -113,6 +118,7 @@ export function ActivityForm({
   async function onSubmit(values: ActivityValues) {
     const payload = {
       title: values.title,
+      category: values.category,
       description: values.description || undefined,
       problemId: values.problemId,
       branchId: values.branchId,
@@ -162,25 +168,68 @@ export function ActivityForm({
             <FieldError errors={[errors.title]} />
           </Field>
 
-          <Field>
-            <FieldLabel htmlFor="activity-problem">Problema</FieldLabel>
+          <Field data-invalid={!!errors.category || undefined}>
+            <FieldLabel htmlFor="activity-category">Categoria</FieldLabel>
             <Controller
               control={form.control}
-              name="problemId"
+              name="category"
               render={({ field }) => (
-                <SearchableSelect
-                  id="activity-problem"
-                  options={options.problems}
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  placeholder="Sem vínculo por enquanto"
-                />
+                <Select
+                  value={field.value ?? null}
+                  onValueChange={(value) => field.onChange(value)}
+                  items={ACTIVITY_CATEGORIES.map((category) => ({
+                    value: category,
+                    label: CATEGORY_LABELS[category],
+                  }))}
+                >
+                  <SelectTrigger id="activity-category" className="w-full">
+                    <SelectValue placeholder="Selecione a categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACTIVITY_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {CATEGORY_LABELS[category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             />
-            <FieldDescription>
-              Vincular a um problema fortalece o relatório de safra.
-            </FieldDescription>
+            <FieldError errors={[errors.category]} />
           </Field>
+
+          {options.problems.length > 0 ? (
+            <Field data-invalid={!!errors.problemId || undefined}>
+              <FieldLabel htmlFor="activity-problem">Problema</FieldLabel>
+              <Controller
+                control={form.control}
+                name="problemId"
+                render={({ field }) => (
+                  <SearchableSelect
+                    id="activity-problem"
+                    options={options.problems}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder={
+                      problemRequired
+                        ? "Selecione o problema do plano"
+                        : "Sem vínculo por enquanto"
+                    }
+                  />
+                )}
+              />
+              {problemRequired ? (
+                <FieldDescription>
+                  Toda atividade responde a um problema do plano.
+                </FieldDescription>
+              ) : (
+                <FieldDescription>
+                  Vincular a um problema fortalece o relatório de safra.
+                </FieldDescription>
+              )}
+              <FieldError errors={[errors.problemId]} />
+            </Field>
+          ) : null}
 
           <Field>
             <FieldLabel htmlFor="activity-branch">Filial</FieldLabel>

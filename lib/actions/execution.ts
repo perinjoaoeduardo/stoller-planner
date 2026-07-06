@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import {
+  inferCategoryFromText,
+  isDescriptionRequired,
+} from "@/lib/activities/rules";
+import {
   canRegisterExecution,
   getCurrentProfile,
   getScopedBranchIds,
@@ -49,8 +53,10 @@ export async function registerExecution(
   const profile = await getCurrentProfile();
   const supabase = await createClient();
 
+  // Regras centrais (lib/activities/rules.ts): descrição é o mínimo
+  // obrigatório; foto é opcional — nunca bloqueia o registro.
   const description = input.description.trim();
-  if (!description) {
+  if (isDescriptionRequired() && !description) {
     return { ok: false, error: "Descreva o que foi feito antes de registrar." };
   }
 
@@ -129,6 +135,9 @@ export async function registerExecution(
       .insert({
         plan_id: plan.id,
         title: titleFromDescription(description),
+        // Categoria é obrigatória em toda criação; enquanto o fluxo
+        // Registrar não pergunta explicitamente, inferimos da descrição.
+        category: inferCategoryFromText(description),
         description,
         problem_id: null,
         branch_id: branch.id,

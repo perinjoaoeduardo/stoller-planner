@@ -1,4 +1,5 @@
 import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityCategory } from "@/lib/config";
 import { computeHealth, type ChannelHealth } from "@/lib/plan-utils";
 import { getDisplayStatus, isLateActivity } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";
@@ -145,6 +146,7 @@ export type ProblemRow = {
 export type ActivityRow = {
   id: string;
   title: string;
+  category: ActivityCategory | null;
   description: string | null;
   status: ActivityStatus;
   dueDate: string | null;
@@ -181,7 +183,7 @@ export async function getPlanBoard(
     supabase
       .from("activities")
       .select(
-        `id, title, description, status, due_date, created_at,
+        `id, title, category, description, status, due_date, created_at,
          problem_id, problem:problems(title),
          branch_id, branch:branches(name),
          responsible_id, responsible:profiles(full_name),
@@ -204,6 +206,7 @@ export async function getPlanBoard(
     activities: activitiesRes.data.map((activity) => ({
       id: activity.id,
       title: activity.title,
+      category: activity.category as ActivityCategory | null,
       description: activity.description,
       status: getDisplayStatus({
         status: activity.status as ActivityStatus,
@@ -272,7 +275,7 @@ export async function getScopedActivities(
   const { data, error } = await supabase
     .from("activities")
     .select(
-      `id, title, description, status, due_date, created_at,
+      `id, title, category, description, status, due_date, created_at,
        problem_id, problem:problems(title),
        branch_id, branch:branches(name),
        responsible_id, responsible:profiles(full_name),
@@ -288,6 +291,7 @@ export async function getScopedActivities(
   return data.map((activity) => ({
     id: activity.id,
     title: activity.title,
+    category: activity.category as ActivityCategory | null,
     description: activity.description,
     status: getDisplayStatus({
       status: activity.status as ActivityStatus,
@@ -325,6 +329,7 @@ export type ActivityPhotoRow = {
 export type ActivityDetail = {
   id: string;
   title: string;
+  category: ActivityCategory | null;
   description: string | null;
   status: ActivityStatus;
   dueDate: string | null;
@@ -352,7 +357,7 @@ export async function getActivityDetail(
   const { data, error } = await supabase
     .from("activities")
     .select(
-      `id, title, description, status, due_date, created_at, completed_at,
+      `id, title, category, description, status, due_date, created_at, completed_at,
        plan_id, problem_id, problem:problems(title),
        branch_id, branch:branches(name, city),
        responsible_id, responsible:profiles(full_name),
@@ -370,6 +375,7 @@ export async function getActivityDetail(
   return {
     id: data.id,
     title: data.title,
+    category: data.category as ActivityCategory | null,
     description: data.description,
     status: getDisplayStatus({
       status: data.status as ActivityStatus,

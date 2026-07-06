@@ -32,6 +32,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { registerExecution } from "@/lib/actions/execution";
+import {
+  isDescriptionRequired,
+  isPhotoRequired,
+} from "@/lib/activities/rules";
 import type { BranchOption, FieldActivity } from "@/lib/db/execution";
 import { formatRelativeDue } from "@/lib/plan-utils";
 import { createClient } from "@/lib/supabase/client";
@@ -135,7 +139,11 @@ export function RegisterFlow({
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  const descriptionOk = description.trim().length > 0;
+  // Regras centrais (lib/activities/rules.ts): descrição é o mínimo
+  // obrigatório; foto é incentivo, nunca bloqueio.
+  const descriptionOk =
+    !isDescriptionRequired() || description.trim().length > 0;
+  const photosOk = !isPhotoRequired() || photos.length > 0;
 
   function addPhotos(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
@@ -447,7 +455,7 @@ export function RegisterFlow({
             <Button
               size="lg"
               className="h-12 w-full text-base"
-              disabled={!descriptionOk}
+              disabled={!descriptionOk || !photosOk}
               onClick={goNextFromStep1}
             >
               Continuar

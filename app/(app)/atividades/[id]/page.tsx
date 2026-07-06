@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";
+import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -235,6 +236,12 @@ export default async function AtividadePage({
             status={activity.status}
             className="px-3 py-1 text-sm"
           />
+          {activity.category ? (
+            <CategoryBadge
+              category={activity.category}
+              className="px-3 py-1 text-sm"
+            />
+          ) : null}
         </div>
       </header>
 

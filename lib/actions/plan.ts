@@ -5,6 +5,11 @@ import { revalidatePath } from "next/cache";
 import type { ActivityStatus } from "@/components/app/status-badge";
 import { STATUS_LABELS } from "@/components/app/status-badge";
 import {
+  isCategoryRequired,
+  isProblemRequired,
+} from "@/lib/activities/rules";
+import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
+import {
   canEditPlan,
   canRegisterExecution,
   getCurrentProfile,
@@ -195,6 +200,7 @@ export async function moveProblem(input: {
 
 export type ActivityInput = {
   title: string;
+  category: ActivityCategory;
   description?: string;
   problemId?: string | null;
   branchId?: string | null;
@@ -203,11 +209,37 @@ export type ActivityInput = {
   status: ActivityStatus;
 };
 
+/** Valida categoria + problema conforme as regras centrais (rules.ts). */
+async function validateActivityRules(
+  planId: string,
+  input: Pick<ActivityInput, "category" | "problemId">
+): Promise<string | null> {
+  if (
+    isCategoryRequired() &&
+    !ACTIVITY_CATEGORIES.includes(input.category)
+  ) {
+    return "Selecione a categoria da atividade.";
+  }
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("problems")
+    .select("id", { count: "exact", head: true })
+    .eq("plan_id", planId);
+  if (isProblemRequired({ problemCount: count ?? 0 }) && !input.problemId) {
+    return "Vincule a atividade a um problema do plano.";
+  }
+  return null;
+}
+
 export async function createActivity(
   input: ActivityInput & { planId: string }
 ): Promise<ActionResult> {
   const auth = await requirePlanEditor(input.planId);
   if (!auth) return { ok: false, error: "Você não pode editar este plano." };
+
+  const rulesError = await validateActivityRules(input.planId, input);
+  if (rulesError) return { ok: false, error: rulesError };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -215,6 +247,7 @@ export async function createActivity(
     .insert({
       plan_id: input.planId,
       title: input.title,
+      category: input.category,
       description: input.description || null,
       problem_id: input.problemId || null,
       branch_id: input.branchId || null,
@@ -252,6 +285,9 @@ export async function updateActivity(
   const auth = await requirePlanEditor(current.plan_id);
   if (!auth) return { ok: false, error: "Você não pode editar este plano." };
 
+  const rulesError = await validateActivityRules(current.plan_id, input);
+  if (rulesError) return { ok: false, error: rulesError };
+
   const statusChanged = current.status !== input.status;
   const completedAt =
     input.status === "concluida"
@@ -262,6 +298,7 @@ export async function updateActivity(
     .from("activities")
     .update({
       title: input.title,
+      category: input.category,
       description: input.description || null,
       problem_id: input.problemId || null,
       branch_id: input.branchId || null,

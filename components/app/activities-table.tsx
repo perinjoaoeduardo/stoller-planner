@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CategoryBadge } from "@/components/app/category-badge";
 import {
   SearchableSelect,
   type SelectOption,
@@ -219,6 +220,18 @@ export function ActivitiesTable({
             </p>
           </div>
         ),
+      },
+      {
+        id: "category",
+        accessorKey: "category",
+        enableSorting: false,
+        header: "Categoria",
+        cell: ({ row }) =>
+          row.original.category ? (
+            <CategoryBadge category={row.original.category} />
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
       },
     ];
 
