@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   flexRender,
   getCoreRowModel,
@@ -58,6 +59,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -142,13 +144,27 @@ export function ActivitiesTable({
   onCreate?: () => void;
   onEdit?: (activity: ActivityRow) => void;
 }) {
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<ActivityStatus[]>([]);
+  // Filtros iniciais via URL (?q=, ?status=, ?filial=, ?responsavel=)
+  // para deep links da busca global e compartilhamento de visões.
+  const searchParams = useSearchParams();
+  const [search, setSearch] = React.useState(
+    () => searchParams.get("q") ?? ""
+  );
+  const [statusFilter, setStatusFilter] = React.useState<ActivityStatus[]>(
+    () =>
+      (searchParams.get("status") ?? "")
+        .split(",")
+        .filter((value): value is ActivityStatus =>
+          (ACTIVITY_STATUSES as string[]).includes(value)
+        )
+  );
   const [problemFilter, setProblemFilter] = React.useState<string | null>(null);
-  const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
+  const [branchFilter, setBranchFilter] = React.useState<string | null>(
+    () => searchParams.get("filial")
+  );
   const [responsibleFilter, setResponsibleFilter] = React.useState<
     string | null
-  >(null);
+  >(() => searchParams.get("responsavel"));
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "dueDate", desc: false },
   ]);
@@ -430,7 +446,9 @@ export function ActivitiesTable({
             }
           />
           <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuLabel>Filtrar por status</DropdownMenuLabel>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Filtrar por status</DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             {ACTIVITY_STATUSES.map((status) => (
               <DropdownMenuCheckboxItem
@@ -482,7 +500,9 @@ export function ActivitiesTable({
               }
             />
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuLabel>Exibir colunas</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Exibir colunas</DropdownMenuLabel>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               {table
                 .getAllColumns()

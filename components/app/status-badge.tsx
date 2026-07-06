@@ -33,7 +33,7 @@ const STATUS_STYLES: Record<
   concluida: {
     variant: "outline",
     className:
-      "border-transparent bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+      "border-transparent bg-[#96CB40]/15 text-[#4A7A10] dark:text-[#B5DC73]",
   },
   atrasada: {
     variant: "outline",

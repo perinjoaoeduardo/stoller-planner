@@ -21,8 +21,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Stoller Planner",
-  description: "Planejamento e execução comercial Stoller",
+  title: "Corteva Planner",
+  description: "Planejamento e execução comercial Corteva",
 };
 
 export default function RootLayout({

@@ -91,7 +91,7 @@ function ChannelCardItem({ channel }: { channel: ChannelCard }) {
 }
 
 export const metadata: Metadata = {
-  title: "Canais — Stoller Planner",
+  title: "Canais — Corteva Planner",
 };
 
 export default async function CanaisPage({

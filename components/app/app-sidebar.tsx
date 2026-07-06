@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sprout } from "lucide-react";
-
+import { BrandLogo } from "@/components/app/brand-logo";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
@@ -35,12 +34,12 @@ export function AppSidebar({
               size="lg"
               render={
                 <Link href="/">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <Sprout className="size-4" />
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary p-1.5 text-white">
+                    <BrandLogo variant="icon" className="size-full" />
                   </span>
                   <span className="grid flex-1 text-left leading-tight">
                     <span className="truncate text-sm font-semibold">
-                      Stoller Planner
+                      Corteva Planner
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
                       Safra 2025/26

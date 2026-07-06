@@ -149,7 +149,7 @@ export function RegisterFlow({
     setPhotos((current) => [
       ...current,
       ...accepted.map((file) => ({
-        id: crypto.randomUUID(),
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
         file,
         url: URL.createObjectURL(file),
       })),
@@ -266,8 +266,8 @@ export function RegisterFlow({
   if (done) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6 text-center">
-        <div className="flex size-24 items-center justify-center rounded-full bg-emerald-500/15 duration-500 animate-in zoom-in-50 fade-in">
-          <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500 delay-150 duration-500 animate-in zoom-in-50 fill-mode-backwards">
+        <div className="flex size-24 items-center justify-center rounded-full bg-[#96CB40]/15 duration-500 animate-in zoom-in-50 fade-in">
+          <div className="flex size-16 items-center justify-center rounded-full bg-[#96CB40] delay-150 duration-500 animate-in zoom-in-50 fill-mode-backwards">
             <Check className="size-9 text-white" strokeWidth={3} />
           </div>
         </div>
@@ -282,7 +282,7 @@ export function RegisterFlow({
               : " · sem fotos"}
           </p>
           {done.completed ? (
-            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+            <p className="text-sm font-medium text-[#4A7A10] dark:text-[#B5DC73]">
               Atividade marcada como concluída
             </p>
           ) : null}

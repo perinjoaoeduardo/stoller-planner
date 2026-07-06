@@ -8,7 +8,7 @@ import { MyActivitiesList } from "./my-activities-list";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Minhas Atividades — Stoller Planner",
+  title: "Minhas Atividades — Corteva Planner",
 };
 
 /**

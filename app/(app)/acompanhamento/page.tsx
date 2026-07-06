@@ -86,7 +86,7 @@ function DarkChannelCard({ channel }: { channel: DarkChannel }) {
 }
 
 export const metadata: Metadata = {
-  title: "Acompanhamento — Stoller Planner",
+  title: "Acompanhamento — Corteva Planner",
 };
 
 /**

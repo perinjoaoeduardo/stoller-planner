@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata: Metadata = {
-  title: "Esqueci minha senha — Stoller Planner",
+  title: "Esqueci minha senha — Corteva Planner",
 };
 
 export default function ForgotPasswordPage() {

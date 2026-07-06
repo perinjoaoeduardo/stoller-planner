@@ -8,7 +8,7 @@ import { getScopedActivities } from "@/lib/db/channels";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Atividades — Stoller Planner",
+  title: "Atividades — Corteva Planner",
 };
 
 /**

@@ -1,19 +1,42 @@
-import { Sprout } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 
-/**
- * Logo do Stoller Planner (texto estilizado por enquanto).
- * Componente isolado para trocar por SVG oficial depois.
- */
-export function BrandLogo({ className }: { className?: string }) {
+function StollerIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 56 56"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M33.1437 0.505391C33.2831 0.503252 33.5687 0.510794 33.6961 0.536686C39.6015 1.73656 45.8175 5.40953 49.3527 10.1464L33.6688 10.1579C32.9859 11.2477 29.846 14.0998 28.807 15.1882C31.6702 15.0678 51.6668 14.9641 52.508 15.3543C53.6551 15.8866 54.7547 20.9264 55.1967 22.2853L37.2907 22.2787C34.6585 22.2824 30.5207 22.4248 28.0896 22.2134C29.9162 23.6427 31.5528 25.7711 33.2587 27.2129L55.6658 27.2107C55.6014 30.1767 55.4182 31.4278 54.9202 34.3744C53.423 34.4626 51.2552 34.3953 49.7113 34.3913C46.5742 34.376 43.4371 34.3815 40.3001 34.4074C41.239 35.0967 42.057 36.0755 42.9071 36.855C45.1996 38.9578 47.9028 42.185 50.216 44.1184C49.0234 45.891 46.821 47.9613 45.255 49.3557C36.9575 41.0116 28.0251 32.5024 19.9343 24.0479C19.5964 24.2661 16.7554 27.1668 16.1117 27.7537C16.4196 28.1293 17.3819 29.031 17.769 29.4138C20.0096 31.6256 40.2568 51.7898 40.3601 52.2073C39.7525 53.4123 34.304 54.6226 32.9647 54.8164L11.0041 32.9038C9.56621 34.374 8.74911 35.2539 7.1476 36.5718C8.43067 37.6592 9.9333 39.2285 11.1446 40.4351L17.5153 46.7876C19.4322 48.6831 21.3365 50.5915 23.2276 52.5126C23.9458 53.2416 25.114 54.3165 25.7052 55.0618L25.6371 55.1907C24.8506 55.2128 23.9353 55.0658 23.1515 54.9454C11.8381 53.207 2.64981 44.2919 0.546061 33.0528C4.80081 28.341 10.725 22.7705 15.322 18.2185C21.2149 12.2666 27.1557 6.36204 33.1437 0.505391Z"
+        fill="currentColor"
+      />
+      <path
+        d="M25.0646 0.0468008C25.4386 -0.0160807 25.5383 -0.00751046 25.9049 0.0252985L25.9964 0.185274C25.8234 0.652975 21.7752 4.53552 21.2162 5.09265L8.20396 18.1778C6.31197 20.0519 2.39517 23.653 0.798805 25.5226C0.537065 25.7201 0.483143 25.7623 0.172356 25.8605L0.0202136 25.6775C-0.280074 21.5258 2.82257 14.1661 5.52106 10.8178C10.7281 4.3571 16.9092 1.01125 25.0646 0.0468008Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+export function BrandLogo({
+  className,
+  variant = "full",
+}: {
+  className?: string;
+  variant?: "full" | "icon";
+}) {
+  if (variant === "icon") {
+    return <StollerIcon className={cn("size-6 shrink-0", className)} />;
+  }
+
   return (
     <span className={cn("flex items-center gap-2", className)}>
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <Sprout className="size-4" aria-hidden="true" />
-      </span>
+      <StollerIcon className="size-6 shrink-0" />
       <span className="text-sm leading-none font-semibold tracking-tight whitespace-nowrap">
-        Stoller{" "}
+        Corteva{" "}
         <span className="font-normal opacity-80">Planner</span>
       </span>
     </span>

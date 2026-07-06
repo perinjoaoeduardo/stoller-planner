@@ -433,7 +433,7 @@ async function FieldHome() {
 }
 
 export const metadata: Metadata = {
-  title: "Início — Stoller Planner",
+  title: "Início — Corteva Planner",
 };
 
 export default async function DashboardPage() {

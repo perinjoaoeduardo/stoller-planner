@@ -482,7 +482,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Gerado pelo Stoller Planner em {formatLongDate(generatedAt)}
+            Gerado pelo Corteva Planner em {formatLongDate(generatedAt)}
           </p>
         </CardContent>
       </Card>
@@ -580,7 +580,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
       )}
 
       <p className="pb-2 text-center text-xs text-muted-foreground">
-        Stoller Planner · {report.channel.name}
+        Corteva Planner · {report.channel.name}
         {report.plan ? ` · ${report.plan.harvest}` : ""} · gerado em{" "}
         {formatLongDate(generatedAt)}
       </p>

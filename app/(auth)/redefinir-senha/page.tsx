@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ResetPasswordForm } from "./reset-password-form";
 
 export const metadata: Metadata = {
-  title: "Redefinir senha — Stoller Planner",
+  title: "Redefinir senha — Corteva Planner",
 };
 
 export default function ResetPasswordPage() {

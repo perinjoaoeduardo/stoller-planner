@@ -24,7 +24,7 @@ import { getChannelCards } from "@/lib/db/channels";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Relatórios — Stoller Planner",
+  title: "Relatórios — Corteva Planner",
 };
 
 /**

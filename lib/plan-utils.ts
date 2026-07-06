@@ -14,7 +14,7 @@ export const HEALTH_CONFIG: Record<
   ChannelHealth,
   { label: string; dotClass: string }
 > = {
-  em_dia: { label: "Em dia", dotClass: "bg-emerald-500" },
+  em_dia: { label: "Em dia", dotClass: "bg-[#96CB40]" },
   atencao: { label: "Atenção", dotClass: "bg-amber-500" },
   critico: { label: "Crítico", dotClass: "bg-red-500" },
 };

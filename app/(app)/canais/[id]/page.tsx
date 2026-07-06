@@ -59,7 +59,7 @@ function ChannelNotFound() {
 }
 
 export const metadata: Metadata = {
-  title: "Canal — Stoller Planner",
+  title: "Canal — Corteva Planner",
 };
 
 export default async function CanalPage({

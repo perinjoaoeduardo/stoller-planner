@@ -46,7 +46,7 @@ function getInitials(name: string) {
 }
 
 export const metadata: Metadata = {
-  title: "Região — Stoller Planner",
+  title: "Região — Corteva Planner",
 };
 
 /** /regioes/[id] — drill-down da região: métricas, canais e DSMs. */

@@ -25,7 +25,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Visão geral — Stoller Planner",
+  title: "Visão geral — Corteva Planner",
 };
 
 /**

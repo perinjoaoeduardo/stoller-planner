@@ -99,7 +99,7 @@ function RegionCardItem({ region }: { region: RegionCard }) {
 }
 
 export const metadata: Metadata = {
-  title: "Regiões — Stoller Planner",
+  title: "Regiões — Corteva Planner",
 };
 
 /** /regioes — visão consolidada por regional, exclusiva do CX. */
