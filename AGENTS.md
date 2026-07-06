@@ -1,72 +1,79 @@
 # Stoller Planner — Diretrizes
 
 ## Sobre
-Ferramenta de planejamento e execução comercial para distribuidores 
-da Stoller. Substitui Microsoft Planner. Duas experiências:
+Ferramenta de planejamento e execução comercial para distribuidores da
+Stoller. Substitui Microsoft Planner. Duas experiências:
 - Cockpit desktop DENSO (DSM, CX) — ferramenta de trabalho
 - Mobile LEVE (RTV) — registro rápido, poucos toques
 
+Conceito central: Problema → Atividades → Resultado, por safra, por
+canal.
+
 ## Stack
-Next.js 15 App Router, TS, Tailwind v4, shadcn/ui, Supabase, pnpm.
+Next.js 15 App Router, TS, Tailwind v4, shadcn/ui (preset customizado),
+Supabase, pnpm.
 
 ## Padrões
-- Server Components por padrão
+- Server Components por padrão; client só quando necessário
 - Data fetching no servidor
 - Formulários: react-hook-form + zod
 - Arquivos kebab-case, componentes PascalCase
-- Tipos derivados do schema Supabase
+- Todo texto de UI em português brasileiro
+- Datas com date-fns e locale ptBR
 
-## Diretrizes visuais — LEIA ANTES DE CRIAR TELAS
+## Identidade visual — LEIA ANTES DE CRIAR QUALQUER TELA
+Implementações genéricas de shadcn ficam mornas. Evite.
 
-Implementações genéricas de shadcn ficam mornas. Evite isso.
+### Princípios
+- Simplicidade shadcn, mas nunca pobre: use os componentes ricos
+- TODO agrupamento de informação vive dentro de Card/bloco. Nada solto
+  no fundo da página
+- Top bar em cor contrastante com o fundo (identidade do app); sidebar
+  com fundo levemente destacado do conteúdo
+- Dark e light mode sempre — teste os dois em toda tela nova
+- Densidade ALTA no desktop; alvos ≥44px e simplicidade no mobile
 
-### Densidade e hierarquia
-- Desktop = ferramenta de trabalho, densidade ALTA
-- Tipografia com hierarquia forte: text-3xl font-semibold em títulos, 
-  text-sm text-muted-foreground em labels, tabular-nums em números
-- Nunca deixe tela vazia sem empty state desenhado 
-  (lucide icon grande + copy + CTA)
+### Componentes obrigatórios por situação
+- Tabelas: DataTable com sort/filter/pagination, NUNCA <Table> pelado
+- Navegação: Sidebar oficial (referência blocks sidebar-07/08)
+- Busca/ações rápidas: Command palette (cmd+k)
+- Edição em contexto: Sheet no desktop, Drawer no mobile
+- Gráficos: Chart do shadcn com config de tema
+- Seleção com busca (filiais, responsáveis): Combobox
+- Listas ricas: Item/ItemGroup
+- Status: sempre via <StatusBadge /> central
+  (/components/app/status-badge.tsx)
 
-### Componentes ricos — use os elaborados
-- Tabelas: DataTable com sort/filter/pagination/column visibility, 
-  NUNCA <Table> pelado
-- Navegação: Sidebar (referência: sidebar-07 ou sidebar-08 dos blocks)
-- Ações rápidas: Command palette (cmd+k) desde o início
-- Detalhes: Sheet lateral no desktop, Drawer no mobile
-- Gráficos: Charts do shadcn (recharts) com config de tema
-- Formulários: Form + FieldSet, agrupamento visual
-
-### Estados
-- Loading: Skeletons que espelham o layout, nunca spinner central
-- Empty: ilustração + copy + CTA
+### Estados obrigatórios em toda tela
+- Loading: Skeleton espelhando o layout final, nunca spinner central
+- Empty: componente Empty com ícone lucide + copy orientativa + CTA
 - Erro: mensagem clara + retry
-- Success: Sonner discreto
+- Sucesso: Sonner discreto
 
-### Cor e status (Badges)
-- Planejada: outline
-- Em andamento: secondary
-- Concluída no prazo: emerald (bg-emerald-500/15 text-emerald-700)
-- Atrasada: âmbar
-- Não feita: destructive
-- Primary com moderação — UI é neutra, cor é sinal
+### Tipografia e números
+- Títulos de página: text-3xl font-semibold via <PageShell />
+- Labels e meta: text-sm text-muted-foreground
+- Números e métricas: tabular-nums
 
-### Mobile
-- Bottom navigation com ≥3 seções
-- Alvos de toque ≥44px
-- inputMode e autocomplete corretos
-
-### Referências obrigatórias antes de criar
-- ui.shadcn.com/blocks
+### Referências antes de criar qualquer dashboard/tabela/sidebar
+- ui.shadcn.com/blocks (copie estrutura, não invente)
 - ui.shadcn.com/charts
-Copie estrutura dos blocks, não invente.
+Use o MCP do shadcn para buscar e instalar em vez de recriar.
 
 ## Estrutura
 /app — rotas
-/components/ui — shadcn (não editar)
-/components/app — componentes do produto
+/components/ui — shadcn (não editar manualmente)
+/components/app — componentes do produto (PageShell, StatusBadge,
+BrandLogo...)
 /lib/supabase — clients
 /lib/db — queries reutilizáveis
 /lib/types — tipos
+
+## Dados
+Hierarquia: regions → channels → branches. Perfis: DSM, RTV, RDC, CX.
+Vínculos em user_links definem o que cada um vê. Plano por canal por
+safra; problems e activities pertencem ao plano; activity pode ter
+problem_id nulo.
 
 ## Fluxo
 - Commits em português imperativo curto
