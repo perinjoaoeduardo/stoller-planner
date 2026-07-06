@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BrandLogo } from "@/components/app/brand-logo";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
@@ -18,6 +17,12 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
+/**
+ * Sidebar flutuante (variant floating): painel arredondado com sombra
+ * sobre o fundo neutro, começando abaixo do header full-width
+ * (offset via --header-height definido no layout). O logo vive no
+ * header — aqui fica só o contexto da safra e a navegação por perfil.
+ */
 export function AppSidebar({
   role,
   ...props
@@ -26,30 +31,16 @@ export function AppSidebar({
   const navItems = NAV_BY_ROLE[role];
 
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar
+      collapsible="icon"
+      variant="floating"
+      className="top-(--header-height) h-[calc(100svh-var(--header-height))]"
+      {...props}
+    >
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              render={
-                <Link href="/">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary p-1.5 text-white">
-                    <BrandLogo variant="icon" className="size-full" />
-                  </span>
-                  <span className="grid flex-1 text-left leading-tight">
-                    <span className="truncate text-sm font-semibold">
-                      Corteva Planner
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      Safra 2025/26
-                    </span>
-                  </span>
-                </Link>
-              }
-            />
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <span className="px-3 pt-1 text-xs font-medium text-muted-foreground group-data-[collapsible=icon]:hidden">
+          Safra 2025/26
+        </span>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
