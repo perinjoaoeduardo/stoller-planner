@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Stoller Planner
 
-## Getting Started
+Protótipo de planejamento e execução comercial para os canais de
+distribuição da Stoller. Substitui o uso do Microsoft Planner com um
+fluxo próprio: **Problema → Atividades → Resultado**, por safra e por
+canal — do plano feito em conjunto com o canal até o Relatório de Safra
+com evidências fotográficas.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router, Turbopack) + TypeScript
+- Tailwind CSS v4 + shadcn/ui (preset customizado, base-ui)
+- Supabase (Postgres, Auth, Storage) — sem RLS nesta fase de protótipo;
+  a segurança é a camada de escopo em `lib/auth/scope.ts`
+- TanStack Table, Recharts, react-hook-form + zod, date-fns (ptBR)
+
+## Rodando local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Crie um `.env.local` com:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...   # scripts de seed
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Banco: migrations em `supabase/migrations` (aplicar com
+`supabase db push`). Usuários de auth: `pnpm tsx scripts/create-auth-users.ts`.
+Fotos de demonstração do Storage: `pnpm tsx scripts/seed-demo-photos.ts`.
 
-## Learn More
+## Usuários de demonstração
 
-To learn more about Next.js, take a look at the following resources:
+Senha padrão de todos: `stoller123` (botões de acesso rápido no /login).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Perfil | Usuário | Email |
+| --- | --- | --- |
+| DSM (gestor de canais) | Carlos Menezes | carlos.menezes@stoller.dev |
+| RTV (consultor técnico) | João Pedro Almeida | joao.almeida@stoller.dev |
+| RDC (representante) | Luciana Freitas | luciana.freitas@stoller.dev |
+| CX (excelência comercial) | Camila Duarte | camila.duarte@stoller.dev |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Canal vitrine da demo
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**AgroVale Distribuidora** (Regional Centro-Oeste, DSM Carlos Menezes):
+5 problemas mapeados, 14 atividades ao longo da Safra 2025/26, maioria
+concluída com registros de execução e galeria de fotos. É o canal a
+abrir no **Relatório de Safra** (`/canais/<id>/relatorio` ou menu
+Relatórios). Os canais Terra Boa e Plantar ficam propositalmente
+"no escuro" para demonstrar o painel de acompanhamento do CX.

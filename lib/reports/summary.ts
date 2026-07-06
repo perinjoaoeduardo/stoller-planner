@@ -94,8 +94,12 @@ export function buildExecutiveSummary(input: SummaryInput): string {
     } else {
       const onTimePart =
         onTime === completed.length
-          ? "todas no prazo"
-          : `${onTime} ${plural(onTime, "no prazo", "no prazo")}`;
+          ? completed.length === 1
+            ? "no prazo"
+            : "todas no prazo"
+          : onTime === 0
+            ? "nenhuma no prazo"
+            : `${onTime} no prazo`;
       sentences.push(
         `${completedPercent}% ${plural(
           completed.length,
