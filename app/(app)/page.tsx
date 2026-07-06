@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Camera,
   ChevronRight,
   CircleAlert,
   CircleCheckBig,
@@ -7,10 +8,16 @@ import {
   ClipboardList,
   Store,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import {
+  differenceInCalendarDays,
+  format,
+  formatDistanceToNow,
+  parseISO,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
+import { FieldActivityCard } from "@/components/app/field-activity-card";
 import { PageShell } from "@/components/app/page-shell";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -49,9 +56,13 @@ import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import {
   getChannelsSummary,
   getDashboardData,
-  getMyUpcomingActivities,
   type DashboardData,
 } from "@/lib/db/dashboard";
+import {
+  getFieldActivities,
+  getMyRecentExecutions,
+  OPEN_STATUSES,
+} from "@/lib/db/execution";
 
 export const dynamic = "force-dynamic";
 
@@ -259,24 +270,99 @@ async function DsmHome() {
   );
 }
 
-/** Home de RTV/RDC — mobile-first: minhas atividades + ação rápida. */
+/** Saudação por horário: bom dia / boa tarde / boa noite. */
+function greetingByHour(): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("pt-BR", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date())
+  );
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+/**
+ * Home de RTV/RDC — mobile-first: herói com saudação e contagem do
+ * dia, CTA grande de registro, próximas atividades e registros
+ * recentes.
+ */
 async function FieldHome() {
   const profile = await getCurrentProfile();
-  const activities = await getMyUpcomingActivities(profile.id);
+  const [{ activities }, recentExecutions] = await Promise.all([
+    getFieldActivities(profile),
+    getMyRecentExecutions(profile.id, 2),
+  ]);
+
+  const firstName = profile.fullName.split(" ")[0];
+  const open = activities.filter((activity) =>
+    OPEN_STATUSES.includes(activity.status)
+  );
+  const lateCount = open.filter(
+    (activity) => activity.status === "atrasada"
+  ).length;
+  const dueThisWeek = open.filter(
+    (activity) =>
+      activity.status !== "atrasada" &&
+      activity.dueDate !== null &&
+      differenceInCalendarDays(parseISO(activity.dueDate), new Date()) <= 7
+  ).length;
+
+  const urgent = [...open]
+    .sort((a, b) => {
+      if (a.dueDate === b.dueDate) return 0;
+      if (a.dueDate === null) return 1;
+      if (b.dueDate === null) return -1;
+      return a.dueDate < b.dueDate ? -1 : 1;
+    })
+    .slice(0, 3);
+
+  const summaryParts: string[] = [];
+  if (lateCount > 0) {
+    summaryParts.push(
+      lateCount === 1
+        ? "1 atividade atrasada"
+        : `${lateCount} atividades atrasadas`
+    );
+  }
+  if (dueThisWeek > 0) {
+    summaryParts.push(
+      dueThisWeek === 1
+        ? "1 atividade vence esta semana"
+        : `${dueThisWeek} atividades vencem esta semana`
+    );
+  }
+  const summary =
+    summaryParts.length > 0
+      ? summaryParts.join(" e ")
+      : "Nada vencendo esta semana — bom trabalho";
 
   return (
-    <PageShell
-      title="Início"
-      description="Suas atividades em campo na safra 2025/26."
-      className="mx-auto w-full max-w-2xl"
-    >
+    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 p-4 md:p-6">
+      <header className="space-y-1">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {greetingByHour()}, {firstName}
+        </h1>
+        <p
+          className={
+            lateCount > 0
+              ? "text-sm font-medium text-amber-600 dark:text-amber-400"
+              : "text-sm text-muted-foreground"
+          }
+        >
+          {summary}.
+        </p>
+      </header>
+
       <Button
         size="lg"
-        className="h-12 w-full text-base"
+        className="h-14 w-full text-base font-semibold"
         nativeButton={false}
         render={
-          <Link href="/registrar-execucao">
-            <ClipboardCheck className="size-5" />
+          <Link href="/registrar">
+            <Camera className="size-5" />
             Registrar execução
           </Link>
         }
@@ -284,53 +370,83 @@ async function FieldHome() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Minhas próximas atividades</CardTitle>
+          <CardTitle>Próximas</CardTitle>
           <CardDescription>
-            Atividades em que você é o responsável, por prazo.
+            As 3 atividades mais urgentes do seu campo.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {activities.length === 0 ? (
-            <Empty>
+        <CardContent className="flex flex-col gap-2">
+          {urgent.length === 0 ? (
+            <Empty className="py-8">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <ClipboardList />
                 </EmptyMedia>
                 <EmptyTitle>Nada pendente por aqui</EmptyTitle>
                 <EmptyDescription>
-                  Você não tem atividades pendentes sob sua
-                  responsabilidade nesta safra.
+                  Você não tem atividades abertas no seu escopo nesta safra.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
           ) : (
+            <>
+              {urgent.map((activity) => (
+                <FieldActivityCard key={activity.id} activity={activity} />
+              ))}
+              <Button
+                variant="ghost"
+                className="h-11 justify-center text-muted-foreground"
+                nativeButton={false}
+                render={
+                  <Link href="/minhas-atividades">
+                    Ver todas
+                    <ChevronRight className="size-4" />
+                  </Link>
+                }
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {recentExecutions.length > 0 ? (
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardDescription className="flex items-center gap-1.5">
+              <ClipboardCheck className="size-3.5" />
+              Registros recentes
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4">
             <ItemGroup>
-              {activities.map((activity, index) => (
-                <div key={activity.id}>
+              {recentExecutions.map((execution, index) => (
+                <div key={execution.id}>
                   {index > 0 ? <ItemSeparator /> : null}
-                  <Item size="sm" className="min-h-11">
+                  <Item
+                    size="sm"
+                    render={<Link href={`/atividades/${execution.activityId}`} />}
+                    className="hover:bg-muted/60"
+                  >
                     <ItemContent>
                       <ItemTitle className="line-clamp-1">
-                        {activity.title}
+                        {execution.activityTitle}
                       </ItemTitle>
-                      <ItemDescription>
-                        {activity.branch} · {activity.channel}
+                      <ItemDescription className="line-clamp-1">
+                        {formatDistanceToNow(parseISO(execution.createdAt), {
+                          addSuffix: true,
+                          locale: ptBR,
+                        })}
                       </ItemDescription>
                     </ItemContent>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <StatusBadge status={activity.status} />
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {formatDueDate(activity.dueDate)}
-                      </span>
-                    </div>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </Item>
                 </div>
               ))}
             </ItemGroup>
-          )}
-        </CardContent>
-      </Card>
-    </PageShell>
+          </CardContent>
+        </Card>
+      ) : null}
+    </div>
   );
 }
 

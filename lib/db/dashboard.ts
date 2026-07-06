@@ -1,5 +1,6 @@
 import type { ActivityStatus } from "@/components/app/status-badge";
 import { ACTIVITY_STATUSES } from "@/components/app/status-badge";
+import { getDisplayStatus } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";
 
 export type UpcomingActivity = {
@@ -69,7 +70,10 @@ export async function getDashboardData(
     id: activity.id,
     title: activity.title,
     dueDate: activity.due_date,
-    status: activity.status as ActivityStatus,
+    status: getDisplayStatus({
+      status: activity.status as ActivityStatus,
+      dueDate: activity.due_date,
+    }),
     channel: activity.plan?.channel?.name ?? "—",
     responsible: activity.responsible?.full_name ?? "—",
   }));
@@ -143,43 +147,3 @@ export async function getChannelsSummary(
   }));
 }
 
-export type MyActivity = {
-  id: string;
-  title: string;
-  dueDate: string | null;
-  status: ActivityStatus;
-  channel: string;
-  branch: string;
-};
-
-/**
- * Atividades pendentes em que o profile é o responsável, ordenadas por
- * prazo — card "Minhas próximas atividades" de RTV/RDC.
- */
-export async function getMyUpcomingActivities(
-  profileId: string,
-  limit = 8
-): Promise<MyActivity[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("activities")
-    .select(
-      "id, title, due_date, status, plan:plans(channel:channels(name)), branch:branches(name)"
-    )
-    .eq("responsible_id", profileId)
-    .in("status", PENDING_STATUSES)
-    .order("due_date", { ascending: true, nullsFirst: false })
-    .limit(limit);
-
-  if (error) throw error;
-
-  return data.map((activity) => ({
-    id: activity.id,
-    title: activity.title,
-    dueDate: activity.due_date,
-    status: activity.status as ActivityStatus,
-    channel: activity.plan?.channel?.name ?? "—",
-    branch: activity.branch?.name ?? "—",
-  }));
-}
