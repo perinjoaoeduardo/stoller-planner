@@ -27,16 +27,39 @@ const PENDING_STATUSES: ActivityStatus[] = [
   "atrasada",
 ];
 
-export async function getDashboardData(): Promise<DashboardData> {
+const EMPTY_DASHBOARD: DashboardData = {
+  totalActivities: 0,
+  completedCount: 0,
+  completedPercent: 0,
+  overdueCount: 0,
+  activeChannels: 0,
+  byStatus: ACTIVITY_STATUSES.map((status) => ({ status, total: 0 })),
+  upcoming: [],
+};
+
+/**
+ * Métricas do dashboard restritas aos canais visíveis do usuário
+ * (getScopedChannelIds). Para CX, channelIds contém todos os canais.
+ */
+export async function getDashboardData(
+  channelIds: string[]
+): Promise<DashboardData> {
+  if (channelIds.length === 0) return EMPTY_DASHBOARD;
+
   const supabase = await createClient();
 
   const [activitiesRes, plansRes] = await Promise.all([
     supabase
       .from("activities")
       .select(
-        "id, title, due_date, status, plan:plans(channel:channels(name)), responsible:profiles(full_name)"
-      ),
-    supabase.from("plans").select("channel_id").eq("status", "ativo"),
+        "id, title, due_date, status, plan:plans!inner(channel_id, channel:channels(name)), responsible:profiles(full_name)"
+      )
+      .in("plan.channel_id", channelIds),
+    supabase
+      .from("plans")
+      .select("channel_id")
+      .eq("status", "ativo")
+      .in("channel_id", channelIds),
   ]);
 
   if (activitiesRes.error) throw activitiesRes.error;
@@ -88,4 +111,75 @@ export async function getDashboardData(): Promise<DashboardData> {
     byStatus,
     upcoming,
   };
+}
+
+export type ChannelSummary = {
+  id: string;
+  name: string;
+  region: string;
+  branchCount: number;
+};
+
+/** Canais (com região e nº de filiais) para o card "Meus canais" do DSM. */
+export async function getChannelsSummary(
+  channelIds: string[]
+): Promise<ChannelSummary[]> {
+  if (channelIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("channels")
+    .select("id, name, region:regions(name), branches(id)")
+    .in("id", channelIds)
+    .order("name");
+
+  if (error) throw error;
+
+  return data.map((channel) => ({
+    id: channel.id,
+    name: channel.name,
+    region: channel.region?.name ?? "—",
+    branchCount: channel.branches.length,
+  }));
+}
+
+export type MyActivity = {
+  id: string;
+  title: string;
+  dueDate: string | null;
+  status: ActivityStatus;
+  channel: string;
+  branch: string;
+};
+
+/**
+ * Atividades pendentes em que o profile é o responsável, ordenadas por
+ * prazo — card "Minhas próximas atividades" de RTV/RDC.
+ */
+export async function getMyUpcomingActivities(
+  profileId: string,
+  limit = 8
+): Promise<MyActivity[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("activities")
+    .select(
+      "id, title, due_date, status, plan:plans(channel:channels(name)), branch:branches(name)"
+    )
+    .eq("responsible_id", profileId)
+    .in("status", PENDING_STATUSES)
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  return data.map((activity) => ({
+    id: activity.id,
+    title: activity.title,
+    dueDate: activity.due_date,
+    status: activity.status as ActivityStatus,
+    channel: activity.plan?.channel?.name ?? "—",
+    branch: activity.branch?.name ?? "—",
+  }));
 }
