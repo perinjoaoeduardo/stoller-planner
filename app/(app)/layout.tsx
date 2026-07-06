@@ -17,9 +17,11 @@ export default async function AppLayout({
       <SidebarInset className="min-w-0">
         <AppTopbar
           user={{
+            id: profile.id,
             name: profile.fullName,
             email: profile.email,
             role: profile.role,
+            avatarUrl: profile.avatarUrl,
           }}
         />
         <main className="flex flex-1 flex-col bg-background">{children}</main>

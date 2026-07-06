@@ -39,6 +39,7 @@ export type CurrentProfile = {
   fullName: string;
   email: string;
   role: Role;
+  avatarUrl: string | null;
 };
 
 /**
@@ -55,7 +56,7 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile> => {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role")
+    .select("id, full_name, role, avatar_url")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -68,6 +69,7 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile> => {
     fullName: profile.full_name,
     email: user.email ?? "",
     role: profile.role as Role,
+    avatarUrl: profile.avatar_url,
   };
 });
 
