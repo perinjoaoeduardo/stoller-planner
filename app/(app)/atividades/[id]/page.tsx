@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -116,6 +117,10 @@ function ActivityNotFound() {
     </PageShell>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Atividade — Stoller Planner",
+};
 
 export default async function AtividadePage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Map, Store, Users } from "lucide-react";
 
@@ -96,6 +97,10 @@ function RegionCardItem({ region }: { region: RegionCard }) {
     </Link>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Regiões — Stoller Planner",
+};
 
 /** /regioes — visão consolidada por regional, exclusiva do CX. */
 export default async function RegioesPage() {

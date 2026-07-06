@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -105,12 +106,12 @@ function GalleryThumb({
           </span>
         </span>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={photoUrl(photo.storagePath)}
           alt={photo.caption ?? photo.activityTitle}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          fill
+          sizes="(max-width: 640px) 33vw, 160px"
+          className="object-cover transition-transform group-hover:scale-105"
           onError={() => setBroken(true)}
         />
       )}

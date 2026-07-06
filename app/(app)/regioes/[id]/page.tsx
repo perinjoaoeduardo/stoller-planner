@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { UserRound } from "lucide-react";
 
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { ChannelHealthTable } from "@/components/app/channel-health-table";
 import { CxMetricCards } from "@/components/app/cx-metric-cards";
 import { PageShell } from "@/components/app/page-shell";
@@ -35,6 +45,10 @@ function getInitials(name: string) {
   }`.toUpperCase();
 }
 
+export const metadata: Metadata = {
+  title: "Região — Stoller Planner",
+};
+
 /** /regioes/[id] — drill-down da região: métricas, canais e DSMs. */
 export default async function RegiaoPage({
   params,
@@ -59,6 +73,21 @@ export default async function RegiaoPage({
     <PageShell
       title={region.name}
       description="Drill-down da região: métricas, saúde por canal e DSMs responsáveis."
+      breadcrumb={
+        <Breadcrumb className="mb-1">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href="/regioes" />}>
+                Regiões
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{region.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      }
     >
       <CxMetricCards metrics={region.metrics} />
 

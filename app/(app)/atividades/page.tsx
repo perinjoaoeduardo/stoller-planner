@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ActivitiesTable } from "@/components/app/activities-table";
 import { PageShell } from "@/components/app/page-shell";
 import type { SelectOption } from "@/components/app/searchable-select";
@@ -5,6 +6,10 @@ import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getScopedActivities } from "@/lib/db/channels";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Atividades — Stoller Planner",
+};
 
 /**
  * Versão global da tabela de atividades: cruza todos os canais do escopo

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { MoonStar, PartyPopper } from "lucide-react";
 
@@ -83,6 +84,10 @@ function DarkChannelCard({ channel }: { channel: DarkChannel }) {
     </Card>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Acompanhamento — Stoller Planner",
+};
 
 /**
  * /acompanhamento — a ferramenta de cobrança diária do CX: canais no

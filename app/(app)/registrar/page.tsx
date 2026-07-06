@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/auth/scope";
 import { getFieldActivities, OPEN_STATUSES } from "@/lib/db/execution";
 
 import { RegisterFlow } from "./register-flow";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Registrar execução — Stoller Planner",
+};
 
 /**
  * Fluxo "Registrar execução" — a tela mais crítica do produto.

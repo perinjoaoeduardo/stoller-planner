@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Activity, ChartColumnStacked } from "lucide-react";
 
 import { ChannelHealthTable } from "@/components/app/channel-health-table";
@@ -22,6 +23,10 @@ import {
 } from "@/lib/db/cx";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Visão geral — Stoller Planner",
+};
 
 /**
  * Painel geral CX — o radar nacional. Responde "quem precisa da minha

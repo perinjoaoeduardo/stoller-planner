@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ImageOff, ImagePlus, Trash2 } from "lucide-react";
@@ -100,11 +101,12 @@ function PhotoThumb({
           </span>
         </span>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
+        <Image
           src={photoUrl(photo.storagePath)}
           alt={photo.caption ?? "Evidência da atividade"}
-          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          fill
+          sizes="(max-width: 640px) 50vw, 220px"
+          className="object-cover transition-transform group-hover:scale-105"
           onError={() => setBroken(true)}
         />
       )}

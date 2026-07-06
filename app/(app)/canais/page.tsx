@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Store } from "lucide-react";
 
@@ -88,6 +89,10 @@ function ChannelCardItem({ channel }: { channel: ChannelCard }) {
     </Link>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Canais — Stoller Planner",
+};
 
 export default async function CanaisPage({
   searchParams,

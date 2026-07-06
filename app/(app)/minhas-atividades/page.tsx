@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageShell } from "@/components/app/page-shell";
 import { getCurrentProfile } from "@/lib/auth/scope";
 import { getFieldActivities } from "@/lib/db/execution";
@@ -5,6 +6,10 @@ import { getFieldActivities } from "@/lib/db/execution";
 import { MyActivitiesList } from "./my-activities-list";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Minhas Atividades — Stoller Planner",
+};
 
 /**
  * "Minhas Atividades" do RTV/RDC — mobile-first: lista vertical de

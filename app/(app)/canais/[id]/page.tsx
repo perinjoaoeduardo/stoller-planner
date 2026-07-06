@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SearchX } from "lucide-react";
 
@@ -56,6 +57,10 @@ function ChannelNotFound() {
     </PageShell>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Canal — Stoller Planner",
+};
 
 export default async function CanalPage({
   params,

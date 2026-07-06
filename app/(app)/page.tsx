@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -430,6 +431,10 @@ async function FieldHome() {
     </div>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Início — Stoller Planner",
+};
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
