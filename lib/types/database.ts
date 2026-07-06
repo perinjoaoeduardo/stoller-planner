@@ -110,6 +110,48 @@ export type Database = {
           },
         ]
       }
+      activity_events: {
+        Row: {
+          activity_id: string
+          created_at: string
+          description: string | null
+          id: string
+          profile_id: string | null
+          type: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          profile_id?: string | null
+          type: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          profile_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_events_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_photos: {
         Row: {
           activity_id: string
