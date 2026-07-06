@@ -26,31 +26,33 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { title: "Regiões", href: "/regioes", icon: Map },
     { title: "Canais", href: "/canais", icon: Store },
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
+    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],
   DSM: [
     { title: "Início", href: "/", icon: Home },
     { title: "Meus Canais", href: "/canais", icon: Store },
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
+    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],
   RTV: [
     { title: "Início", href: "/", icon: Home },
-    { title: "Minhas Atividades", href: "/atividades", icon: ClipboardList },
     {
-      title: "Registrar execução",
-      href: "/registrar-execucao",
-      icon: ClipboardCheck,
+      title: "Minhas Atividades",
+      href: "/minhas-atividades",
+      icon: ClipboardList,
     },
+    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
   ],
   RDC: [
     { title: "Início", href: "/", icon: Home },
-    { title: "Minhas Atividades", href: "/atividades", icon: ClipboardList },
     {
-      title: "Registrar execução",
-      href: "/registrar-execucao",
-      icon: ClipboardCheck,
+      title: "Minhas Atividades",
+      href: "/minhas-atividades",
+      icon: ClipboardList,
     },
+    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
   ],
 };
 
