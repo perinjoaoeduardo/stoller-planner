@@ -2,16 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import {
-  ChartColumn,
-  ClipboardList,
-  Home,
-  Plus,
-  Search,
-  Store,
-} from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
+import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
@@ -25,16 +19,10 @@ import {
 } from "@/components/ui/command";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
-const NAV_ITEMS = [
-  { label: "Início", href: "/", icon: Home },
-  { label: "Canais", href: "/canais", icon: Store },
-  { label: "Atividades", href: "/atividades", icon: ClipboardList },
-  { label: "Relatórios", href: "/relatorios", icon: ChartColumn },
-];
-
-export function GlobalSearch() {
+export function GlobalSearch({ role }: { role: Role }) {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
+  const navItems = NAV_BY_ROLE[role];
 
   React.useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -90,13 +78,13 @@ export function GlobalSearch() {
         <CommandList>
           <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
           <CommandGroup heading="Navegação">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <CommandItem
                 key={item.href}
                 onSelect={() => runCommand(() => router.push(item.href))}
               >
                 <item.icon />
-                {item.label}
+                {item.title}
               </CommandItem>
             ))}
           </CommandGroup>

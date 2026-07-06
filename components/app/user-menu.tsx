@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { LogOut, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,15 +14,25 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "@/lib/auth/actions";
+import type { Role } from "@/lib/auth/nav";
 
-// Usuária demo até o auth real ser ligado
-const CURRENT_USER = {
-  name: "Camila Duarte",
-  role: "CX",
-  initials: "CD",
+export type UserMenuUser = {
+  name: string;
+  email: string;
+  role: Role;
 };
 
-export function UserMenu() {
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return `${first}${last}`.toUpperCase();
+}
+
+export function UserMenu({ user }: { user: UserMenuUser }) {
+  const [pending, startTransition] = React.useTransition();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -33,17 +44,22 @@ export function UserMenu() {
           >
             <Avatar className="size-8 border border-white/20">
               <AvatarFallback className="bg-primary text-xs font-medium text-primary-foreground">
-                {CURRENT_USER.initials}
+                {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
             <span className="sr-only">Menu do usuário</span>
           </Button>
         }
       />
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="flex items-center justify-between gap-2">
-          <span className="truncate font-medium">{CURRENT_USER.name}</span>
-          <Badge variant="secondary">{CURRENT_USER.role}</Badge>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel className="flex items-start justify-between gap-2 font-normal">
+          <span className="grid gap-0.5">
+            <span className="truncate font-medium">{user.name}</span>
+            <span className="truncate text-xs text-muted-foreground">
+              {user.email}
+            </span>
+          </span>
+          <Badge variant="secondary">{user.role}</Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
@@ -51,7 +67,11 @@ export function UserMenu() {
           Configurações
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive">
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={pending}
+          onClick={() => startTransition(() => signOut())}
+        >
           <LogOut />
           Sair
         </DropdownMenuItem>

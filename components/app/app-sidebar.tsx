@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  ChartColumn,
-  ClipboardList,
-  Home,
-  Sprout,
-  Store,
-} from "lucide-react";
+import { Sprout } from "lucide-react";
 
+import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
   SidebarContent,
@@ -24,15 +19,12 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 
-const NAV_ITEMS = [
-  { title: "Início", href: "/", icon: Home },
-  { title: "Canais", href: "/canais", icon: Store },
-  { title: "Atividades", href: "/atividades", icon: ClipboardList },
-  { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
-];
-
-export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  role,
+  ...props
+}: React.ComponentProps<typeof Sidebar> & { role: Role }) {
   const pathname = usePathname();
+  const navItems = NAV_BY_ROLE[role];
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -65,7 +57,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     tooltip={item.title}
