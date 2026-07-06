@@ -128,3 +128,64 @@
     @apply font-sans;
   }
 }
+
+/* ── Impressão (Relatório de Safra → "Exportar PDF") ─────────────────
+   Sem sidebar/top bar, cores preservadas, quebras de página entre as
+   seções de problema e nada de foto/título cortado ao meio. */
+@media print {
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Estrutura do app fora do documento impresso */
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-trigger"],
+  [data-slot="sidebar-rail"],
+  header.sticky {
+    display: none !important;
+  }
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  html,
+  body {
+    background: white !important;
+  }
+
+  .report-root {
+    max-width: none !important;
+    padding: 0 !important;
+    gap: 1rem !important;
+  }
+
+  /* Cada seção de problema começa em página nova; capa + resumo juntos */
+  .report-section {
+    break-before: page;
+  }
+  .report-hero,
+  .report-hero + .report-section {
+    break-before: auto;
+  }
+  .report-hero {
+    break-inside: avoid;
+  }
+
+  /* Título de seção nunca órfão; linhas e fotos nunca cortadas */
+  .report-section [data-slot="card-header"] {
+    break-after: avoid;
+  }
+  .report-section img,
+  .report-section button {
+    break-inside: avoid;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}

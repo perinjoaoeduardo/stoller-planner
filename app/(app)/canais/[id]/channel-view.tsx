@@ -6,6 +6,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   CalendarClock,
+  ChartColumn,
   ChevronRight,
   CircleAlert,
   CircleCheckBig,
@@ -215,6 +216,18 @@ export function ChannelView({
                 <SelectItem value={plan.id}>{plan.harvest}</SelectItem>
               </SelectContent>
             </Select>
+          ) : null}
+          {plan ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              nativeButton={false}
+              render={<Link href={`/canais/${channel.id}/relatorio`} />}
+            >
+              <ChartColumn />
+              Relatório de safra
+            </Button>
           ) : null}
           {canEdit && plan ? (
             <>
