@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/auth/nav";
@@ -70,6 +70,16 @@ export const getCurrentProfile = cache(async (): Promise<CurrentProfile> => {
     role: profile.role as Role,
   };
 });
+
+/**
+ * Guarda de servidor das rotas exclusivas do CX (/visao-geral, /regioes,
+ * /acompanhamento): outros perfis recebem o 404 amigável do app.
+ */
+export async function requireCx(): Promise<CurrentProfile> {
+  const profile = await getCurrentProfile();
+  if (profile.role !== "CX") notFound();
+  return profile;
+}
 
 /**
  * Canais visíveis para o usuário:

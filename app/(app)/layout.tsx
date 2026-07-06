@@ -13,7 +13,8 @@ export default async function AppLayout({
   return (
     <SidebarProvider>
       <AppSidebar role={profile.role} />
-      <SidebarInset>
+      {/* min-w-0 impede que conteúdo largo (svgs de charts) trave o flex */}
+      <SidebarInset className="min-w-0">
         <AppTopbar
           user={{
             name: profile.fullName,

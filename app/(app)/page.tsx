@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   Camera,
   ChevronRight,
@@ -185,26 +186,6 @@ function UpcomingTableCard({ data }: { data: DashboardData }) {
         </Table>
       </CardContent>
     </Card>
-  );
-}
-
-/** Home do CX — visão global, idêntica ao total do banco. */
-async function CxHome() {
-  const profile = await getCurrentProfile();
-  const channelIds = await getScopedChannelIds(profile);
-  const data = await getDashboardData(channelIds);
-
-  return (
-    <PageShell
-      title="Visão geral — todas as regiões"
-      description="Execução comercial de todos os canais na safra 2025/26."
-    >
-      <MetricsGrid data={data} scopeHint="Safra 2025/26, todos os canais" />
-      <div className="grid gap-4 xl:grid-cols-7">
-        <StatusChartCard data={data} />
-        <UpcomingTableCard data={data} />
-      </div>
-    </PageShell>
   );
 }
 
@@ -453,7 +434,8 @@ async function FieldHome() {
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
 
-  if (profile.role === "CX") return <CxHome />;
+  // O "Início" do CX é o painel geral do Bloco 5.
+  if (profile.role === "CX") redirect("/visao-geral");
   if (profile.role === "DSM") return <DsmHome />;
   return <FieldHome />;
 }
