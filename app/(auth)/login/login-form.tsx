@@ -75,10 +75,12 @@ export function LoginForm() {
     router.refresh();
   }
 
+  /** Preenche com o usuário de exemplo e já entra. */
   function fillDemo(email: string) {
     setAuthError(null);
     form.setValue("email", email, { shouldValidate: true });
     form.setValue("password", DEMO_PASSWORD, { shouldValidate: true });
+    void form.handleSubmit(onSubmit)();
   }
 
   const { errors } = form.formState;
@@ -87,10 +89,8 @@ export function LoginForm() {
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Entrar</CardTitle>
-          <CardDescription>
-            Use seu email corporativo para acessar o planner.
-          </CardDescription>
+          <CardTitle className="text-xl">Entrar</CardTitle>
+          <CardDescription>Acesse o Corteva Planner.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
@@ -154,7 +154,7 @@ export function LoginForm() {
           <div>
             <p className="text-sm font-medium">Acesso de demonstração</p>
             <p className="text-xs text-muted-foreground">
-              Preenche o formulário com um usuário de exemplo de cada perfil.
+              Entra direto com um usuário de exemplo de cada perfil.
             </p>
           </div>
           <div className="grid grid-cols-4 gap-2">
@@ -165,6 +165,7 @@ export function LoginForm() {
                 variant="outline"
                 size="sm"
                 className="h-9"
+                disabled={submitting}
                 onClick={() => fillDemo(user.email)}
               >
                 {user.role}
@@ -173,6 +174,17 @@ export function LoginForm() {
           </div>
         </CardContent>
       </Card>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Não tem conta?{" "}
+        <Link
+          href="/registro"
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Solicite acesso
+        </Link>{" "}
+        ao time de CX.
+      </p>
     </div>
   );
 }
