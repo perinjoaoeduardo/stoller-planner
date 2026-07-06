@@ -20,7 +20,7 @@ export function PageShell({
   children?: React.ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-1 flex-col gap-6 p-4 md:p-6", className)}>
+    <div className={cn("flex flex-1 flex-col gap-8 p-5 md:p-8", className)}>
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
           {breadcrumb}

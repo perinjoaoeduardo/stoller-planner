@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** Skeleton da tabela global de atividades. */
 export default function AtividadesLoading() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
       <header className="space-y-2">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-4 w-96" />

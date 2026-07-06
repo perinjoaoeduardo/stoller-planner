@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** Skeleton da página do canal, espelhando cabeçalho, métricas e tabs. */
 export default function CanalLoading() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <Skeleton className="h-9 w-72" />

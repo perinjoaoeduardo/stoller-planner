@@ -33,7 +33,7 @@ export default async function AppLayout({
       <div className="flex min-h-0 flex-1">
         <AppSidebar role={profile.role} />
         {/* min-w-0 impede que conteúdo largo (svgs de charts) trave o flex */}
-        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto bg-background md:my-2 md:mr-2 md:ml-0 md:rounded-2xl md:shadow-sm md:ring-1 md:ring-foreground/5 dark:md:ring-foreground/10">
+        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto bg-background md:my-4 md:mr-4 md:ml-0 md:rounded-2xl md:shadow-sm md:ring-1 md:ring-foreground/5 dark:md:ring-foreground/10">
           {children}
         </SidebarInset>
       </div>

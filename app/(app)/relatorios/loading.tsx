@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** Skeleton do índice de relatórios: grid de cards de canal. */
 export default function RelatoriosLoading() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
       <div className="space-y-2">
         <Skeleton className="h-9 w-44" />
         <Skeleton className="h-4 w-96 max-w-full" />

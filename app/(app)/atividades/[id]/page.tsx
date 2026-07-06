@@ -204,7 +204,7 @@ export default async function AtividadePage({
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
       <header className="space-y-3">
         <Breadcrumb>
           <BreadcrumbList>

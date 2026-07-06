@@ -21,7 +21,7 @@ export function AppTopbar({ user }: { user: SettingsUser }) {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
-    <header className="z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b border-white/10 bg-zinc-950 px-3 text-zinc-50 md:px-4 dark:bg-zinc-900">
+    <header className="z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b border-white/10 bg-zinc-950 px-4 text-zinc-50 md:px-6 dark:bg-zinc-900">
       <SidebarTrigger className="size-8 text-white/80 hover:bg-white/10 hover:text-white" />
       <Separator orientation="vertical" className="mr-1 h-5! bg-white/15" />
       <BrandLogo className="text-zinc-50" />

@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** Skeleton do detalhe da atividade (2 colunas no desktop). */
 export default function AtividadeLoading() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
       <header className="space-y-3">
         <Skeleton className="h-4 w-64" />
         <div className="flex items-center gap-3">
