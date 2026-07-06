@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Home,
   Map,
+  Radar,
   Store,
   type LucideIcon,
 } from "lucide-react";
@@ -22,11 +23,11 @@ export type NavItem = {
  */
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   CX: [
-    { title: "Início", href: "/", icon: Home },
+    { title: "Início", href: "/visao-geral", icon: Home },
     { title: "Regiões", href: "/regioes", icon: Map },
     { title: "Canais", href: "/canais", icon: Store },
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
-    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
+    { title: "Acompanhamento", href: "/acompanhamento", icon: Radar },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],
   DSM: [
