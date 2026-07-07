@@ -33,7 +33,7 @@ export default function AuthLayout({
           fill
           sizes="50vw"
           priority
-          className="object-cover dark:brightness-[0.35] dark:saturate-50"
+          className="object-cover"
         />
         {/* Overlay sutil com o azul Corteva + frase de marca */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0063A7]/70 via-transparent to-transparent" />
