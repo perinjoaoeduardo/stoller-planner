@@ -60,7 +60,7 @@ export default async function AppLayout({
           className="p-4 md:p-6"
         />
         <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-background shadow-sm ring-1 ring-foreground/5 md:my-6 md:mr-6 md:ml-0 dark:bg-card dark:ring-white/10">
-          <div className="shrink-0 border-b px-5 py-3 md:px-8">
+          <div className="shrink-0 border-b px-2 py-3 md:px-3">
             <ContentTopBar role={profile.role} fieldChannels={fieldChannels} />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
