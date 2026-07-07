@@ -17,7 +17,14 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
  * Top bar contrastante: escura no modo claro, elevação clara no modo escuro.
  * Também hospeda o modal de Configurações (aberto pelo avatar ou Ctrl+K).
  */
-export function AppTopbar({ user }: { user: SettingsUser }) {
+export function AppTopbar({
+  user,
+  fieldChannels = [],
+}: {
+  user: SettingsUser;
+  /** Canais do RTV/RDC para os itens "Ir para [canal]" da busca. */
+  fieldChannels?: { id: string; name: string }[];
+}) {
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
@@ -28,6 +35,7 @@ export function AppTopbar({ user }: { user: SettingsUser }) {
       <div className="ml-auto flex items-center gap-1.5 md:gap-2">
         <GlobalSearch
           role={user.role}
+          fieldChannels={fieldChannels}
           onOpenSettings={() => setSettingsOpen(true)}
         />
         <ThemeToggle className="text-white/80 hover:bg-white/10 hover:text-white" />

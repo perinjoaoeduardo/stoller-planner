@@ -1,7 +1,25 @@
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppTopbar } from "@/components/app/app-topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { getCurrentProfile } from "@/lib/auth/scope";
+import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Canais do RTV/RDC para o "Ir para [canal]" do command palette —
+ * poucos por usuário, então buscamos os nomes direto no layout.
+ */
+async function getFieldChannels(profile: Awaited<ReturnType<typeof getCurrentProfile>>) {
+  if (profile.role !== "RTV" && profile.role !== "RDC") return [];
+  const channelIds = await getScopedChannelIds(profile);
+  if (channelIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("channels")
+    .select("id, name")
+    .in("id", channelIds)
+    .order("name");
+  return data ?? [];
+}
 
 /**
  * Layout em 3 camadas: header full-width no topo, e abaixo dois
@@ -15,6 +33,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const profile = await getCurrentProfile();
+  const fieldChannels = await getFieldChannels(profile);
 
   return (
     <SidebarProvider
@@ -22,6 +41,7 @@ export default async function AppLayout({
       className="h-svh flex-col overflow-hidden bg-muted dark:bg-black"
     >
       <AppTopbar
+        fieldChannels={fieldChannels}
         user={{
           id: profile.id,
           name: profile.fullName,

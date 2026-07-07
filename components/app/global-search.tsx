@@ -108,9 +108,12 @@ const EMPTY_RESULTS: GlobalSearchResults = {
 
 export function GlobalSearch({
   role,
+  fieldChannels = [],
   onOpenSettings,
 }: {
   role: Role;
+  /** Canais vinculados do RTV/RDC — viram itens "Ir para [canal]". */
+  fieldChannels?: { id: string; name: string }[];
   onOpenSettings?: () => void;
 }) {
   const [open, setOpen] = React.useState(false);
@@ -170,6 +173,14 @@ export function GlobalSearch({
   const navMatches = hasQuery
     ? navItems.filter((item) => normalize(item.title).includes(normalizedQuery))
     : navItems;
+  // "Ir para [canal]" do RTV/RDC — casa pelo nome do canal ou por "ir".
+  const channelMatches = isField
+    ? hasQuery
+      ? fieldChannels.filter((channel) =>
+          normalize(`ir para ${channel.name}`).includes(normalizedQuery)
+        )
+      : fieldChannels
+    : [];
 
   const totalHits = results
     ? results.activities.length +
@@ -184,6 +195,7 @@ export function GlobalSearch({
     !searching &&
     totalHits === 0 &&
     navMatches.length === 0 &&
+    channelMatches.length === 0 &&
     statusFilters.length === 0;
 
   function handleOpenChange(next: boolean) {
@@ -203,7 +215,9 @@ export function GlobalSearch({
     router.push(href);
   }
 
-  const activitiesHref = isField ? "/minhas-atividades" : "/atividades";
+  // RTV/RDC navegam para a visão de campo do canal, não para o cockpit.
+  const channelHref = (channelId: string) =>
+    isField ? `/meus-canais/${channelId}` : `/canais/${channelId}`;
 
   return (
     <>
@@ -322,7 +336,7 @@ export function GlobalSearch({
                   <CommandItem
                     key={`canal-${channel.id}`}
                     value={`canal-${channel.id}`}
-                    onSelect={() => go(`/canais/${channel.id}`, true)}
+                    onSelect={() => go(channelHref(channel.id), true)}
                   >
                     <Store />
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -342,7 +356,7 @@ export function GlobalSearch({
                   <CommandItem
                     key={`filial-${branch.id}`}
                     value={`filial-${branch.id}`}
-                    onSelect={() => go(`/canais/${branch.channelId}`, true)}
+                    onSelect={() => go(channelHref(branch.channelId), true)}
                   >
                     <MapPin />
                     <span className="flex min-w-0 flex-1 flex-col">
@@ -435,7 +449,7 @@ export function GlobalSearch({
             ) : null}
 
             {/* ── Navegação ──────────────────────────────────────────── */}
-            {navMatches.length > 0 ? (
+            {navMatches.length > 0 || channelMatches.length > 0 ? (
               <CommandGroup heading="Navegação">
                 {navMatches.map((item) => (
                   <CommandItem
@@ -445,6 +459,16 @@ export function GlobalSearch({
                   >
                     <item.icon />
                     {item.title}
+                  </CommandItem>
+                ))}
+                {channelMatches.map((channel) => (
+                  <CommandItem
+                    key={`nav-canal-${channel.id}`}
+                    value={`nav-canal-${channel.id}`}
+                    onSelect={() => go(`/meus-canais/${channel.id}`)}
+                  >
+                    <Store />
+                    Ir para {channel.name}
                   </CommandItem>
                 ))}
               </CommandGroup>

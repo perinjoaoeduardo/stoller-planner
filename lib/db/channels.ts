@@ -18,10 +18,13 @@ export type ChannelCard = {
   region: string;
   regionId: string;
   harvest: string | null;
+  branchCount: number;
   problemCount: number;
   activityCount: number;
   completedCount: number;
   completedPercent: number;
+  /** Abertas sem atraso (planejadas + em andamento dentro do prazo). */
+  pendingCount: number;
   lateCount: number;
   health: ChannelHealth;
 };
@@ -37,6 +40,7 @@ export async function getChannelCards(
     .from("channels")
     .select(
       `id, name, region_id, region:regions(id, name),
+       branches(id),
        plans(id, harvest, status,
          problems(id),
          activities(id, status, due_date))`
@@ -58,6 +62,10 @@ export async function getChannelCards(
       (activity) => activity.status === "concluida"
     ).length;
     const late = activities.filter(isLateActivity).length;
+    const pending = activities.filter((activity) => {
+      const display = getDisplayStatus(activity);
+      return display === "planejada" || display === "em_andamento";
+    }).length;
 
     return {
       id: channel.id,
@@ -65,10 +73,12 @@ export async function getChannelCards(
       region: channel.region?.name ?? "—",
       regionId: channel.region_id,
       harvest: plan?.harvest ?? null,
+      branchCount: channel.branches.length,
       problemCount: plan?.problems.length ?? 0,
       activityCount: total,
       completedCount: completed,
       completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
+      pendingCount: pending,
       lateCount: late,
       health: computeHealth(late, total),
     } satisfies ChannelCard;
@@ -179,6 +189,7 @@ export type ActivityRow = {
   status: ActivityStatus;
   dueDate: string | null;
   createdAt: string;
+  completedAt: string | null;
   problemId: string | null;
   problemTitle: string | null;
   branchId: string | null;
@@ -214,6 +225,7 @@ export async function getPlanBoard(
       .from("activities")
       .select(
         `id, title, category, description, status, due_date, created_at,
+         completed_at,
          problem_id, problem:problems(title),
          branch_id, branch:branches(name),
          responsible_id, responsible:profiles(id, full_name),
@@ -245,6 +257,7 @@ export async function getPlanBoard(
       }),
       dueDate: activity.due_date,
       createdAt: activity.created_at,
+      completedAt: activity.completed_at,
       problemId: activity.problem_id,
       problemTitle: activity.problem?.title ?? null,
       branchId: activity.branch_id,
@@ -311,6 +324,7 @@ export async function getScopedActivities(
     .from("activities")
     .select(
       `id, title, category, description, status, due_date, created_at,
+       completed_at,
        problem_id, problem:problems(title),
        branch_id, branch:branches(name),
        responsible_id, responsible:profiles(id, full_name),
@@ -335,6 +349,7 @@ export async function getScopedActivities(
     }),
     dueDate: activity.due_date,
     createdAt: activity.created_at,
+    completedAt: activity.completed_at,
     problemId: activity.problem_id,
     problemTitle: activity.problem?.title ?? null,
     branchId: activity.branch_id,
