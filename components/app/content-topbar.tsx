@@ -23,7 +23,7 @@ export function ContentTopBar({
 
   return (
     <div className="flex items-center gap-2">
-      <SidebarTrigger className="size-9 shrink-0 md:hidden" />
+      <SidebarTrigger className="size-9 shrink-0" />
       <div className="w-full max-w-md">
         <GlobalSearch
           role={role}
