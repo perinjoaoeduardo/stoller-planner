@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 export function PageShell({
   title,
   description,
+  descriptionClassName,
   breadcrumb,
   actions,
   className,
@@ -13,6 +14,8 @@ export function PageShell({
 }: {
   title: string;
   description?: string;
+  /** Sobrescreve o estilo padrão da descrição (ex: cor de alerta). */
+  descriptionClassName?: string;
   /** Breadcrumb opcional, exibido acima do título (páginas profundas). */
   breadcrumb?: React.ReactNode;
   actions?: React.ReactNode;
@@ -26,7 +29,13 @@ export function PageShell({
           {breadcrumb}
           <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
           {description ? (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p
+              className={
+                descriptionClassName ?? "text-sm text-muted-foreground"
+              }
+            >
+              {description}
+            </p>
           ) : null}
         </div>
         {actions ? (

@@ -260,7 +260,7 @@ export function MyActivitiesList({
                 ({group.items.length})
               </span>
             </h2>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
               {group.items.map((activity) => (
                 <ActivityCard key={activity.id} activity={activity} />
               ))}
@@ -268,7 +268,7 @@ export function MyActivitiesList({
           </section>
         ))
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
           {flatList.map((activity) => (
             <ActivityCard key={activity.id} activity={activity} />
           ))}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight, Store } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";
+import { Card } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -10,12 +11,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Item,
-  ItemContent,
-  ItemGroup,
-  ItemSeparator,
-} from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelCards, type ChannelCard } from "@/lib/db/channels";
@@ -74,7 +69,6 @@ export default async function MeusCanaisPage() {
     <PageShell
       title="Meus Canais"
       description="Distribuidores em que você atua nesta safra."
-      className="mx-auto w-full max-w-2xl"
     >
       {sorted.length === 0 ? (
         <Empty className="flex-1 rounded-3xl border border-dashed">
@@ -90,20 +84,22 @@ export default async function MeusCanaisPage() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ItemGroup className="gap-0">
-          {sorted.map((channel, index) => (
-            <div key={channel.id}>
-              {index > 0 ? <ItemSeparator /> : null}
-              <Item
-                render={<Link href={`/meus-canais/${channel.id}`} />}
-                className="hover:bg-muted/60"
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {sorted.map((channel) => (
+            <Card
+              key={channel.id}
+              className="p-0 transition-colors hover:bg-muted/40"
+            >
+              <Link
+                href={`/meus-canais/${channel.id}`}
+                className="flex gap-3 p-5"
               >
                 <span
                   aria-label={HEALTH_CONFIG[channel.health].label}
                   title={HEALTH_CONFIG[channel.health].label}
                   className={`size-2.5 shrink-0 self-start translate-y-2 rounded-full ${HEALTH_CONFIG[channel.health].dotClass}`}
                 />
-                <ItemContent className="min-w-0 gap-1.5">
+                <div className="min-w-0 flex-1 space-y-1.5">
                   <div>
                     <p className="truncate text-base font-medium">
                       {channel.name}
@@ -117,12 +113,12 @@ export default async function MeusCanaisPage() {
                     value={channel.completedPercent}
                     className="mt-0.5 h-1"
                   />
-                </ItemContent>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-              </Item>
-            </div>
+                </div>
+                <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground" />
+              </Link>
+            </Card>
           ))}
-        </ItemGroup>
+        </div>
       )}
     </PageShell>
   );

@@ -29,7 +29,6 @@ export default async function MinhasAtividadesPage() {
     <PageShell
       title="Minhas Atividades"
       description="Atividades atribuídas a você em todos os canais."
-      className="mx-auto w-full max-w-2xl"
     >
       <MyActivitiesList activities={mine} />
     </PageShell>

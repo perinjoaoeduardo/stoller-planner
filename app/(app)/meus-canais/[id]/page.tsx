@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, Store } from "lucide-react";
 
+import { BackButton } from "@/components/app/back-button";
 import { PageShell } from "@/components/app/page-shell";
 import {
   Breadcrumb,
@@ -43,7 +44,7 @@ function harvestLabel(harvest: string | null | undefined): string {
 /** 404 amigável: canal inexistente ou fora do escopo do usuário. */
 function ChannelNotFound() {
   return (
-    <PageShell title="Canal" className="mx-auto w-full max-w-2xl">
+    <PageShell title="Canal">
       <Empty className="flex-1 rounded-3xl border border-dashed">
         <EmptyHeader>
           <EmptyMedia variant="icon">
@@ -138,21 +139,23 @@ export default async function MeuCanalPage({
     <PageShell
       title={channel.name}
       description={`${harvestLabel(channel.plan?.harvest)} · ${channel.region}`}
-      className="mx-auto w-full max-w-2xl"
       breadcrumb={
-        <Breadcrumb className="mb-1">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink render={<Link href="/meus-canais" />}>
-                Meus Canais
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{channel.name}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div className="mb-1 flex items-center gap-2">
+          <BackButton fallbackHref="/meus-canais" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href="/meus-canais" />}>
+                  Meus Canais
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{channel.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
       }
       actions={
         <Button

@@ -317,188 +317,183 @@ async function FieldHome() {
     })
     .slice(0, 3);
 
+  const contextClass =
+    lateCount > 0
+      ? "text-sm font-medium text-amber-600 dark:text-amber-400"
+      : "text-sm text-muted-foreground";
+
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4 py-6 md:p-8">
-      {/* Bloco A — saudação + linha contextual (nunca vazia) */}
-      <header className="space-y-1">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          {greetingByHour(currentHourInSaoPaulo())}, {firstName}
-        </h1>
-        <p
-          className={
-            lateCount > 0
-              ? "text-sm font-medium text-amber-600 dark:text-amber-400"
-              : "text-sm text-muted-foreground"
+    <PageShell
+      title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
+      description={`${contextLine}.`}
+      descriptionClassName={contextClass}
+      actions={
+        <Button
+          size="lg"
+          className="h-11 text-base font-semibold"
+          nativeButton={false}
+          render={
+            <Link href="/registrar">
+              <Camera className="size-5" />
+              Registrar
+            </Link>
           }
-        >
-          {contextLine}.
-        </p>
-      </header>
-
-      {/* Bloco B — CTA central */}
-      <Button
-        size="lg"
-        className="h-14 w-full text-base font-semibold"
-        nativeButton={false}
-        render={
-          <Link href="/registrar">
-            <Camera className="size-5" />
-            Registrar
-          </Link>
-        }
-      />
-
-      {/* Bloco C — resumo dos canais, uma linha por canal */}
-      {channels.length > 0 ? (
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardDescription className="flex items-center gap-1.5">
-              <Store className="size-3.5" />
-              Meus canais
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4">
-            <ItemGroup>
-              {channels.map((channel, index) => (
-                <div key={channel.id}>
-                  {index > 0 ? <ItemSeparator /> : null}
-                  <Item
-                    size="sm"
-                    render={<Link href={`/meus-canais/${channel.id}`} />}
-                    className="hover:bg-muted/60"
-                  >
-                    <ItemContent className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          aria-label={HEALTH_CONFIG[channel.health].label}
-                          className={`size-2 shrink-0 rounded-full ${HEALTH_CONFIG[channel.health].dotClass}`}
-                        />
-                        <span className="min-w-0 truncate font-medium">
-                          {channel.name}
-                        </span>
-                        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-                          {channel.completedCount} de {channel.activityCount}{" "}
-                          feitas
-                        </span>
-                      </div>
-                      <Progress
-                        value={channel.completedPercent}
-                        className="mt-1.5 h-1"
-                      />
-                    </ItemContent>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                  </Item>
-                </div>
-              ))}
-            </ItemGroup>
-          </CardContent>
-        </Card>
-      ) : (
-        <Empty className="rounded-3xl border border-dashed py-8">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Store />
-            </EmptyMedia>
-            <EmptyTitle>Nenhum canal vinculado</EmptyTitle>
-            <EmptyDescription>
-              Você ainda não está vinculado a nenhum canal. Fale com o time de
-              CX.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
-
-      {/* Bloco D — próximas atividades (some quando não há) */}
-      {upcoming.length > 0 ? (
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardDescription className="flex items-center gap-1.5">
-              <ClipboardList className="size-3.5" />
-              Próximas atividades
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4">
-            <ItemGroup>
-              {upcoming.map((activity, index) => {
-                const overdue = activity.status === "atrasada";
-                return (
-                  <div key={activity.id}>
+        />
+      }
+    >
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Bloco C — resumo dos canais */}
+        {channels.length > 0 ? (
+          <Card className="gap-3 py-4">
+            <CardHeader className="px-4">
+              <CardDescription className="flex items-center gap-1.5">
+                <Store className="size-3.5" />
+                Meus canais
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4">
+              <ItemGroup>
+                {channels.map((channel, index) => (
+                  <div key={channel.id}>
                     {index > 0 ? <ItemSeparator /> : null}
-                    <Item size="sm">
-                      <ItemContent>
-                        <ItemTitle className="line-clamp-2">
-                          {activity.title}
-                        </ItemTitle>
-                        <ItemDescription
-                          className={
-                            overdue
-                              ? "font-medium text-red-600 dark:text-red-400"
-                              : undefined
-                          }
-                        >
-                          {formatRelativeDue(activity.dueDate)}
-                        </ItemDescription>
+                    <Item
+                      size="sm"
+                      render={<Link href={`/meus-canais/${channel.id}`} />}
+                      className="hover:bg-muted/60"
+                    >
+                      <ItemContent className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            aria-label={HEALTH_CONFIG[channel.health].label}
+                            className={`size-2 shrink-0 rounded-full ${HEALTH_CONFIG[channel.health].dotClass}`}
+                          />
+                          <span className="min-w-0 truncate font-medium">
+                            {channel.name}
+                          </span>
+                          <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                            {channel.completedCount} de {channel.activityCount}{" "}
+                            feitas
+                          </span>
+                        </div>
+                        <Progress
+                          value={channel.completedPercent}
+                          className="mt-1.5 h-1"
+                        />
                       </ItemContent>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-11 shrink-0 sm:h-9"
-                        nativeButton={false}
-                        render={
-                          <Link href={`/registrar?atividade=${activity.id}`}>
-                            <Camera className="size-4" />
-                            Registrar
-                          </Link>
-                        }
-                      />
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                     </Item>
                   </div>
-                );
-              })}
-            </ItemGroup>
-          </CardContent>
-        </Card>
-      ) : null}
+                ))}
+              </ItemGroup>
+            </CardContent>
+          </Card>
+        ) : (
+          <Empty className="rounded-3xl border border-dashed py-8">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Store />
+              </EmptyMedia>
+              <EmptyTitle>Nenhum canal vinculado</EmptyTitle>
+              <EmptyDescription>
+                Você ainda não está vinculado a nenhum canal. Fale com o time de
+                CX.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        )}
 
-      {/* Bloco E — registros recentes (some quando não há) */}
-      {recentExecutions.length > 0 ? (
-        <Card className="gap-3 py-4">
-          <CardHeader className="px-4">
-            <CardDescription className="flex items-center gap-1.5">
-              <ClipboardCheck className="size-3.5" />
-              Registros recentes
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-4">
-            <ItemGroup>
-              {recentExecutions.map((execution, index) => (
-                <div key={execution.id}>
-                  {index > 0 ? <ItemSeparator /> : null}
-                  <Item
-                    size="sm"
-                    render={<Link href={`/atividades/${execution.activityId}`} />}
-                    className="hover:bg-muted/60"
-                  >
-                    <ItemContent>
-                      <ItemTitle className="line-clamp-1">
-                        {execution.activityTitle}
-                      </ItemTitle>
-                      <ItemDescription className="line-clamp-1">
-                        {formatDistanceToNow(parseISO(execution.createdAt), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })}
-                      </ItemDescription>
-                    </ItemContent>
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                  </Item>
-                </div>
-              ))}
-            </ItemGroup>
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
+        {/* Bloco D — próximas atividades (some quando não há) */}
+        {upcoming.length > 0 ? (
+          <Card className="gap-3 py-4">
+            <CardHeader className="px-4">
+              <CardDescription className="flex items-center gap-1.5">
+                <ClipboardList className="size-3.5" />
+                Próximas atividades
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4">
+              <ItemGroup>
+                {upcoming.map((activity, index) => {
+                  const overdue = activity.status === "atrasada";
+                  return (
+                    <div key={activity.id}>
+                      {index > 0 ? <ItemSeparator /> : null}
+                      <Item size="sm">
+                        <ItemContent>
+                          <ItemTitle className="line-clamp-2">
+                            {activity.title}
+                          </ItemTitle>
+                          <ItemDescription
+                            className={
+                              overdue
+                                ? "font-medium text-red-600 dark:text-red-400"
+                                : undefined
+                            }
+                          >
+                            {formatRelativeDue(activity.dueDate)}
+                          </ItemDescription>
+                        </ItemContent>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-11 shrink-0 sm:h-9"
+                          nativeButton={false}
+                          render={
+                            <Link href={`/registrar?atividade=${activity.id}`}>
+                              <Camera className="size-4" />
+                              Registrar
+                            </Link>
+                          }
+                        />
+                      </Item>
+                    </div>
+                  );
+                })}
+              </ItemGroup>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {/* Bloco E — registros recentes (some quando não há) */}
+        {recentExecutions.length > 0 ? (
+          <Card className="gap-3 py-4 lg:col-span-2">
+            <CardHeader className="px-4">
+              <CardDescription className="flex items-center gap-1.5">
+                <ClipboardCheck className="size-3.5" />
+                Registros recentes
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4">
+              <ItemGroup>
+                {recentExecutions.map((execution, index) => (
+                  <div key={execution.id}>
+                    {index > 0 ? <ItemSeparator /> : null}
+                    <Item
+                      size="sm"
+                      render={<Link href={`/atividades/${execution.activityId}`} />}
+                      className="hover:bg-muted/60"
+                    >
+                      <ItemContent>
+                        <ItemTitle className="line-clamp-1">
+                          {execution.activityTitle}
+                        </ItemTitle>
+                        <ItemDescription className="line-clamp-1">
+                          {formatDistanceToNow(parseISO(execution.createdAt), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })}
+                        </ItemDescription>
+                      </ItemContent>
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                    </Item>
+                  </div>
+                ))}
+              </ItemGroup>
+            </CardContent>
+          </Card>
+        ) : null}
+      </div>
+    </PageShell>
   );
 }
 

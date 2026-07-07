@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { BackButton } from "@/components/app/back-button";
 import { PageShell } from "@/components/app/page-shell";
 import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
@@ -308,25 +309,30 @@ export default async function AtividadePage({
   return (
     <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
       <header className="space-y-3">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink render={<Link href={channelBase} />}>
-                {isField ? "Meus Canais" : "Canais"}
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink render={<Link href={channelHref} />}>
-                {activity.channelName}
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Atividade</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div className="flex flex-wrap items-center gap-2">
+          <BackButton
+            fallbackHref={isField ? "/minhas-atividades" : channelHref}
+          />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href={channelBase} />}>
+                  {isField ? "Meus Canais" : "Canais"}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href={channelHref} />}>
+                  {activity.channelName}
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Atividade</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">
             {activity.title}
