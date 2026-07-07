@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, PenLine, Search, SearchX } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Building2,
+  ChevronRight,
+  PenLine,
+  Search,
+  SearchX,
+} from "lucide-react";
 
 import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -18,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import type {
   BranchOption,
   BranchPlanInfo,
+  ChannelOption,
   FieldActivity,
 } from "@/lib/db/execution";
 import { formatRelativeDue } from "@/lib/plan-utils";
@@ -31,35 +39,148 @@ import { CompleteActivity } from "./complete-activity";
  * o usuário ABRE a atividade, anexa a foto por cima e conclui
  * (Situação A). Quem não planejou registra a ação fora do plano
  * (Situação B). Quanto mais planejado, menos trabalho no campo.
+ *
+ * Se o RTV tem mais de 1 canal, ele escolhe o canal primeiro.
+ * Canal único: seleção automática, zero fricção extra.
  */
 export function RegisterFlow({
   activities,
   branches,
   branchPlans,
+  channels,
   preselectedId,
   startAdhoc,
 }: {
   activities: FieldActivity[];
   branches: BranchOption[];
   branchPlans: BranchPlanInfo[];
+  channels: ChannelOption[];
   preselectedId: string | null;
   startAdhoc: boolean;
 }) {
   const router = useRouter();
 
+  // Canal inicial: inferido da atividade pre-selecionada, auto-selecionado
+  // se único, ou null (picker visível) se multi-canal.
+  const preselectedActivity = React.useMemo(
+    () => activities.find((a) => a.id === preselectedId) ?? null,
+    [activities, preselectedId]
+  );
+
+  const initialChannelId = React.useMemo(() => {
+    if (preselectedActivity) return preselectedActivity.channelId;
+    if (channels.length === 1) return channels[0].id;
+    return null;
+  }, [preselectedActivity, channels]);
+
+  const [channelId, setChannelId] = React.useState<string | null>(
+    initialChannelId
+  );
   const [selected, setSelected] = React.useState<FieldActivity | null>(
-    () => activities.find((activity) => activity.id === preselectedId) ?? null
+    preselectedActivity
   );
   const [adhoc, setAdhoc] = React.useState(startAdhoc);
   const [search, setSearch] = React.useState("");
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
 
+  // Dados filtrados pelo canal selecionado
+  const channelActivities = React.useMemo(
+    () =>
+      channelId ? activities.filter((a) => a.channelId === channelId) : activities,
+    [activities, channelId]
+  );
+  const channelBranches = React.useMemo(
+    () =>
+      channelId ? branches.filter((b) => b.channelId === channelId) : branches,
+    [branches, channelId]
+  );
+  const channelBranchPlans = React.useMemo(() => {
+    const ids = new Set(channelBranches.map((b) => b.id));
+    return branchPlans.filter((bp) => ids.has(bp.branchId));
+  }, [branchPlans, channelBranches]);
+
+  const activeChannel = channelId
+    ? (channels.find((c) => c.id === channelId) ?? null)
+    : null;
+
+  function selectChannel(id: string) {
+    setChannelId(id);
+    setBranchFilter(null);
+    setSearch("");
+  }
+
+  function clearChannel() {
+    setChannelId(null);
+    setBranchFilter(null);
+    setSearch("");
+  }
+
+  // ─── 0 canais: erro de vínculo ────────────────────────────────────────
+  if (channels.length === 0) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-4 py-16">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Building2 />
+            </EmptyMedia>
+            <EmptyTitle>Nenhum canal vinculado</EmptyTitle>
+            <EmptyDescription>
+              Você não está vinculado a nenhum canal. Fale com o time de CX.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    );
+  }
+
+  // ─── Picker de canal (multi-canal, canal não escolhido) ───────────────
+  if (!channelId && channels.length > 1) {
+    return (
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
+        <header className="px-4 py-3">
+          <h1 className="text-lg leading-tight font-semibold tracking-tight">
+            De qual canal é essa ação?
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Selecione o canal para ver as atividades disponíveis.
+          </p>
+        </header>
+        <div className="flex flex-1 flex-col gap-2 px-4 pb-4">
+          {channels.map((channel) => (
+            <button
+              key={channel.id}
+              type="button"
+              onClick={() => selectChannel(channel.id)}
+              className="flex min-h-16 w-full items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:bg-muted/50 active:bg-muted"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{channel.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {channel.openActivityCount > 0
+                    ? `${channel.openActivityCount} atividade${channel.openActivityCount !== 1 ? "s" : ""} aberta${channel.openActivityCount !== 1 ? "s" : ""}`
+                    : "Nenhuma atividade aberta"}
+                </p>
+              </div>
+              {channel.openActivityCount > 0 ? (
+                <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-primary">
+                  {channel.openActivityCount}
+                </span>
+              ) : null}
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // ─── Situação B: ação fora do plano ──────────────────────────────────
   if (adhoc) {
     return (
       <AdhocForm
-        branches={branches}
-        branchPlans={branchPlans}
+        branches={channelBranches}
+        branchPlans={channelBranchPlans}
         onBack={() => setAdhoc(false)}
       />
     );
@@ -80,7 +201,7 @@ export function RegisterFlow({
   }
 
   // ─── Picker: qual atividade você executou? ───────────────────────────
-  const filtered = activities.filter((activity) => {
+  const filtered = channelActivities.filter((activity) => {
     if (branchFilter && activity.branchId !== branchFilter) return false;
     if (!search.trim()) return true;
     const query = search.trim().toLowerCase();
@@ -94,6 +215,21 @@ export function RegisterFlow({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
       <header className="px-4 py-3">
+        {channels.length > 1 && activeChannel ? (
+          <div className="mb-2 flex items-center gap-2">
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+              {activeChannel.name}
+            </span>
+            <button
+              type="button"
+              onClick={clearChannel}
+              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeftRight className="size-3" />
+              Trocar
+            </button>
+          </div>
+        ) : null}
         <h1 className="text-lg leading-tight font-semibold tracking-tight">
           Registrar execução
         </h1>
@@ -140,7 +276,7 @@ export function RegisterFlow({
           />
         </div>
 
-        {branches.length > 1 ? (
+        {channelBranches.length > 1 ? (
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
             <button
               type="button"
@@ -154,7 +290,7 @@ export function RegisterFlow({
             >
               Todas
             </button>
-            {branches.map((branch) => (
+            {channelBranches.map((branch) => (
               <button
                 key={branch.id}
                 type="button"
@@ -220,7 +356,6 @@ export function RegisterFlow({
               </button>
             ))
           )}
-
         </div>
       </div>
     </div>

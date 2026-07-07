@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/auth/scope";
 import {
   getBranchPlans,
   getFieldActivities,
+  getMyChannels,
   OPEN_STATUSES,
 } from "@/lib/db/execution";
 
@@ -28,13 +29,14 @@ export default async function RegistrarPage({
   const { atividade, avulso } = await searchParams;
   const profile = await getCurrentProfile();
   const { activities, branchOptions } = await getFieldActivities(profile);
-  const branchPlans = await getBranchPlans(
-    branchOptions.map((branch) => branch.id)
-  );
-
   const openActivities = activities.filter((activity) =>
     OPEN_STATUSES.includes(activity.status)
   );
+  const [branchPlans, channels] = await Promise.all([
+    getBranchPlans(branchOptions.map((branch) => branch.id)),
+    getMyChannels(profile, openActivities),
+  ]);
+
   const preselected = atividade
     ? (openActivities.find((activity) => activity.id === atividade) ?? null)
     : null;
@@ -44,6 +46,7 @@ export default async function RegistrarPage({
       activities={openActivities}
       branches={branchOptions}
       branchPlans={branchPlans}
+      channels={channels}
       preselectedId={preselected?.id ?? null}
       startAdhoc={avulso === "1" && !preselected}
     />

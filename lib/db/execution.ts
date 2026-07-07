@@ -50,7 +50,13 @@ export type FieldActivity = {
   isMyBranch: boolean;
 };
 
-export type BranchOption = { id: string; name: string };
+export type BranchOption = { id: string; name: string; channelId: string };
+
+export type ChannelOption = {
+  id: string;
+  name: string;
+  openActivityCount: number;
+};
 
 export type FieldActivitiesData = {
   activities: FieldActivity[];
@@ -77,11 +83,11 @@ export async function getFieldActivities(
     if (branchIds.length === 0) return [];
     const { data, error } = await supabase
       .from("branches")
-      .select("id, name")
+      .select("id, name, channel_id")
       .in("id", branchIds)
       .order("name");
     if (error) throw error;
-    return data;
+    return data.map((b) => ({ id: b.id, name: b.name, channelId: b.channel_id }));
   }
 
   if (channelIds.length === 0) {
@@ -210,6 +216,37 @@ export async function getBranchPlans(
         .map((problem) => ({ id: problem.id, title: problem.title })),
     };
   });
+}
+
+/**
+ * Canais do escopo do usuário com contagem de atividades abertas —
+ * alimenta o picker de canal na tela de registro.
+ */
+export async function getMyChannels(
+  profile: CurrentProfile,
+  openActivities: FieldActivity[]
+): Promise<ChannelOption[]> {
+  const channelIds = await getScopedChannelIds(profile);
+  if (channelIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("channels")
+    .select("id, name")
+    .in("id", channelIds)
+    .order("name");
+  if (error) throw error;
+
+  const countByChannel = new Map<string, number>();
+  for (const a of openActivities) {
+    countByChannel.set(a.channelId, (countByChannel.get(a.channelId) ?? 0) + 1);
+  }
+
+  return data.map((ch) => ({
+    id: ch.id,
+    name: ch.name,
+    openActivityCount: countByChannel.get(ch.id) ?? 0,
+  }));
 }
 
 export type RecentExecution = {
