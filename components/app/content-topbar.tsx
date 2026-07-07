@@ -2,7 +2,7 @@
 
 import { GlobalSearch } from "@/components/app/global-search";
 import { useOpenSettings } from "@/components/app/settings-provider";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/auth/nav";
 
 /**
@@ -20,10 +20,12 @@ export function ContentTopBar({
   fieldChannels?: { id: string; name: string }[];
 }) {
   const openSettings = useOpenSettings();
+  const { state, isMobile } = useSidebar();
+  const showTrigger = isMobile || state === "collapsed";
 
   return (
     <div className="flex items-center gap-2">
-      <SidebarTrigger className="size-9 shrink-0" />
+      {showTrigger ? <SidebarTrigger className="size-9 shrink-0" /> : null}
       <div className="w-full max-w-md">
         <GlobalSearch
           role={role}
