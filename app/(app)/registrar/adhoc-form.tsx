@@ -417,7 +417,7 @@ export function AdhocForm({
         <div className="sticky bottom-0 z-10 mt-auto -mx-4 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85">
           <Button
             size="lg"
-            className="h-12 w-full text-base"
+            className="h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
             disabled={submitting || !canSubmit}
             onClick={handleRegister}
           >
