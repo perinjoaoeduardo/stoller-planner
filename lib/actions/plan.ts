@@ -15,6 +15,7 @@ import {
   getCurrentProfile,
   type CurrentProfile,
 } from "@/lib/auth/scope";
+import { setAssignees } from "@/lib/db/assignees";
 import { logActivityEvent } from "@/lib/db/events";
 import { createClient } from "@/lib/supabase/server";
 
@@ -260,6 +261,10 @@ export async function createActivity(
     .single();
   if (error || !data) return { ok: false, error: GENERIC_ERROR };
 
+  // Compat múltiplos responsáveis: o form ainda salva um único
+  // responsible_id — espelha em activity_assignees.
+  await setAssignees(data.id, input.responsibleId ? [input.responsibleId] : []);
+
   await logEvent({
     activityId: data.id,
     profileId: auth.profile.id,
@@ -310,6 +315,12 @@ export async function updateActivity(
     .eq("id", input.activityId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
+  // Compat múltiplos responsáveis: espelha o responsável único do form.
+  await setAssignees(
+    input.activityId,
+    input.responsibleId ? [input.responsibleId] : []
+  );
+
   if (statusChanged) {
     await logEvent({
       activityId: input.activityId,
@@ -347,6 +358,7 @@ export async function updateActivityProblem(input: {
   const [editor, registrar] = await Promise.all([
     canEditPlan(profile, activity.plan.channel_id),
     canRegisterExecution(profile, {
+      id: input.activityId,
       responsible_id: activity.responsible_id,
       branch_id: activity.branch_id,
       channel_id: activity.plan.channel_id,
@@ -440,6 +452,7 @@ export async function changeActivityStatus(input: {
   if (!activity?.plan) return { ok: false, error: "Atividade não encontrada." };
 
   const allowed = await canRegisterExecution(profile, {
+    id: input.activityId,
     responsible_id: activity.responsible_id,
     branch_id: activity.branch_id,
     channel_id: activity.plan.channel_id,
@@ -493,6 +506,7 @@ export async function registerActivityPhoto(input: {
   if (!activity?.plan) return { ok: false, error: "Atividade não encontrada." };
 
   const allowed = await canRegisterExecution(profile, {
+    id: input.activityId,
     responsible_id: activity.responsible_id,
     branch_id: activity.branch_id,
     channel_id: activity.plan.channel_id,
@@ -537,6 +551,7 @@ export async function deleteActivityPhoto(input: {
   }
 
   const allowed = await canRegisterExecution(profile, {
+    id: photo.activity_id,
     responsible_id: photo.activity.responsible_id,
     branch_id: photo.activity.branch_id,
     channel_id: photo.activity.plan.channel_id,

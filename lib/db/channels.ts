@@ -143,6 +143,34 @@ export type ProblemRow = {
   orderIndex: number;
 };
 
+export type ActivityAssignee = { id: string; name: string };
+
+/**
+ * Compat múltiplos responsáveis: une activity_assignees com o
+ * responsible_id legado, sem duplicar, ordenado por nome.
+ */
+function mergeAssignees(
+  assignees: { profile: { id: string; full_name: string } | null }[],
+  responsible: { id: string; full_name: string } | null
+): ActivityAssignee[] {
+  const seen = new Map<string, ActivityAssignee>();
+  for (const row of assignees) {
+    if (row.profile) {
+      seen.set(row.profile.id, {
+        id: row.profile.id,
+        name: row.profile.full_name,
+      });
+    }
+  }
+  if (responsible && !seen.has(responsible.id)) {
+    seen.set(responsible.id, {
+      id: responsible.id,
+      name: responsible.full_name,
+    });
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export type ActivityRow = {
   id: string;
   title: string;
@@ -157,6 +185,8 @@ export type ActivityRow = {
   branchName: string | null;
   responsibleId: string | null;
   responsibleName: string | null;
+  /** Todos os responsáveis (activity_assignees ∪ responsible_id). */
+  assignees: ActivityAssignee[];
   photoCount: number;
   channelId: string;
   channelName: string;
@@ -186,7 +216,8 @@ export async function getPlanBoard(
         `id, title, category, description, status, due_date, created_at,
          problem_id, problem:problems(title),
          branch_id, branch:branches(name),
-         responsible_id, responsible:profiles(full_name),
+         responsible_id, responsible:profiles(id, full_name),
+         activity_assignees(profile:profiles(id, full_name)),
          photos:activity_photos(id)`
       )
       .eq("plan_id", planId)
@@ -220,6 +251,10 @@ export async function getPlanBoard(
       branchName: activity.branch?.name ?? null,
       responsibleId: activity.responsible_id,
       responsibleName: activity.responsible?.full_name ?? null,
+      assignees: mergeAssignees(
+        activity.activity_assignees,
+        activity.responsible
+      ),
       photoCount: activity.photos.length,
       channelId: channel.id,
       channelName: channel.name,
@@ -278,7 +313,8 @@ export async function getScopedActivities(
       `id, title, category, description, status, due_date, created_at,
        problem_id, problem:problems(title),
        branch_id, branch:branches(name),
-       responsible_id, responsible:profiles(full_name),
+       responsible_id, responsible:profiles(id, full_name),
+       activity_assignees(profile:profiles(id, full_name)),
        photos:activity_photos(id),
        plan:plans!inner(channel_id, status, channel:channels(id, name))`
     )
@@ -305,6 +341,10 @@ export async function getScopedActivities(
     branchName: activity.branch?.name ?? null,
     responsibleId: activity.responsible_id,
     responsibleName: activity.responsible?.full_name ?? null,
+    assignees: mergeAssignees(
+      activity.activity_assignees,
+      activity.responsible
+    ),
     photoCount: activity.photos.length,
     channelId: activity.plan?.channel?.id ?? "",
     channelName: activity.plan?.channel?.name ?? "—",

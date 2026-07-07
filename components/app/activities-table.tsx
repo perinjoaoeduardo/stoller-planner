@@ -53,7 +53,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,7 +221,13 @@ export function ActivitiesTable({
         return false;
       }
       if (branchFilter && activity.branchId !== branchFilter) return false;
-      if (responsibleFilter && activity.responsibleId !== responsibleFilter) {
+      if (
+        responsibleFilter &&
+        activity.responsibleId !== responsibleFilter &&
+        !activity.assignees.some(
+          (assignee) => assignee.id === responsibleFilter
+        )
+      ) {
         return false;
       }
       return true;
@@ -336,21 +347,46 @@ export function ActivitiesTable({
         accessorKey: "responsibleName",
         enableSorting: false,
         header: "Responsável",
-        cell: ({ row }) =>
-          row.original.responsibleName ? (
-            <div className="flex items-center gap-2">
-              <Avatar className="size-6">
-                <AvatarFallback className="text-[10px]">
-                  {getInitials(row.original.responsibleName)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="whitespace-nowrap text-sm">
-                {row.original.responsibleName}
-              </span>
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">—</span>
-          ),
+        cell: ({ row }) => {
+          const assignees = row.original.assignees;
+          if (assignees.length === 0) {
+            return <span className="text-sm text-muted-foreground">—</span>;
+          }
+          // Um responsável: avatar + nome. Vários: AvatarGroup (máx 3 +
+          // contador), nomes completos no title.
+          if (assignees.length === 1) {
+            return (
+              <div className="flex items-center gap-2">
+                <Avatar className="size-6">
+                  <AvatarFallback className="text-[10px]">
+                    {getInitials(assignees[0].name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="whitespace-nowrap text-sm">
+                  {assignees[0].name}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <AvatarGroup
+              title={assignees.map((assignee) => assignee.name).join(", ")}
+            >
+              {assignees.slice(0, 3).map((assignee) => (
+                <Avatar key={assignee.id} className="size-6">
+                  <AvatarFallback className="text-[10px]">
+                    {getInitials(assignee.name)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {assignees.length > 3 ? (
+                <AvatarGroupCount className="size-6 text-[10px]">
+                  +{assignees.length - 3}
+                </AvatarGroupCount>
+              ) : null}
+            </AvatarGroup>
+          );
+        },
       },
       {
         id: "dueDate",

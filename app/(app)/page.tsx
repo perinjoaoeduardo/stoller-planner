@@ -19,7 +19,6 @@ import {
 import { ptBR } from "date-fns/locale";
 
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
-import { FieldActivityCard } from "@/components/app/field-activity-card";
 import { PageShell } from "@/components/app/page-shell";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -46,6 +45,7 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
+import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -55,6 +55,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
+import { getChannelCards } from "@/lib/db/channels";
 import {
   getChannelsSummary,
   getDashboardData,
@@ -65,6 +66,8 @@ import {
   getMyRecentExecutions,
   OPEN_STATUSES,
 } from "@/lib/db/execution";
+import { formatRelativeDue, HEALTH_CONFIG } from "@/lib/plan-utils";
+import { greetingByHour, greetingContextLine } from "@/lib/rtv/greeting";
 
 export const dynamic = "force-dynamic";
 
@@ -252,47 +255,60 @@ async function DsmHome() {
   );
 }
 
-/** Saudação por horário: bom dia / boa tarde / boa noite. */
-function greetingByHour(): string {
-  const hour = Number(
+/** Hora atual em São Paulo (0–23) para a saudação. */
+function currentHourInSaoPaulo(): number {
+  return Number(
     new Intl.DateTimeFormat("pt-BR", {
       hour: "numeric",
       hour12: false,
       timeZone: "America/Sao_Paulo",
     }).format(new Date())
   );
-  if (hour >= 5 && hour < 12) return "Bom dia";
-  if (hour >= 12 && hour < 18) return "Boa tarde";
-  return "Boa noite";
 }
 
 /**
- * Home de RTV/RDC — mobile-first: herói com saudação e contagem do
- * dia, CTA grande de registro, próximas atividades e registros
- * recentes.
+ * Home de RTV/RDC — a tela encolhe/cresce com a realidade do campo:
+ * saudação com UMA linha de contexto, CTA grande "Registrar", resumo
+ * dos canais em linha única, até 3 próximas atividades (só se existem)
+ * e até 2 registros recentes (só se existem).
  */
 async function FieldHome() {
   const profile = await getCurrentProfile();
-  const [{ activities }, recentExecutions] = await Promise.all([
+  const channelIds = await getScopedChannelIds(profile);
+  const [{ activities }, recentExecutions, channels] = await Promise.all([
     getFieldActivities(profile),
     getMyRecentExecutions(profile.id, 2),
+    getChannelCards(channelIds),
   ]);
 
   const firstName = profile.fullName.split(" ")[0];
-  const open = activities.filter((activity) =>
+
+  // Linha contextual: só as atividades em que o usuário é responsável
+  // (assignees), nunca vazia.
+  const mine = activities.filter((activity) => activity.isMine);
+  const open = mine.filter((activity) =>
     OPEN_STATUSES.includes(activity.status)
   );
   const lateCount = open.filter(
     (activity) => activity.status === "atrasada"
   ).length;
-  const dueThisWeek = open.filter(
+  const dueThisWeekCount = open.filter(
     (activity) =>
       activity.status !== "atrasada" &&
       activity.dueDate !== null &&
       differenceInCalendarDays(parseISO(activity.dueDate), new Date()) <= 7
   ).length;
+  const contextLine = greetingContextLine({
+    lateCount,
+    dueThisWeekCount,
+    openCount: open.length,
+    completedCount: mine.filter((activity) => activity.status === "concluida")
+      .length,
+    totalCount: mine.length,
+  });
 
-  const urgent = [...open]
+  // Bloco D: até 3 atividades minhas, abertas, mais próximas do prazo.
+  const upcoming = [...open]
     .sort((a, b) => {
       if (a.dueDate === b.dueDate) return 0;
       if (a.dueDate === null) return 1;
@@ -301,31 +317,12 @@ async function FieldHome() {
     })
     .slice(0, 3);
 
-  const summaryParts: string[] = [];
-  if (lateCount > 0) {
-    summaryParts.push(
-      lateCount === 1
-        ? "1 atividade atrasada"
-        : `${lateCount} atividades atrasadas`
-    );
-  }
-  if (dueThisWeek > 0) {
-    summaryParts.push(
-      dueThisWeek === 1
-        ? "1 atividade vence esta semana"
-        : `${dueThisWeek} atividades vencem esta semana`
-    );
-  }
-  const summary =
-    summaryParts.length > 0
-      ? summaryParts.join(" e ")
-      : "Nada vencendo esta semana — bom trabalho";
-
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 p-4 md:p-6">
+    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4 py-6 md:p-8">
+      {/* Bloco A — saudação + linha contextual (nunca vazia) */}
       <header className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight">
-          {greetingByHour()}, {firstName}
+          {greetingByHour(currentHourInSaoPaulo())}, {firstName}
         </h1>
         <p
           className={
@@ -334,10 +331,11 @@ async function FieldHome() {
               : "text-sm text-muted-foreground"
           }
         >
-          {summary}.
+          {contextLine}.
         </p>
       </header>
 
+      {/* Bloco B — CTA central */}
       <Button
         size="lg"
         className="h-14 w-full text-base font-semibold"
@@ -345,52 +343,124 @@ async function FieldHome() {
         render={
           <Link href="/registrar">
             <Camera className="size-5" />
-            Registrar execução
+            Registrar
           </Link>
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Próximas</CardTitle>
-          <CardDescription>
-            As 3 atividades mais urgentes do seu campo.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {urgent.length === 0 ? (
-            <Empty className="py-8">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <ClipboardList />
-                </EmptyMedia>
-                <EmptyTitle>Nada pendente por aqui</EmptyTitle>
-                <EmptyDescription>
-                  Você não tem atividades abertas no seu escopo nesta safra.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            <>
-              {urgent.map((activity) => (
-                <FieldActivityCard key={activity.id} activity={activity} />
+      {/* Bloco C — resumo dos canais, uma linha por canal */}
+      {channels.length > 0 ? (
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardDescription className="flex items-center gap-1.5">
+              <Store className="size-3.5" />
+              Meus canais
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4">
+            <ItemGroup>
+              {channels.map((channel, index) => (
+                <div key={channel.id}>
+                  {index > 0 ? <ItemSeparator /> : null}
+                  <Item
+                    size="sm"
+                    render={<Link href={`/meus-canais/${channel.id}`} />}
+                    className="hover:bg-muted/60"
+                  >
+                    <ItemContent className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          aria-label={HEALTH_CONFIG[channel.health].label}
+                          className={`size-2 shrink-0 rounded-full ${HEALTH_CONFIG[channel.health].dotClass}`}
+                        />
+                        <span className="min-w-0 truncate font-medium">
+                          {channel.name}
+                        </span>
+                        <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                          {channel.completedCount} de {channel.activityCount}{" "}
+                          feitas
+                        </span>
+                      </div>
+                      <Progress
+                        value={channel.completedPercent}
+                        className="mt-1.5 h-1"
+                      />
+                    </ItemContent>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                  </Item>
+                </div>
               ))}
-              <Button
-                variant="ghost"
-                className="h-11 justify-center text-muted-foreground"
-                nativeButton={false}
-                render={
-                  <Link href="/minhas-atividades">
-                    Ver todas
-                    <ChevronRight className="size-4" />
-                  </Link>
-                }
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </ItemGroup>
+          </CardContent>
+        </Card>
+      ) : (
+        <Empty className="rounded-3xl border border-dashed py-8">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Store />
+            </EmptyMedia>
+            <EmptyTitle>Nenhum canal vinculado</EmptyTitle>
+            <EmptyDescription>
+              Você ainda não está vinculado a nenhum canal. Fale com o time de
+              CX.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
 
+      {/* Bloco D — próximas atividades (some quando não há) */}
+      {upcoming.length > 0 ? (
+        <Card className="gap-3 py-4">
+          <CardHeader className="px-4">
+            <CardDescription className="flex items-center gap-1.5">
+              <ClipboardList className="size-3.5" />
+              Próximas atividades
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4">
+            <ItemGroup>
+              {upcoming.map((activity, index) => {
+                const overdue = activity.status === "atrasada";
+                return (
+                  <div key={activity.id}>
+                    {index > 0 ? <ItemSeparator /> : null}
+                    <Item size="sm">
+                      <ItemContent>
+                        <ItemTitle className="line-clamp-2">
+                          {activity.title}
+                        </ItemTitle>
+                        <ItemDescription
+                          className={
+                            overdue
+                              ? "font-medium text-red-600 dark:text-red-400"
+                              : undefined
+                          }
+                        >
+                          {formatRelativeDue(activity.dueDate)}
+                        </ItemDescription>
+                      </ItemContent>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-11 shrink-0 sm:h-9"
+                        nativeButton={false}
+                        render={
+                          <Link href={`/registrar?atividade=${activity.id}`}>
+                            <Camera className="size-4" />
+                            Registrar
+                          </Link>
+                        }
+                      />
+                    </Item>
+                  </div>
+                );
+              })}
+            </ItemGroup>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Bloco E — registros recentes (some quando não há) */}
       {recentExecutions.length > 0 ? (
         <Card className="gap-3 py-4">
           <CardHeader className="px-4">

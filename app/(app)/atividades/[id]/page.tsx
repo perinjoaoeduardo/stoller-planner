@@ -139,6 +139,7 @@ export default async function AtividadePage({
   const [canEdit, canRegister, planProblems] = await Promise.all([
     canEditPlan(profile, activity.channelId),
     canRegisterExecution(profile, {
+      id: activity.id,
       responsible_id: activity.responsibleId,
       branch_id: activity.branchId,
       channel_id: activity.channelId,

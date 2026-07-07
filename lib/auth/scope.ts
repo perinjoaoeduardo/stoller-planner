@@ -178,6 +178,8 @@ export async function canEditPlan(
 }
 
 export type ActivityForPermission = {
+  /** Id da atividade — quando presente, assignees também contam. */
+  id?: string;
   responsible_id: string | null;
   branch_id: string | null;
   /** Canal do plano da atividade (plan.channel_id). */
@@ -186,8 +188,9 @@ export type ActivityForPermission = {
 
 /**
  * Quem pode registrar execução (status + foto + descrição) de uma
- * atividade: RTV/RDC responsáveis ou linkados à filial da atividade,
- * DSM do canal e CX.
+ * atividade: RTV/RDC responsáveis (responsible_id legado OU
+ * activity_assignees) ou linkados à filial da atividade, DSM do canal
+ * e CX.
  */
 export async function canRegisterExecution(
   profile: CurrentProfile,
@@ -202,6 +205,15 @@ export async function canRegisterExecution(
 
   // RTV / RDC
   if (activity.responsible_id === profile.id) return true;
+  if (activity.id) {
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from("activity_assignees")
+      .select("id", { count: "exact", head: true })
+      .eq("activity_id", activity.id)
+      .eq("profile_id", profile.id);
+    if ((count ?? 0) > 0) return true;
+  }
   if (!activity.branch_id) return false;
   const branchIds = await getScopedBranchIds(profile);
   return branchIds.includes(activity.branch_id);

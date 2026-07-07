@@ -90,6 +90,7 @@ export async function registerExecution(
     }
 
     const allowed = await canRegisterExecution(profile, {
+      id: activity.id,
       responsible_id: activity.responsible_id,
       branch_id: activity.branch_id,
       channel_id: activity.plan.channel_id,

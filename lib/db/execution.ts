@@ -33,6 +33,8 @@ export type FieldActivity = {
   channelId: string;
   channelName: string;
   responsibleId: string | null;
+  /** Ids dos responsáveis (activity_assignees ∪ responsible_id). */
+  assigneeIds: string[];
   problemId: string | null;
   problemTitle: string | null;
   /** Quantos problemas o plano da atividade tem cadastrados. */
@@ -93,6 +95,7 @@ export async function getFieldActivities(
         `id, title, status, category, description, due_date, completed_at,
          branch_id, branch:branches(name),
          responsible_id,
+         assignees:activity_assignees(profile_id),
          problem_id, problem:problems(title),
          photos:activity_photos(storage_path, created_at),
          plan:plans!inner(status, channel_id, channel:channels(id, name),
@@ -116,6 +119,15 @@ export async function getFieldActivities(
     const photos = [...activity.photos].sort((a, b) =>
       a.created_at < b.created_at ? 1 : -1
     );
+    // Compat: enquanto responsible_id existir, ele conta como assignee.
+    const assigneeIds = [
+      ...new Set(
+        [
+          ...activity.assignees.map((assignee) => assignee.profile_id),
+          activity.responsible_id,
+        ].filter((id): id is string => !!id)
+      ),
+    ];
     return {
       id: activity.id,
       title: activity.title,
@@ -129,6 +141,7 @@ export async function getFieldActivities(
       channelId: activity.plan?.channel?.id ?? "",
       channelName: activity.plan?.channel?.name ?? "—",
       responsibleId: activity.responsible_id,
+      assigneeIds,
       problemId: activity.problem_id,
       problemTitle: activity.problem?.title ?? null,
       planProblemCount,
@@ -138,7 +151,7 @@ export async function getFieldActivities(
         status === "concluida" &&
         activity.problem_id === null &&
         planProblemCount > 0,
-      isMine: activity.responsible_id === profile.id,
+      isMine: assigneeIds.includes(profile.id),
       isMyBranch:
         activity.branch_id !== null && branchIdSet.has(activity.branch_id),
     };

@@ -1,9 +1,11 @@
 import {
   BrushCleaning,
+  Camera,
   ChartColumn,
   ClipboardCheck,
   ClipboardList,
   Home,
+  ListTodo,
   Map,
   Radar,
   Store,
@@ -16,6 +18,8 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
+  /** Item de destaque (CTA principal do perfil, ex.: Registrar do RTV). */
+  highlight?: boolean;
 };
 
 /**
@@ -41,21 +45,23 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   RTV: [
     { title: "Início", href: "/", icon: Home },
+    { title: "Meus Canais", href: "/meus-canais", icon: Store },
     {
       title: "Minhas Atividades",
       href: "/minhas-atividades",
-      icon: ClipboardList,
+      icon: ListTodo,
     },
-    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
+    { title: "Registrar", href: "/registrar", icon: Camera, highlight: true },
   ],
   RDC: [
     { title: "Início", href: "/", icon: Home },
+    { title: "Meus Canais", href: "/meus-canais", icon: Store },
     {
       title: "Minhas Atividades",
       href: "/minhas-atividades",
-      icon: ClipboardList,
+      icon: ListTodo,
     },
-    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
+    { title: "Registrar", href: "/registrar", icon: Camera, highlight: true },
   ],
 };
 

@@ -143,6 +143,42 @@ export type Database = {
           },
         ]
       }
+      activity_assignees: {
+        Row: {
+          activity_id: string
+          created_at: string
+          id: string
+          profile_id: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          id?: string
+          profile_id: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_assignees_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_assignees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       activity_events: {
         Row: {
           activity_id: string
