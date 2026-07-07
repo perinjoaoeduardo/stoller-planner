@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 const requestSchema = z.object({
   fullName: z.string().trim().min(3).max(120),
   email: z.string().trim().email().max(160),
-  requestedRole: z.enum(["DSM", "RTV", "RDC", "CX"]),
+  requestedRole: z.enum(["DSM", "RTV", "CX"]),
   message: z.string().trim().max(500).optional(),
 });
 

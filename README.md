@@ -40,8 +40,7 @@ Senha padrão de todos: `stoller123` (botões de acesso rápido no /login).
 | Perfil | Usuário | Email |
 | --- | --- | --- |
 | DSM (gestor de canais) | Carlos Menezes | carlos.menezes@stoller.dev |
-| RTV (consultor técnico) | João Pedro Almeida | joao.almeida@stoller.dev |
-| RDC (representante) | Luciana Freitas | luciana.freitas@stoller.dev |
+| RTV (consultor técnico) | Bruno Cardoso | bruno.cardoso@stoller.dev |
 | CX (excelência comercial) | Camila Duarte | camila.duarte@stoller.dev |
 
 ## Canal vitrine da demo

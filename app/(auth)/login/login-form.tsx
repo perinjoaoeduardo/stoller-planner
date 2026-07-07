@@ -34,8 +34,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 const DEMO_USERS = [
   { role: "DSM", email: "carlos.menezes@stoller.dev" },
-  { role: "RTV", email: "joao.almeida@stoller.dev" },
-  { role: "RDC", email: "luciana.freitas@stoller.dev" },
+  { role: "RTV", email: "bruno.cardoso@stoller.dev" },
   { role: "CX", email: "camila.duarte@stoller.dev" },
 ] as const;
 

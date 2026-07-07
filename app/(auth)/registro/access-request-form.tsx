@@ -50,7 +50,7 @@ import { ROLE_LABELS, type Role } from "@/lib/auth/nav";
  * tabela vira fila de aprovação.
  */
 
-const ROLES: Role[] = ["DSM", "RTV", "RDC", "CX"];
+const ROLES: Role[] = ["DSM", "RTV", "CX"];
 
 const requestSchema = z.object({
   fullName: z
@@ -63,7 +63,7 @@ const requestSchema = z.object({
     .trim()
     .min(1, "Informe seu email.")
     .email("Informe um email válido."),
-  requestedRole: z.enum(["DSM", "RTV", "RDC", "CX"], {
+  requestedRole: z.enum(["DSM", "RTV", "CX"], {
     message: "Escolha o cargo pretendido.",
   }),
   message: z.string().trim().max(500, "Máximo de 500 caracteres.").optional(),

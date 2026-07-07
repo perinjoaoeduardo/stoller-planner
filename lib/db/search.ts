@@ -72,7 +72,7 @@ export async function searchAll(
   const supabase = await createClient();
   const pattern = toPattern(query.trim());
   const { channelIds, branchIds } = scope;
-  const isField = profile.role === "RTV" || profile.role === "RDC";
+  const isField = profile.role === "RTV";
   const isManager = profile.role === "DSM" || profile.role === "CX";
 
   // ── Atividades (título) no plano ativo dos canais do escopo ──────────
@@ -88,7 +88,7 @@ export async function searchAll(
     .in("plan.channel_id", channelIds.length > 0 ? channelIds : ["-"])
     .limit(6);
 
-  // RTV/RDC: só o que é da filial dele ou dele como responsável.
+  // RTV: só o que é da filial dele ou dele como responsável.
   if (isField) {
     const orParts = [`responsible_id.eq.${profile.id}`];
     if (branchIds.length > 0) {

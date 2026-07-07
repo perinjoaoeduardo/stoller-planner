@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type Role = "DSM" | "RTV" | "RDC" | "CX";
+export type Role = "DSM" | "RTV" | "CX";
 
 export type NavItem = {
   title: string;
@@ -53,21 +53,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     },
     { title: "Registrar", href: "/registrar", icon: Camera, highlight: true },
   ],
-  RDC: [
-    { title: "Início", href: "/", icon: Home },
-    { title: "Meus Canais", href: "/meus-canais", icon: Store },
-    {
-      title: "Minhas Atividades",
-      href: "/minhas-atividades",
-      icon: ListTodo,
-    },
-    { title: "Registrar", href: "/registrar", icon: Camera, highlight: true },
-  ],
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
   DSM: "DSM — Gestor de canais",
   RTV: "RTV — Consultor técnico",
-  RDC: "RDC — Representante",
   CX: "CX — Excelência comercial",
 };

@@ -129,7 +129,7 @@ export function GlobalSearch({
   const router = useRouter();
 
   const navItems = NAV_BY_ROLE[role];
-  const isField = role === "RTV" || role === "RDC";
+  const isField = role === "RTV";
   const trimmed = query.trim();
   const hasQuery = trimmed.length >= 2;
 

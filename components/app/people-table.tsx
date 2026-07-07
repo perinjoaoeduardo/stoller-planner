@@ -50,7 +50,6 @@ function getInitials(name: string) {
 const ROLE_OPTIONS: SelectOption[] = [
   { value: "DSM", label: "DSM" },
   { value: "RTV", label: "RTV" },
-  { value: "RDC", label: "RDC" },
 ];
 
 /**

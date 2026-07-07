@@ -195,8 +195,8 @@ export default async function AtividadePage({
     getPlanProblems(activity.planId),
   ]);
 
-  // RTV/RDC navegam pelos "Meus Canais"; DSM/CX pelo cockpit denso.
-  const isField = profile.role === "RTV" || profile.role === "RDC";
+  // RTV navega pelos "Meus Canais"; DSM/CX pelo cockpit denso.
+  const isField = profile.role === "RTV";
   const channelBase = isField ? "/meus-canais" : "/canais";
   const channelHref = `${channelBase}/${activity.channelId}`;
 

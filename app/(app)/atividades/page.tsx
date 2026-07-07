@@ -58,7 +58,7 @@ export default async function AtividadesPage() {
       }))
   );
 
-  const isField = profile.role === "RTV" || profile.role === "RDC";
+  const isField = profile.role === "RTV";
 
   return (
     <PageShell

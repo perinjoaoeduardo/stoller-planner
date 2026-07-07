@@ -6,13 +6,13 @@ import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Canais do RTV/RDC para o "Ir para [canal]" do command palette —
+ * Canais do RTV para o "Ir para [canal]" do command palette —
  * poucos por usuário, então buscamos os nomes direto no layout.
  */
 async function getFieldChannels(
   profile: Awaited<ReturnType<typeof getCurrentProfile>>
 ) {
-  if (profile.role !== "RTV" && profile.role !== "RDC") return [];
+  if (profile.role !== "RTV") return [];
   const channelIds = await getScopedChannelIds(profile);
   if (channelIds.length === 0) return [];
   const supabase = await createClient();
