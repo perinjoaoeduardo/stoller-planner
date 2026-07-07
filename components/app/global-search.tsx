@@ -222,26 +222,24 @@ export function GlobalSearch({
   return (
     <>
       <Button
-        variant="ghost"
+        variant="outline"
         onClick={() => handleOpenChange(true)}
-        className="hidden h-8 w-56 items-center justify-between gap-2 border border-white/15 bg-white/10 px-2.5 text-xs font-normal text-white/70 hover:bg-white/15 hover:text-white sm:flex lg:w-64"
+        className="hidden h-9 w-full items-center justify-between gap-2 bg-muted/40 px-3 text-sm font-normal text-muted-foreground hover:bg-muted hover:text-foreground sm:flex"
       >
         <span className="flex items-center gap-2">
-          <Search className="size-3.5" />
+          <Search className="size-4" />
           Buscar no planner...
         </span>
         <KbdGroup>
-          <Kbd className="border-white/20 bg-transparent text-white/70">
-            Ctrl
-          </Kbd>
-          <Kbd className="border-white/20 bg-transparent text-white/70">K</Kbd>
+          <Kbd>Ctrl</Kbd>
+          <Kbd>K</Kbd>
         </KbdGroup>
       </Button>
       <Button
         variant="ghost"
         size="icon"
         onClick={() => handleOpenChange(true)}
-        className="size-8 text-white/80 hover:bg-white/10 hover:text-white sm:hidden"
+        className="size-9 sm:hidden"
       >
         <Search className="size-4" />
         <span className="sr-only">Buscar</span>

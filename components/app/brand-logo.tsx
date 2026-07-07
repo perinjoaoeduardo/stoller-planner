@@ -33,8 +33,9 @@ export function BrandLogo({
   }
 
   return (
-    <span className={cn("flex items-center gap-2", className)}>
+    <span className={cn("flex items-center gap-2.5", className)}>
       <StollerIcon className="size-6 shrink-0" />
+      <span className="h-4 w-px shrink-0 bg-current opacity-25" aria-hidden="true" />
       <span className="text-sm leading-none font-semibold tracking-tight whitespace-nowrap">
         Corteva{" "}
         <span className="font-normal opacity-80">Planner</span>

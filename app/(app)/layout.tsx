@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/app/app-sidebar";
-import { AppTopbar } from "@/components/app/app-topbar";
+import { ContentTopBar } from "@/components/app/content-topbar";
+import { SettingsProvider } from "@/components/app/settings-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -8,7 +9,9 @@ import { createClient } from "@/lib/supabase/server";
  * Canais do RTV/RDC para o "Ir para [canal]" do command palette —
  * poucos por usuário, então buscamos os nomes direto no layout.
  */
-async function getFieldChannels(profile: Awaited<ReturnType<typeof getCurrentProfile>>) {
+async function getFieldChannels(
+  profile: Awaited<ReturnType<typeof getCurrentProfile>>
+) {
   if (profile.role !== "RTV" && profile.role !== "RDC") return [];
   const channelIds = await getScopedChannelIds(profile);
   if (channelIds.length === 0) return [];
@@ -22,10 +25,12 @@ async function getFieldChannels(profile: Awaited<ReturnType<typeof getCurrentPro
 }
 
 /**
- * Layout em 3 camadas: header full-width no topo, e abaixo dois
- * painéis flutuantes (sidebar + container de conteúdo) separados por
- * um respiro de 8px onde o fundo neutro aparece. Só o conteúdo rola;
- * header e sidebar ficam fixos.
+ * Layout global (padrão shadcn/create): um canvas de fundo neutro com
+ * margem generosa em volta, sobre o qual flutuam dois painéis — a
+ * sidebar escura à esquerda e o container de conteúdo claro à direita,
+ * separados por um respiro real. Não há header full-width: marca e
+ * perfil vivem na sidebar; busca e tema no topo do container. Só o
+ * conteúdo rola; sidebar e busca ficam fixos.
  */
 export default async function AppLayout({
   children,
@@ -35,28 +40,32 @@ export default async function AppLayout({
   const profile = await getCurrentProfile();
   const fieldChannels = await getFieldChannels(profile);
 
+  const user = {
+    id: profile.id,
+    name: profile.fullName,
+    email: profile.email,
+    role: profile.role,
+    avatarUrl: profile.avatarUrl,
+  };
+
   return (
-    <SidebarProvider
-      style={{ "--header-height": "4rem" } as React.CSSProperties}
-      className="h-svh flex-col overflow-hidden bg-muted dark:bg-black"
-    >
-      <AppTopbar
-        fieldChannels={fieldChannels}
-        user={{
-          id: profile.id,
-          name: profile.fullName,
-          email: profile.email,
-          role: profile.role,
-          avatarUrl: profile.avatarUrl,
-        }}
-      />
-      <div className="flex min-h-0 flex-1">
-        <AppSidebar role={profile.role} />
-        {/* min-w-0 impede que conteúdo largo (svgs de charts) trave o flex */}
-        <SidebarInset className="min-h-0 min-w-0 overflow-y-auto bg-background md:my-4 md:mr-4 md:ml-0 md:rounded-2xl md:shadow-sm md:ring-1 md:ring-foreground/5 dark:md:ring-foreground/10">
-          {children}
+    <SettingsProvider user={user}>
+      <SidebarProvider
+        style={{ "--sidebar-width": "19rem" } as React.CSSProperties}
+        className="h-svh overflow-hidden bg-muted dark:bg-black"
+      >
+        <AppSidebar
+          role={profile.role}
+          user={user}
+          className="p-4 md:p-6"
+        />
+        <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-background shadow-sm ring-1 ring-foreground/5 md:my-6 md:mr-6 md:ml-0 dark:bg-card dark:ring-white/10">
+          <div className="shrink-0 border-b px-5 py-3 md:px-8">
+            <ContentTopBar role={profile.role} fieldChannels={fieldChannels} />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         </SidebarInset>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </SettingsProvider>
   );
 }

@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { BrandLogo } from "@/components/app/brand-logo";
+import { NavUser } from "@/components/app/nav-user";
+import type { SettingsUser } from "@/components/app/settings-dialog";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
@@ -15,32 +19,42 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 /**
- * Sidebar flutuante (variant floating): painel arredondado com sombra
- * sobre o fundo neutro, começando abaixo do header full-width
- * (offset via --header-height definido no layout). O logo vive no
- * header — aqui fica só o contexto da safra e a navegação por perfil.
+ * Sidebar flutuante escura (padrão shadcn/create): marca + toggle no
+ * topo, navegação por perfil no meio e o perfil do usuário fixo no
+ * rodapé. Não há header full-width — todas essas responsabilidades
+ * vivem aqui dentro.
  */
 export function AppSidebar({
   role,
+  user,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { role: Role }) {
+}: React.ComponentProps<typeof Sidebar> & { role: Role; user: SettingsUser }) {
   const pathname = usePathname();
   const navItems = NAV_BY_ROLE[role];
 
   return (
-    <Sidebar
-      collapsible="icon"
-      variant="floating"
-      className="top-(--header-height) h-[calc(100svh-var(--header-height))]"
-      {...props}
-    >
+    <Sidebar collapsible="icon" variant="floating" {...props}>
       <SidebarHeader>
-        <span className="px-3 pt-1 text-xs font-medium text-muted-foreground group-data-[collapsible=icon]:hidden">
-          Safra 2025/26
-        </span>
+        <div className="flex items-center justify-between gap-2 px-1 py-1">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center group-data-[collapsible=icon]:hidden"
+          >
+            <BrandLogo className="text-sidebar-foreground" />
+          </Link>
+          <Link
+            href="/"
+            className="hidden group-data-[collapsible=icon]:flex"
+            aria-label="Início"
+          >
+            <BrandLogo variant="icon" className="text-sidebar-foreground" />
+          </Link>
+          <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -54,7 +68,7 @@ export function AppSidebar({
                     isActive={pathname === item.href}
                     className={
                       item.highlight
-                        ? "bg-primary/10 font-medium text-primary hover:bg-primary/15 hover:text-primary data-[active=true]:bg-primary/15 data-[active=true]:text-primary"
+                        ? "bg-primary/15 font-medium text-white hover:bg-primary/25 hover:text-white data-[active=true]:bg-primary/25 data-[active=true]:text-white"
                         : undefined
                     }
                     render={
@@ -70,7 +84,9 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter />
+      <SidebarFooter>
+        <NavUser user={user} />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
