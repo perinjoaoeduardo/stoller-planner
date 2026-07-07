@@ -49,6 +49,7 @@ export function RegisterFlow({
   branchPlans,
   channels,
   preselectedId,
+  preselectedChannelId,
   startAdhoc,
 }: {
   activities: FieldActivity[];
@@ -56,6 +57,7 @@ export function RegisterFlow({
   branchPlans: BranchPlanInfo[];
   channels: ChannelOption[];
   preselectedId: string | null;
+  preselectedChannelId: string | null;
   startAdhoc: boolean;
 }) {
   const router = useRouter();
@@ -69,9 +71,11 @@ export function RegisterFlow({
 
   const initialChannelId = React.useMemo(() => {
     if (preselectedActivity) return preselectedActivity.channelId;
+    if (preselectedChannelId && channels.some((c) => c.id === preselectedChannelId))
+      return preselectedChannelId;
     if (channels.length === 1) return channels[0].id;
     return null;
-  }, [preselectedActivity, channels]);
+  }, [preselectedActivity, preselectedChannelId, channels]);
 
   const [channelId, setChannelId] = React.useState<string | null>(
     initialChannelId
@@ -179,19 +183,11 @@ export function RegisterFlow({
   if (adhoc) {
     return (
       <AdhocForm
-        branches={channelBranches}
-        branchPlans={channelBranchPlans}
-        channelId={channelId!}
-        channelName={activeChannel?.name ?? ""}
+        allBranches={branches}
+        allBranchPlans={branchPlans}
+        channels={channels}
+        initialChannelId={channelId!}
         onBack={() => setAdhoc(false)}
-        onChangeChannel={
-          channels.length > 1
-            ? () => {
-                setAdhoc(false);
-                clearChannel();
-              }
-            : undefined
-        }
       />
     );
   }

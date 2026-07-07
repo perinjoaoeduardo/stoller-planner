@@ -24,9 +24,9 @@ export const metadata: Metadata = {
 export default async function RegistrarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ atividade?: string; avulso?: string }>;
+  searchParams: Promise<{ atividade?: string; avulso?: string; canal?: string }>;
 }) {
-  const { atividade, avulso } = await searchParams;
+  const { atividade, avulso, canal } = await searchParams;
   const profile = await getCurrentProfile();
   const { activities, branchOptions } = await getFieldActivities(profile);
   const openActivities = activities.filter((activity) =>
@@ -48,6 +48,7 @@ export default async function RegistrarPage({
       branchPlans={branchPlans}
       channels={channels}
       preselectedId={preselected?.id ?? null}
+      preselectedChannelId={canal ?? null}
       startAdhoc={avulso === "1" && !preselected}
     />
   );

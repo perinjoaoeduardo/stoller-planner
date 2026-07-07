@@ -2,7 +2,6 @@
 
 import { GlobalSearch } from "@/components/app/global-search";
 import { useOpenSettings } from "@/components/app/settings-provider";
-import { ThemeToggle } from "@/components/app/theme-toggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/auth/nav";
 
@@ -32,7 +31,6 @@ export function ContentTopBar({
           onOpenSettings={() => openSettings?.()}
         />
       </div>
-      <ThemeToggle className="ml-auto shrink-0" />
     </div>
   );
 }

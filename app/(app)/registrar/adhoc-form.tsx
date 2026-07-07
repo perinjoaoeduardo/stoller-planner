@@ -2,8 +2,8 @@
 
 import * as React from "react";
 import {
-  ArrowLeftRight,
   Check,
+  ChevronDown,
   ChevronLeft,
   CircleAlert,
   GraduationCap,
@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { registerExecution } from "@/lib/actions/execution";
@@ -23,7 +28,11 @@ import {
   CATEGORY_LABELS,
   type ActivityCategory,
 } from "@/lib/config";
-import type { BranchOption, BranchPlanInfo } from "@/lib/db/execution";
+import type {
+  BranchOption,
+  BranchPlanInfo,
+  ChannelOption,
+} from "@/lib/db/execution";
 import { cn } from "@/lib/utils";
 
 import {
@@ -55,28 +64,28 @@ function titlePreview(description: string): string {
  * Situação B — ação fora do plano: preenche do zero (descrição,
  * categoria em 4 botões grandes, problema quando o plano tem, filial
  * opcional — "Canal geral" é o padrão) e nasce como atividade concluída.
- * O canal já foi escolhido na tela anterior; não é perguntado de novo.
+ * Canal é sempre exibido; RTVs com múltiplos canais podem trocar direto
+ * no formulário via Popover sem perder o que já preencheram.
  */
 export function AdhocForm({
-  branches,
-  branchPlans,
-  channelId,
-  channelName,
+  allBranches,
+  allBranchPlans,
+  channels,
+  initialChannelId,
   onBack,
-  onChangeChannel,
 }: {
-  branches: BranchOption[];
-  branchPlans: BranchPlanInfo[];
-  channelId: string;
-  channelName: string;
+  allBranches: BranchOption[];
+  allBranchPlans: BranchPlanInfo[];
+  channels: ChannelOption[];
+  initialChannelId: string;
   onBack: () => void;
-  /** Disponível só quando o RTV tem múltiplos canais. */
-  onChangeChannel?: () => void;
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
   const { photos, rejected, addFiles, removePhoto, reset, uploadAll } =
     usePhotoDrafts();
 
+  const [channelId, setChannelId] = React.useState(initialChannelId);
+  const [channelPickerOpen, setChannelPickerOpen] = React.useState(false);
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState<ActivityCategory | null>(null);
   // null = "Canal geral" (padrão); id de filial = filial específica
@@ -86,6 +95,21 @@ export function AdhocForm({
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState<{ photoCount: number } | null>(null);
+
+  const activeChannel = React.useMemo(
+    () => channels.find((c) => c.id === channelId) ?? channels[0],
+    [channels, channelId]
+  );
+
+  // Filiais e planos do canal atual
+  const branches = React.useMemo(
+    () => allBranches.filter((b) => b.channelId === channelId),
+    [allBranches, channelId]
+  );
+  const branchPlans = React.useMemo(() => {
+    const ids = new Set(branches.map((b) => b.id));
+    return allBranchPlans.filter((bp) => ids.has(bp.branchId));
+  }, [allBranchPlans, branches]);
 
   // Problemas: do branchPlan da filial selecionada ou do primeiro disponível
   // (todas as filiais do canal compartilham o mesmo plano).
@@ -98,6 +122,13 @@ export function AdhocForm({
 
   const problemOk = planProblems.length === 0 || problemChoice !== null;
   const canSubmit = description.trim().length > 0 && category !== null && problemOk;
+
+  function handleChannelChange(newId: string) {
+    setChannelId(newId);
+    setBranchId(null);
+    setProblemChoice(null);
+    setChannelPickerOpen(false);
+  }
 
   async function submit() {
     if (!canSubmit || !category) return;
@@ -172,21 +203,43 @@ export function AdhocForm({
           <ChevronLeft className="size-5" />
         </Button>
         <div className="min-w-0 flex-1">
-          {onChangeChannel ? (
-            <div className="mb-1 flex items-center gap-2">
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                {channelName}
-              </span>
-              <button
-                type="button"
-                onClick={onChangeChannel}
-                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          {/* Canal — sempre visível; clicável quando RTV tem 2+ canais */}
+          <div className="mb-1">
+            {channels.length > 1 ? (
+              <Popover
+                open={channelPickerOpen}
+                onOpenChange={setChannelPickerOpen}
               >
-                <ArrowLeftRight className="size-3" />
-                Trocar
-              </button>
-            </div>
-          ) : null}
+                <PopoverTrigger className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/70">
+                  {activeChannel.name}
+                  <ChevronDown className="size-3" />
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  className="w-56 gap-1 p-1.5"
+                >
+                  {channels.map((ch) => (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => handleChannelChange(ch.id)}
+                      className={cn(
+                        "w-full rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                        ch.id === channelId &&
+                          "bg-primary/10 font-medium text-primary"
+                      )}
+                    >
+                      {ch.name}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
+                {activeChannel.name}
+              </span>
+            )}
+          </div>
           <h1 className="text-lg leading-tight font-semibold tracking-tight">
             Registrar ação fora do plano
           </h1>

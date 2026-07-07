@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Store } from "lucide-react";
+import { Camera, Store } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";
 import {
@@ -134,6 +134,7 @@ export default async function MeuCanalPage({
     total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
+    <>
     <PageShell
       title={channel.name}
       description={`${harvestLabel(channel.plan?.harvest)} · ${channel.region}`}
@@ -152,6 +153,16 @@ export default async function MeuCanalPage({
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+      }
+      actions={
+        <Button
+          nativeButton={false}
+          render={<Link href={`/registrar?canal=${id}`} />}
+          className="hidden md:flex"
+        >
+          <Camera className="size-4" />
+          Registrar
+        </Button>
       }
     >
       {/* Bloco B — resumo em 4 métricas */}
@@ -180,5 +191,15 @@ export default async function MeuCanalPage({
         profileId={profile.id}
       />
     </PageShell>
+
+    {/* FAB mobile — fixo no canto inferior direito, oculto em md+ */}
+    <Link
+      href={`/registrar?canal=${id}`}
+      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
+    >
+      <Camera className="size-5" />
+      Registrar
+    </Link>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { NavUser } from "@/components/app/nav-user";
 import type { SettingsUser } from "@/components/app/settings-dialog";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
@@ -53,7 +54,10 @@ export function AppSidebar({
           >
             <BrandLogo variant="icon" className="text-sidebar-foreground" />
           </Link>
-          <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
+          <div className="flex items-center gap-0.5 group-data-[collapsible=icon]:hidden">
+            <ThemeToggle className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
+            <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
