@@ -219,7 +219,7 @@ export default async function AtividadePage({
       value: activity.branchName ? (
         `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
       ) : (
-        <span className="text-muted-foreground">Não especificado</span>
+        <span className="text-muted-foreground">Canal geral</span>
       ),
     },
     {

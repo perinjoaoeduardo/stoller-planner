@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  ArrowLeftRight,
   Check,
   ChevronLeft,
   CircleAlert,
@@ -53,58 +54,61 @@ function titlePreview(description: string): string {
 /**
  * Situação B — ação fora do plano: preenche do zero (descrição,
  * categoria em 4 botões grandes, problema quando o plano tem, filial
- * deduzida) e nasce como atividade concluída.
+ * opcional — "Canal geral" é o padrão) e nasce como atividade concluída.
+ * O canal já foi escolhido na tela anterior; não é perguntado de novo.
  */
 export function AdhocForm({
   branches,
   branchPlans,
+  channelId,
+  channelName,
   onBack,
+  onChangeChannel,
 }: {
   branches: BranchOption[];
   branchPlans: BranchPlanInfo[];
+  channelId: string;
+  channelName: string;
   onBack: () => void;
+  /** Disponível só quando o RTV tem múltiplos canais. */
+  onChangeChannel?: () => void;
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
   const { photos, rejected, addFiles, removePhoto, reset, uploadAll } =
     usePhotoDrafts();
 
   const [description, setDescription] = React.useState("");
-  const [category, setCategory] = React.useState<ActivityCategory | null>(
-    null
-  );
-  // Filial deduzida do vínculo; perguntada só quando o usuário tem várias.
-  const [branchId, setBranchId] = React.useState<string | null>(
-    branches.length === 1 ? branches[0].id : null
-  );
+  const [category, setCategory] = React.useState<ActivityCategory | null>(null);
+  // null = "Canal geral" (padrão); id de filial = filial específica
+  const [branchId, setBranchId] = React.useState<string | null>(null);
   const [problemChoice, setProblemChoice] = React.useState<ProblemChoice>(null);
   const [nudgeOpen, setNudgeOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState<{ photoCount: number } | null>(null);
 
-  const planProblems = React.useMemo(
-    () =>
-      branchId
-        ? (branchPlans.find((plan) => plan.branchId === branchId)?.problems ??
-          [])
-        : [],
-    [branchId, branchPlans]
-  );
+  // Problemas: do branchPlan da filial selecionada ou do primeiro disponível
+  // (todas as filiais do canal compartilham o mesmo plano).
+  const planProblems = React.useMemo(() => {
+    if (branchId) {
+      return branchPlans.find((p) => p.branchId === branchId)?.problems ?? [];
+    }
+    return branchPlans[0]?.problems ?? [];
+  }, [branchId, branchPlans]);
 
-  // Problema é exigido só quando o plano do canal tem problemas.
   const problemOk = planProblems.length === 0 || problemChoice !== null;
-  const canSubmit =
-    description.trim().length > 0 && category !== null && branchId !== null &&
-    problemOk;
+  const canSubmit = description.trim().length > 0 && category !== null && problemOk;
 
   async function submit() {
-    if (!canSubmit || !category || !branchId) return;
+    if (!canSubmit || !category) return;
     setSubmitting(true);
     setError(null);
     try {
       const paths = await uploadAll();
       const result = await registerExecution({
-        adhocBranchId: branchId,
+        ...(branchId
+          ? { adhocBranchId: branchId }
+          : { adhocChannelId: channelId }),
         description,
         category,
         problemId:
@@ -138,7 +142,7 @@ export function AdhocForm({
     reset();
     setDescription("");
     setCategory(null);
-    setBranchId(branches.length === 1 ? branches[0].id : null);
+    setBranchId(null);
     setProblemChoice(null);
     setError(null);
     setDone(null);
@@ -167,7 +171,22 @@ export function AdhocForm({
         >
           <ChevronLeft className="size-5" />
         </Button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
+          {onChangeChannel ? (
+            <div className="mb-1 flex items-center gap-2">
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                {channelName}
+              </span>
+              <button
+                type="button"
+                onClick={onChangeChannel}
+                className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ArrowLeftRight className="size-3" />
+                Trocar
+              </button>
+            </div>
+          ) : null}
           <h1 className="text-lg leading-tight font-semibold tracking-tight">
             Registrar ação fora do plano
           </h1>
@@ -224,11 +243,27 @@ export function AdhocForm({
           </div>
         </div>
 
-        {/* Filial — deduzida; perguntada só se o usuário tem várias */}
-        {branches.length > 1 ? (
+        {/* Filial — opcional; some completamente quando canal não tem filiais */}
+        {branches.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Em qual filial foi a ação?</p>
+            <p className="text-sm font-medium">Em qual local foi a ação?</p>
             <div className="flex flex-wrap gap-2">
+              {/* Canal geral: opção neutra, sempre primeiro */}
+              <button
+                type="button"
+                onClick={() => {
+                  setBranchId(null);
+                  setProblemChoice(null);
+                }}
+                className={cn(
+                  "h-11 rounded-full border px-4 text-sm font-medium transition-colors",
+                  branchId === null
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted/50"
+                )}
+              >
+                Canal geral
+              </button>
               {branches.map((branch) => (
                 <button
                   key={branch.id}
@@ -252,7 +287,7 @@ export function AdhocForm({
         ) : null}
 
         {/* Problema — só quando o plano do canal tem problemas */}
-        {branchId && planProblems.length > 0 ? (
+        {planProblems.length > 0 ? (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">
               Qual problema do plano essa ação ataca?
@@ -353,9 +388,7 @@ export function AdhocForm({
                 ? "Descreva o que foi feito para registrar."
                 : !category
                   ? "Escolha o tipo da ação."
-                  : !branchId
-                    ? "Escolha a filial onde a ação aconteceu."
-                    : "Escolha um problema do plano ou “Vincular depois”."}
+                  : 'Escolha um problema do plano ou "Vincular depois".'}
             </p>
           ) : null}
         </div>

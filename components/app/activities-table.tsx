@@ -220,7 +220,11 @@ export function ActivitiesTable({
       } else if (problemFilter && activity.problemId !== problemFilter) {
         return false;
       }
-      if (branchFilter && activity.branchId !== branchFilter) return false;
+      if (branchFilter === "canal-geral") {
+        if (activity.branchId !== null) return false;
+      } else if (branchFilter && activity.branchId !== branchFilter) {
+        return false;
+      }
       if (
         responsibleFilter &&
         activity.responsibleId !== responsibleFilter &&
@@ -258,7 +262,7 @@ export function ActivitiesTable({
               {row.original.title}
             </Link>
             <p className="truncate text-xs text-muted-foreground">
-              {row.original.branchName ?? "Sem filial"}
+              {row.original.branchName ?? "Canal geral"}
             </p>
           </div>
         ),

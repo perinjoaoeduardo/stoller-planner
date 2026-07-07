@@ -37,14 +37,18 @@ export default async function AtividadesPage() {
         label: activity.problemTitle!,
       }))
   );
-  const branches = dedupe(
-    activities
-      .filter((activity) => activity.branchId && activity.branchName)
-      .map((activity) => ({
-        value: activity.branchId!,
-        label: activity.branchName!,
-      }))
-  );
+  const hasBranchless = activities.some((activity) => !activity.branchId);
+  const branches = [
+    ...(hasBranchless ? [{ value: "canal-geral", label: "Canal geral" }] : []),
+    ...dedupe(
+      activities
+        .filter((activity) => activity.branchId && activity.branchName)
+        .map((activity) => ({
+          value: activity.branchId!,
+          label: activity.branchName!,
+        }))
+    ),
+  ];
   const responsibles = dedupe(
     activities
       .filter((activity) => activity.responsibleId && activity.responsibleName)

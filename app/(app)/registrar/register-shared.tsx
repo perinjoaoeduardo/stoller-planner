@@ -6,6 +6,14 @@ import { Camera, Check, ImagePlus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -13,6 +21,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -210,6 +219,7 @@ export function PhotoSection({
 
 /**
  * Nudge leve quando o registro vai sem foto — incentiva, nunca bloqueia.
+ * Mobile: Drawer de baixo. Desktop: Dialog centralizado, sem X de fechar.
  */
 export function PhotoNudgeDrawer({
   open,
@@ -222,6 +232,54 @@ export function PhotoNudgeDrawer({
   onAddPhoto: () => void;
   onConfirm: () => void;
 }) {
+  const isMobile = useIsMobile();
+
+  const actions = (
+    <>
+      <Button
+        size="lg"
+        className="h-12 w-full text-base"
+        onClick={() => {
+          onOpenChange(false);
+          onAddPhoto();
+        }}
+      >
+        <Camera className="size-5" />
+        Adicionar foto
+      </Button>
+      <Button
+        variant="outline"
+        size="lg"
+        className="h-12 w-full text-base"
+        onClick={() => {
+          onOpenChange(false);
+          onConfirm();
+        }}
+      >
+        Concluir sem foto
+      </Button>
+    </>
+  );
+
+  if (!isMobile) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-sm" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Sem foto?</DialogTitle>
+            <DialogDescription>
+              A evidência fortalece o registro nas reuniões com o canal.
+              Concluir mesmo assim?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            {actions}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
       <DrawerContent>
@@ -232,30 +290,7 @@ export function PhotoNudgeDrawer({
             Concluir mesmo assim?
           </DrawerDescription>
         </DrawerHeader>
-        <DrawerFooter className="pt-4">
-          <Button
-            size="lg"
-            className="h-12 text-base"
-            onClick={() => {
-              onOpenChange(false);
-              onAddPhoto();
-            }}
-          >
-            <Camera className="size-5" />
-            Adicionar foto
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-12 text-base"
-            onClick={() => {
-              onOpenChange(false);
-              onConfirm();
-            }}
-          >
-            Concluir sem foto
-          </Button>
-        </DrawerFooter>
+        <DrawerFooter className="pt-4">{actions}</DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

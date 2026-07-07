@@ -181,7 +181,17 @@ export function RegisterFlow({
       <AdhocForm
         branches={channelBranches}
         branchPlans={channelBranchPlans}
+        channelId={channelId!}
+        channelName={activeChannel?.name ?? ""}
         onBack={() => setAdhoc(false)}
+        onChangeChannel={
+          channels.length > 1
+            ? () => {
+                setAdhoc(false);
+                clearChannel();
+              }
+            : undefined
+        }
       />
     );
   }
@@ -344,7 +354,7 @@ export function RegisterFlow({
                     ) : null}
                   </p>
                   <p className="truncate text-sm text-muted-foreground">
-                    {activity.branchName ?? "Sem filial"} ·{" "}
+                    {activity.branchName ?? "Canal geral"} ·{" "}
                     {formatRelativeDue(activity.dueDate)}
                   </p>
                   {activity.category ? (

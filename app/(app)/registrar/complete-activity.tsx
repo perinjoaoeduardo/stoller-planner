@@ -96,7 +96,12 @@ export function CompleteActivity({
   }
 
   const details = [
-    { label: "Filial", value: activity.branchName ?? "—" },
+    {
+      label: "Local",
+      value: activity.branchName ?? (
+        <span className="text-muted-foreground">Canal geral</span>
+      ),
+    },
     { label: "Canal", value: activity.channelName },
     {
       label: "Prazo",

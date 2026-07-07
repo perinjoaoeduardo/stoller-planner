@@ -11,6 +11,7 @@ import {
   canRegisterExecution,
   getCurrentProfile,
   getScopedBranchIds,
+  getScopedChannelIds,
 } from "@/lib/auth/scope";
 import { logActivityEvent } from "@/lib/db/events";
 import { createClient } from "@/lib/supabase/server";
@@ -30,6 +31,8 @@ export type RegisterExecutionInput = {
   activityId?: string;
   /** Registro avulso (Situação B): filial onde a ação aconteceu. */
   adhocBranchId?: string;
+  /** Registro avulso sem filial específica ("Canal geral"). */
+  adhocChannelId?: string;
   /**
    * O que foi feito. Obrigatória no avulso; opcional na atividade
    * planejada (o plano já descreve) — se vier diferente, atualiza a
@@ -129,19 +132,32 @@ export async function registerExecution(
         .eq("id", activity.id);
       if (error) return { ok: false, error: GENERIC_ERROR };
     }
-  } else if (input.adhocBranchId) {
+  } else if (input.adhocBranchId ?? input.adhocChannelId) {
     // ── Registro avulso: ação fora do plano ────────────────────────────
-    const branchIds = await getScopedBranchIds(profile);
-    if (!branchIds.includes(input.adhocBranchId)) {
-      return { ok: false, error: "Você não atua nesta filial." };
-    }
+    let resolvedChannelId: string;
+    let resolvedBranchId: string | null = null;
 
-    const { data: branch } = await supabase
-      .from("branches")
-      .select("id, channel_id")
-      .eq("id", input.adhocBranchId)
-      .maybeSingle();
-    if (!branch) return { ok: false, error: "Filial não encontrada." };
+    if (input.adhocBranchId) {
+      const branchIds = await getScopedBranchIds(profile);
+      if (!branchIds.includes(input.adhocBranchId)) {
+        return { ok: false, error: "Você não atua nesta filial." };
+      }
+      const { data: branch } = await supabase
+        .from("branches")
+        .select("id, channel_id")
+        .eq("id", input.adhocBranchId)
+        .maybeSingle();
+      if (!branch) return { ok: false, error: "Filial não encontrada." };
+      resolvedChannelId = branch.channel_id;
+      resolvedBranchId = branch.id;
+    } else {
+      // Canal geral: sem filial específica
+      resolvedChannelId = input.adhocChannelId!;
+      const channelIds = await getScopedChannelIds(profile);
+      if (!channelIds.includes(resolvedChannelId)) {
+        return { ok: false, error: "Você não atua neste canal." };
+      }
+    }
 
     // Categoria: obrigatória em toda criação (regra central).
     if (
@@ -154,13 +170,13 @@ export async function registerExecution(
     const { data: plan } = await supabase
       .from("plans")
       .select("id, problems(id)")
-      .eq("channel_id", branch.channel_id)
+      .eq("channel_id", resolvedChannelId)
       .eq("status", "ativo")
       .maybeSingle();
     if (!plan) {
       return {
         ok: false,
-        error: "O canal desta filial não tem plano ativo nesta safra.",
+        error: "O canal não tem plano ativo nesta safra.",
       };
     }
 
@@ -179,7 +195,7 @@ export async function registerExecution(
         category: input.category,
         description,
         problem_id: input.problemId ?? null,
-        branch_id: branch.id,
+        branch_id: resolvedBranchId,
         responsible_id: profile.id,
         due_date: null,
         status: "concluida",
@@ -190,7 +206,7 @@ export async function registerExecution(
     if (error || !created) return { ok: false, error: GENERIC_ERROR };
 
     activityId = created.id;
-    channelId = branch.channel_id;
+    channelId = resolvedChannelId;
     completed = true;
 
     await logActivityEvent({
