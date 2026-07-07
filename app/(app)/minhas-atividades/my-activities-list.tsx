@@ -3,125 +3,187 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { differenceInCalendarDays, parseISO } from "date-fns";
-import {
-  CalendarClock,
-  CalendarDays,
-  CheckCheck,
-  ChevronDown,
-  CircleAlert,
-  ClipboardList,
-  ClipboardPlus,
-  RefreshCw,
-} from "lucide-react";
+import { Camera, ClipboardPlus, ListTodo, RefreshCw, SearchX } from "lucide-react";
 
+import { ActivityCard } from "@/components/app/activity-card";
 import {
-  FieldActivityCard,
-  type FieldActivityCardData,
-} from "@/components/app/field-activity-card";
+  SearchableSelect,
+  type SelectOption,
+} from "@/components/app/searchable-select";
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import type { FieldActivity } from "@/lib/db/execution";
+import type { ActivityRow } from "@/lib/db/channels";
 import { cn } from "@/lib/utils";
 
-type ChipFilter = "todas" | "minhas" | "filial";
+type StatusChip = "abertas" | "concluidas" | "todas";
 
-const CHIPS: { value: ChipFilter; label: string }[] = [
+const CHIPS: { value: StatusChip; label: string }[] = [
+  { value: "abertas", label: "Abertas" },
+  { value: "concluidas", label: "Concluídas" },
   { value: "todas", label: "Todas" },
-  { value: "minhas", label: "Minhas" },
-  { value: "filial", label: "Da minha filial" },
 ];
 
 const OPEN = new Set(["planejada", "em_andamento", "atrasada"]);
 
-function SectionHeader({
-  icon: Icon,
-  title,
-  count,
-  className,
-}: {
-  icon: React.ElementType;
-  title: string;
-  count: number;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 text-sm font-semibold text-muted-foreground",
-        className
-      )}
-    >
-      <Icon className="size-4" />
-      {title}
-      <span className="tabular-nums">({count})</span>
-    </div>
-  );
+/**
+ * Ordenação da lista pessoal: atrasadas (mais dias de atraso primeiro),
+ * depois abertas (prazo mais próximo), depois concluídas (recentes).
+ */
+function sortActivities(activities: ActivityRow[]): ActivityRow[] {
+  const rank = (activity: ActivityRow) => {
+    if (activity.status === "atrasada") return 0;
+    if (OPEN.has(activity.status)) return 1;
+    return 2;
+  };
+  return [...activities].sort((a, b) => {
+    const diff = rank(a) - rank(b);
+    if (diff !== 0) return diff;
+    if (rank(a) === 2) {
+      // Encerradas: mais recentes primeiro.
+      const dateA = a.completedAt ?? a.createdAt;
+      const dateB = b.completedAt ?? b.createdAt;
+      return dateA < dateB ? 1 : -1;
+    }
+    // Atrasadas e abertas: prazo mais próximo primeiro (nas atrasadas
+    // isso equivale a mais dias de atraso primeiro); sem prazo no fim.
+    const dueA = a.dueDate ?? "9999-12-31";
+    const dueB = b.dueDate ?? "9999-12-31";
+    return dueA < dueB ? -1 : dueA > dueB ? 1 : 0;
+  });
 }
 
-function CardStack({ activities }: { activities: FieldActivityCardData[] }) {
-  return (
-    <div className="flex flex-col gap-2">
-      {activities.map((activity) => (
-        <FieldActivityCard key={activity.id} activity={activity} />
-      ))}
-    </div>
-  );
-}
-
+/**
+ * Visão pessoal do RTV: só atividades em que ele é responsável,
+ * agrupadas por canal quando há mais de um. Controles que não mudariam
+ * nada somem — 1 canal só não tem Combobox.
+ */
 export function MyActivitiesList({
   activities,
 }: {
-  activities: FieldActivity[];
+  activities: ActivityRow[];
 }) {
   const router = useRouter();
   const [refreshing, startRefresh] = React.useTransition();
-  const [chip, setChip] = React.useState<ChipFilter>("todas");
+  const [chip, setChip] = React.useState<StatusChip>("abertas");
+  const [channelId, setChannelId] = React.useState<string | null>(null);
+
+  const channels = React.useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const activity of activities) {
+      if (activity.channelId && !seen.has(activity.channelId)) {
+        seen.set(activity.channelId, activity.channelName);
+      }
+    }
+    return [...seen.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activities]);
+
+  // O filtro de canal some quando não mudaria o resultado.
+  const showChannelFilter = channels.length > 1;
+
+  const channelOptions: SelectOption[] = React.useMemo(
+    () => [
+      { value: "todos", label: "Todos os canais" },
+      ...channels.map((channel) => ({
+        value: channel.id,
+        label: channel.name,
+      })),
+    ],
+    [channels]
+  );
+
+  const channelApplied =
+    showChannelFilter && channelId !== null && channelId !== "todos";
 
   const filtered = React.useMemo(() => {
-    if (chip === "minhas") {
-      return activities.filter((activity) => activity.isMine);
+    let result = activities;
+    if (chip === "abertas") {
+      result = result.filter((activity) => OPEN.has(activity.status));
+    } else if (chip === "concluidas") {
+      result = result.filter((activity) => activity.status === "concluida");
     }
-    if (chip === "filial") {
-      return activities.filter((activity) => activity.isMyBranch);
+    if (channelApplied) {
+      result = result.filter((activity) => activity.channelId === channelId);
     }
-    return activities;
-  }, [activities, chip]);
+    return result;
+  }, [activities, chip, channelId, channelApplied]);
 
+  // Agrupa por canal só quando o recorte atual mistura canais.
   const groups = React.useMemo(() => {
-    const open = filtered.filter((activity) => OPEN.has(activity.status));
-    const late = open.filter((activity) => activity.status === "atrasada");
-    const notLate = open.filter((activity) => activity.status !== "atrasada");
-    const soon = notLate.filter(
-      (activity) =>
-        activity.dueDate !== null &&
-        differenceInCalendarDays(parseISO(activity.dueDate), new Date()) <= 7
-    );
-    const soonIds = new Set(soon.map((activity) => activity.id));
-    const later = notLate.filter((activity) => !soonIds.has(activity.id));
-    const closed = filtered.filter((activity) => !OPEN.has(activity.status));
-    return { late, soon, later, closed };
+    const byChannel = new Map<string, { name: string; items: ActivityRow[] }>();
+    for (const activity of filtered) {
+      const group = byChannel.get(activity.channelId) ?? {
+        name: activity.channelName,
+        items: [],
+      };
+      group.items.push(activity);
+      byChannel.set(activity.channelId, group);
+    }
+    return [...byChannel.entries()]
+      .map(([id, group]) => ({
+        id,
+        name: group.name,
+        items: sortActivities(group.items),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [filtered]);
 
-  const hasAnything =
-    groups.late.length + groups.soon.length + groups.later.length > 0 ||
-    groups.closed.length > 0;
+  const grouped = !channelApplied && groups.length > 1;
+  const flatList = React.useMemo(
+    () => sortActivities(filtered),
+    [filtered]
+  );
+
+  // "Limpar" leva a Todas + todos os canais — garante ver alguma coisa.
+  const filtersActive = chip !== "todas" || channelApplied;
+
+  function clearFilters() {
+    setChip("todas");
+    setChannelId(null);
+  }
+
+  // Nenhuma atividade atribuída ao usuário (nem concluídas).
+  if (activities.length === 0) {
+    return (
+      <Empty className="flex-1 rounded-3xl border border-dashed">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <ListTodo />
+          </EmptyMedia>
+          <EmptyTitle>Nenhuma atividade atribuída a você</EmptyTitle>
+          <EmptyDescription>
+            Nenhuma atividade atribuída a você. Você pode registrar ações
+            avulsas pelo botão abaixo.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button
+            nativeButton={false}
+            render={
+              <Link href="/registrar">
+                <Camera />
+                Registrar
+              </Link>
+            }
+          />
+        </EmptyContent>
+      </Empty>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-center gap-2">
-        <div className="-my-1 flex flex-1 gap-2 overflow-x-auto py-1">
+    <div className="flex flex-col gap-4">
+      {/* Filtros em uma linha compacta */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+        <div className="-my-1 flex gap-2 overflow-x-auto py-1">
           {CHIPS.map((item) => (
             <button
               key={item.value}
@@ -138,10 +200,19 @@ export function MyActivitiesList({
             </button>
           ))}
         </div>
+        {showChannelFilter ? (
+          <SearchableSelect
+            options={channelOptions}
+            value={channelId}
+            onValueChange={setChannelId}
+            placeholder="Todos os canais"
+            className="h-11 min-w-44 flex-1 sm:max-w-56"
+          />
+        ) : null}
         <Button
           variant="ghost"
           size="icon"
-          className="size-11 shrink-0 text-muted-foreground"
+          className="ml-auto size-11 shrink-0 text-muted-foreground"
           aria-label="Atualizar lista"
           disabled={refreshing}
           onClick={() => startRefresh(() => router.refresh())}
@@ -164,77 +235,45 @@ export function MyActivitiesList({
         }
       />
 
-      {!hasAnything ? (
-        <Empty className="py-14">
+      {filtered.length === 0 ? (
+        <Empty className="rounded-3xl border border-dashed py-10">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <ClipboardList />
+              <SearchX />
             </EmptyMedia>
-            <EmptyTitle>Nada por aqui</EmptyTitle>
-            <EmptyDescription>
-              Nenhuma atividade no recorte atual. Troque o filtro acima ou
-              registre uma execução avulsa.
-            </EmptyDescription>
+            <EmptyTitle>Nenhum resultado com esses filtros.</EmptyTitle>
           </EmptyHeader>
+          {filtersActive ? (
+            <EmptyContent>
+              <Button variant="outline" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            </EmptyContent>
+          ) : null}
         </Empty>
-      ) : null}
-
-      {groups.late.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <SectionHeader
-            icon={CircleAlert}
-            title="Atrasadas"
-            count={groups.late.length}
-            className="text-amber-600 dark:text-amber-400"
-          />
-          <CardStack activities={groups.late} />
-        </section>
-      ) : null}
-
-      {groups.soon.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <SectionHeader
-            icon={CalendarClock}
-            title="Próximas (7 dias)"
-            count={groups.soon.length}
-          />
-          <CardStack activities={groups.soon} />
-        </section>
-      ) : null}
-
-      {groups.later.length > 0 ? (
-        <section className="flex flex-col gap-2">
-          <SectionHeader
-            icon={CalendarDays}
-            title="Depois"
-            count={groups.later.length}
-          />
-          <CardStack activities={groups.later} />
-        </section>
-      ) : null}
-
-      {groups.closed.length > 0 ? (
-        <Collapsible>
-          <CollapsibleTrigger className="group flex min-h-11 w-full items-center gap-2 rounded-xl border bg-card px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/50">
-            <CheckCheck className="size-4" />
-            Concluídas e encerradas
-            <span className="tabular-nums">({groups.closed.length})</span>
-            <ChevronDown className="ml-auto size-4 transition-transform group-data-[panel-open]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-2">
+      ) : grouped ? (
+        groups.map((group) => (
+          <section key={group.id} className="flex flex-col gap-2">
+            <h2 className="flex items-baseline gap-1.5 text-sm font-semibold">
+              {group.name}
+              <span className="font-normal text-muted-foreground tabular-nums">
+                ({group.items.length})
+              </span>
+            </h2>
             <div className="flex flex-col gap-2">
-              {groups.closed.map((activity) => (
-                <FieldActivityCard
-                  key={activity.id}
-                  activity={activity}
-                  showRegister={false}
-                  className="opacity-80"
-                />
+              {group.items.map((activity) => (
+                <ActivityCard key={activity.id} activity={activity} />
               ))}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
+          </section>
+        ))
+      ) : (
+        <div className="flex flex-col gap-2">
+          {flatList.map((activity) => (
+            <ActivityCard key={activity.id} activity={activity} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ImageOff, ImagePlus, Trash2 } from "lucide-react";
+import { Camera, ImageOff, ImagePlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -34,12 +35,12 @@ import {
 } from "@/components/ui/dialog";
 import {
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   deleteActivityPhoto,
@@ -88,40 +89,44 @@ function PhotoThumb({
   const [broken, setBroken] = React.useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative aspect-square overflow-hidden rounded-2xl border bg-muted"
-    >
-      {broken ? (
-        <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
-          <ImageOff className="size-5" />
-          <span className="px-2 text-center text-[10px] leading-tight">
-            Arquivo indisponível
+    <figure className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={onClick}
+        className="group relative aspect-square overflow-hidden rounded-2xl border bg-muted"
+        aria-label={photo.caption ?? "Ampliar evidência"}
+      >
+        {broken ? (
+          <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+            <ImageOff className="size-5" />
+            <span className="px-2 text-center text-[10px] leading-tight">
+              Arquivo indisponível
+            </span>
           </span>
-        </span>
-      ) : (
-        <Image
-          src={photoUrl(photo.storagePath)}
-          alt={photo.caption ?? "Evidência da atividade"}
-          fill
-          sizes="(max-width: 640px) 50vw, 220px"
-          className="object-cover transition-transform group-hover:scale-105"
-          onError={() => setBroken(true)}
-        />
-      )}
+        ) : (
+          <Image
+            src={photoUrl(photo.storagePath)}
+            alt={photo.caption ?? "Evidência da atividade"}
+            fill
+            sizes="(max-width: 640px) 50vw, 220px"
+            className="object-cover transition-transform group-hover:scale-105"
+            onError={() => setBroken(true)}
+          />
+        )}
+      </button>
       {photo.caption ? (
-        <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-2 py-1 text-left text-[11px] text-white">
+        <figcaption className="truncate text-xs text-muted-foreground">
           {photo.caption}
-        </span>
+        </figcaption>
       ) : null}
-    </button>
+    </figure>
   );
 }
 
 /**
  * Card "Evidências": grid de fotos com upload para o bucket
- * activity-photos, caption opcional, preview em Dialog e exclusão.
+ * activity-photos, lightbox em Dialog e exclusão. Sem fotos, um Empty
+ * compacto dentro do próprio card convida a primeira.
  */
 export function PhotosCard({
   activityId,
@@ -133,7 +138,6 @@ export function PhotosCard({
   canManage: boolean;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [caption, setCaption] = React.useState("");
   const [uploading, setUploading] = React.useState(false);
   const [preview, setPreview] = React.useState<ActivityPhotoRow | null>(null);
   const [deleting, setDeleting] = React.useState<ActivityPhotoRow | null>(
@@ -172,14 +176,12 @@ export function PhotosCard({
       const result = await registerActivityPhoto({
         activityId,
         storagePath: path,
-        caption: caption.trim() || undefined,
       });
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
 
-      setCaption("");
       toast.success("Foto adicionada às evidências.");
     } finally {
       setUploading(false);
@@ -198,64 +200,63 @@ export function PhotosCard({
     setPreview(null);
   }
 
+  const addButton = (
+    <Button
+      variant="outline"
+      className="h-11 sm:h-9"
+      disabled={uploading}
+      onClick={() => inputRef.current?.click()}
+    >
+      {uploading ? (
+        <>
+          <Spinner />
+          Enviando...
+        </>
+      ) : (
+        <>
+          <ImagePlus />
+          Adicionar foto
+        </>
+      )}
+    </Button>
+  );
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Evidências</CardTitle>
         <CardDescription>
-          Fotos da execução em campo — a prova do resultado.
+          Fotos da execução — a prova do que foi feito.
         </CardDescription>
+        {canManage && photos.length > 0 ? (
+          <CardAction>{addButton}</CardAction>
+        ) : null}
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent>
         {canManage ? (
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              value={caption}
-              onChange={(event) => setCaption(event.target.value)}
-              placeholder="Legenda da foto (opcional)"
-              className="flex-1"
-              disabled={uploading}
-            />
-            <input
-              ref={inputRef}
-              type="file"
-              accept={ACCEPTED.join(",")}
-              className="hidden"
-              onChange={handleUpload}
-            />
-            <Button
-              variant="outline"
-              disabled={uploading}
-              onClick={() => inputRef.current?.click()}
-            >
-              {uploading ? (
-                <>
-                  <Spinner />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <ImagePlus />
-                  Adicionar foto
-                </>
-              )}
-            </Button>
-          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPTED.join(",")}
+            className="hidden"
+            onChange={handleUpload}
+          />
         ) : null}
 
         {photos.length === 0 ? (
-          <Empty className="py-8">
+          <Empty className="rounded-2xl border border-dashed py-8">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <ImageOff />
+                <Camera />
               </EmptyMedia>
-              <EmptyTitle>Sem evidências ainda</EmptyTitle>
-              <EmptyDescription>
-                {canManage
-                  ? "Adicione fotos da execução para fortalecer o relatório de safra."
-                  : "Nenhuma foto de execução foi registrada nesta atividade."}
-              </EmptyDescription>
+              <EmptyTitle>Nenhuma foto ainda.</EmptyTitle>
+              {!canManage ? (
+                <EmptyDescription>
+                  Nenhuma foto de execução foi registrada nesta atividade.
+                </EmptyDescription>
+              ) : null}
             </EmptyHeader>
+            {canManage ? <EmptyContent>{addButton}</EmptyContent> : null}
           </Empty>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

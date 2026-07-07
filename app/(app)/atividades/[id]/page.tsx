@@ -1,15 +1,15 @@
+import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { format, parseISO } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  CalendarCheck,
-  CalendarClock,
-  CirclePlus,
+  Camera,
+  CheckCircle2,
   ClipboardCheck,
   ImageMinus,
-  ImagePlus,
   Pencil,
+  Plus,
   RefreshCw,
   RotateCcw,
   SearchX,
@@ -18,7 +18,12 @@ import {
 
 import { PageShell } from "@/components/app/page-shell";
 import { CategoryBadge } from "@/components/app/category-badge";
-import { StatusBadge } from "@/components/app/status-badge";
+import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+} from "@/components/ui/avatar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,12 +49,21 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   canEditPlan,
   canRegisterExecution,
   getCurrentProfile,
   getScopedChannelIds,
 } from "@/lib/auth/scope";
-import { getActivityDetail, getPlanProblems } from "@/lib/db/channels";
+import {
+  getActivityDetail,
+  getPlanProblems,
+  type ActivityDetail,
+} from "@/lib/db/channels";
 import { isLateActivity } from "@/lib/db/status";
 
 import { PhotosCard } from "./photos-card";
@@ -67,16 +81,6 @@ function formatDate(value: string | null, withTime = false) {
   );
 }
 
-const EVENT_ICONS: Record<string, LucideIcon> = {
-  criada: CirclePlus,
-  editada: Pencil,
-  status_alterado: RefreshCw,
-  foto_adicionada: ImagePlus,
-  foto_removida: ImageMinus,
-  execucao_registrada: ClipboardCheck,
-  reaberta: RotateCcw,
-};
-
 const EVENT_LABELS: Record<string, string> = {
   criada: "Atividade criada",
   editada: "Atividade editada",
@@ -86,6 +90,50 @@ const EVENT_LABELS: Record<string, string> = {
   execucao_registrada: "Execução registrada",
   reaberta: "Atividade reaberta",
 };
+
+/** Ícone semântico por evento; conclusão ganha o check verde da vida. */
+function eventIcon(type: string, description: string | null): LucideIcon {
+  if (type === "status_alterado" && description?.includes('para "Concluída"')) {
+    return CheckCircle2;
+  }
+  const icons: Record<string, LucideIcon> = {
+    criada: Plus,
+    editada: Pencil,
+    status_alterado: RefreshCw,
+    foto_adicionada: Camera,
+    foto_removida: ImageMinus,
+    execucao_registrada: ClipboardCheck,
+    reaberta: RotateCcw,
+  };
+  return icons[type] ?? RefreshCw;
+}
+
+/** "Em andamento desde 06 jul" / "Concluída em 15 mar". */
+function statusContextLabel(activity: ActivityDetail): string | null {
+  if (activity.status === "concluida") {
+    return activity.completedAt
+      ? `Concluída em ${formatDate(activity.completedAt)}`
+      : null;
+  }
+  if (activity.status === "atrasada" && activity.dueDate) {
+    return `Atrasada desde ${formatDate(activity.dueDate)}`;
+  }
+  const statusEvent = activity.events.find(
+    (event) => event.type === "status_alterado" || event.type === "reaberta"
+  );
+  const since = statusEvent?.createdAt ?? activity.createdAt;
+  return `${STATUS_LABELS[activity.status]} desde ${formatDate(since)}`;
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 function ActivityNotFound() {
   return (
@@ -107,7 +155,7 @@ function ActivityNotFound() {
               <Button
                 variant="outline"
                 nativeButton={false}
-                render={<Link href="/atividades" />}
+                render={<Link href="/minhas-atividades" />}
               >
                 Voltar para atividades
               </Button>
@@ -147,6 +195,11 @@ export default async function AtividadePage({
     getPlanProblems(activity.planId),
   ]);
 
+  // RTV/RDC navegam pelos "Meus Canais"; DSM/CX pelo cockpit denso.
+  const isField = profile.role === "RTV" || profile.role === "RDC";
+  const channelBase = isField ? "/meus-canais" : "/canais";
+  const channelHref = `${channelBase}/${activity.channelId}`;
+
   const overdue =
     isLateActivity(activity) && activity.status !== "concluida";
 
@@ -160,7 +213,23 @@ export default async function AtividadePage({
   const timeline = [...activity.events];
   const hasCreationEvent = timeline.some((event) => event.type === "criada");
 
-  const aboutRows = [
+  const aboutRows: { label: string; value: ReactNode }[] = [
+    {
+      label: "Local",
+      value: activity.branchName ? (
+        `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
+      ) : (
+        <span className="text-muted-foreground">Não especificado</span>
+      ),
+    },
+    {
+      label: "Tipo de ação",
+      value: activity.category ? (
+        <CategoryBadge category={activity.category} />
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      ),
+    },
     {
       label: "Problema vinculado",
       value: (
@@ -171,16 +240,32 @@ export default async function AtividadePage({
           problems={planProblems}
           canEdit={canEdit || canRegister}
           showPendency={needsProblemLink}
+          channelHref={channelHref}
         />
       ),
     },
     {
-      label: "Filial",
-      value: activity.branchName
-        ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
-        : "—",
+      label: "Responsáveis",
+      value:
+        activity.assignees.length > 0 ? (
+          <span className="flex items-center gap-2">
+            <AvatarGroup>
+              {activity.assignees.slice(0, 4).map((assignee) => (
+                <Avatar key={assignee.id} size="sm">
+                  <AvatarFallback className="text-[10px]">
+                    {getInitials(assignee.name)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </AvatarGroup>
+            <span className="leading-snug">
+              {activity.assignees.map((assignee) => assignee.name).join(", ")}
+            </span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Sem responsável</span>
+        ),
     },
-    { label: "Responsável", value: activity.responsibleName ?? "—" },
     {
       label: "Prazo",
       value: (
@@ -191,23 +276,34 @@ export default async function AtividadePage({
               : "tabular-nums"
           }
         >
-          {formatDate(activity.dueDate)}
+          {activity.dueDate ? (
+            formatDate(activity.dueDate)
+          ) : (
+            <span className="text-muted-foreground">Sem prazo</span>
+          )}
         </span>
       ),
     },
     {
       label: "Criada em",
-      value: <span className="tabular-nums">{formatDate(activity.createdAt, true)}</span>,
+      value: (
+        <span className="tabular-nums">
+          {formatDate(activity.createdAt, true)}
+        </span>
+      ),
     },
-    {
+  ];
+
+  if (activity.completedAt) {
+    aboutRows.push({
       label: "Concluída em",
       value: (
         <span className="tabular-nums">
           {formatDate(activity.completedAt, true)}
         </span>
       ),
-    },
-  ];
+    });
+  }
 
   return (
     <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
@@ -215,15 +311,13 @@ export default async function AtividadePage({
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink render={<Link href="/canais" />}>
-                Canais
+              <BreadcrumbLink render={<Link href={channelBase} />}>
+                {isField ? "Meus Canais" : "Canais"}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink
-                render={<Link href={`/canais/${activity.channelId}`} />}
-              >
+              <BreadcrumbLink render={<Link href={channelHref} />}>
                 {activity.channelName}
               </BreadcrumbLink>
             </BreadcrumbItem>
@@ -237,16 +331,18 @@ export default async function AtividadePage({
           <h1 className="text-3xl font-semibold tracking-tight">
             {activity.title}
           </h1>
-          <StatusBadge
-            status={activity.status}
-            className="px-3 py-1 text-sm"
-          />
-          {activity.category ? (
-            <CategoryBadge
-              category={activity.category}
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              status={activity.status}
               className="px-3 py-1 text-sm"
             />
-          ) : null}
+            {activity.category ? (
+              <CategoryBadge
+                category={activity.category}
+                className="px-3 py-1 text-sm"
+              />
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -255,27 +351,20 @@ export default async function AtividadePage({
           <Card>
             <CardHeader>
               <CardTitle>Sobre</CardTitle>
-              <CardDescription>
-                Contexto da atividade dentro do plano da safra.
-              </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-4">
+            <CardContent className="flex flex-col gap-5">
               {activity.description ? (
-                <p className="text-sm leading-relaxed">
+                <p className="text-base leading-relaxed">
                   {activity.description}
                 </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Sem descrição registrada.
-                </p>
-              )}
-              <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+              ) : null}
+              <dl className="grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
                 {aboutRows.map((row) => (
-                  <div key={row.label} className="space-y-0.5">
+                  <div key={row.label} className="min-w-0 space-y-1">
                     <dt className="text-xs text-muted-foreground">
                       {row.label}
                     </dt>
-                    <dd>{row.value}</dd>
+                    <dd className="min-w-0">{row.value}</dd>
                   </div>
                 ))}
               </dl>
@@ -293,6 +382,7 @@ export default async function AtividadePage({
           <StatusCard
             activityId={activity.id}
             status={activity.status}
+            contextLabel={statusContextLabel(activity)}
             canChange={canRegister || canEdit}
           />
 
@@ -300,13 +390,13 @@ export default async function AtividadePage({
             <CardHeader>
               <CardTitle>Linha do tempo</CardTitle>
               <CardDescription>
-                Eventos registrados na vida da atividade.
+                Tudo que aconteceu nesta atividade.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <ol className="relative flex flex-col gap-5 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
                 {timeline.map((event) => {
-                  const Icon = EVENT_ICONS[event.type] ?? RefreshCw;
+                  const Icon = eventIcon(event.type, event.description);
                   return (
                     <li key={event.id} className="relative flex gap-3 pl-0">
                       <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
@@ -321,9 +411,21 @@ export default async function AtividadePage({
                             {event.description}
                           </p>
                         ) : null}
-                        <p className="text-xs text-muted-foreground tabular-nums">
-                          {formatDate(event.createdAt, true)}
-                        </p>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <p className="w-fit text-xs text-muted-foreground" />
+                            }
+                          >
+                            {formatDistanceToNow(parseISO(event.createdAt), {
+                              locale: ptBR,
+                              addSuffix: true,
+                            })}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {formatDate(event.createdAt, true)}
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </li>
                   );
@@ -331,34 +433,29 @@ export default async function AtividadePage({
                 {!hasCreationEvent ? (
                   <li className="relative flex gap-3">
                     <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                      <CirclePlus className="size-3 text-muted-foreground" />
+                      <Plus className="size-3 text-muted-foreground" />
                     </span>
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">Atividade criada</p>
-                      <p className="text-xs text-muted-foreground tabular-nums">
-                        {formatDate(activity.createdAt, true)}
-                      </p>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <p className="w-fit text-xs text-muted-foreground" />
+                          }
+                        >
+                          {formatDistanceToNow(parseISO(activity.createdAt), {
+                            locale: ptBR,
+                            addSuffix: true,
+                          })}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {formatDate(activity.createdAt, true)}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                   </li>
                 ) : null}
               </ol>
-              {activity.completedAt ? (
-                <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <CalendarCheck className="size-3.5" />
-                  Concluída em{" "}
-                  <span className="tabular-nums">
-                    {formatDate(activity.completedAt, true)}
-                  </span>
-                </p>
-              ) : activity.dueDate ? (
-                <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <CalendarClock className="size-3.5" />
-                  Prazo:{" "}
-                  <span className="tabular-nums">
-                    {formatDate(activity.dueDate)}
-                  </span>
-                </p>
-              ) : null}
             </CardContent>
           </Card>
         </div>

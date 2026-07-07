@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -11,13 +10,7 @@ import {
   type ActivityStatus,
 } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -29,23 +22,27 @@ import { Spinner } from "@/components/ui/spinner";
 import { changeActivityStatus } from "@/lib/actions/plan";
 
 /**
- * Card "Status" do detalhe: seleciona o novo status e confirma.
- * Mudou para "Concluída" → o servidor seta completed_at e registra o
- * evento na linha do tempo.
+ * Card "Status" do detalhe, enxuto: badge grande + contexto ("Em
+ * andamento desde 06 jul"), Select e confirmação. Concluir seta
+ * completed_at no servidor; reabrir limpa — regras existentes.
  */
 export function StatusCard({
   activityId,
   status,
+  contextLabel,
   canChange,
 }: {
   activityId: string;
   status: ActivityStatus;
+  /** "Em andamento desde 06 jul" / "Concluída em 15 mar". */
+  contextLabel: string | null;
   canChange: boolean;
 }) {
   const [selected, setSelected] = React.useState<ActivityStatus>(status);
   const [pending, startTransition] = React.useTransition();
 
-  function submitStatus(next: ActivityStatus) {
+  function handleConfirm() {
+    const next = selected;
     startTransition(async () => {
       const result = await changeActivityStatus({
         activityId,
@@ -65,37 +62,18 @@ export function StatusCard({
     });
   }
 
-  function handleConfirm() {
-    submitStatus(selected);
-  }
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>Status</CardTitle>
-        <CardDescription>Situação atual da atividade.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <StatusBadge status={status} className="w-fit px-3 py-1 text-sm" />
-        {canChange && status === "concluida" ? (
-          <Button
-            variant="outline"
-            onClick={() => submitStatus("em_andamento")}
-            disabled={pending}
-          >
-            {pending ? (
-              <>
-                <Spinner />
-                Reabrindo...
-              </>
-            ) : (
-              <>
-                <RotateCcw />
-                Reabrir atividade
-              </>
-            )}
-          </Button>
-        ) : null}
+        <div className="flex flex-col gap-1.5">
+          <StatusBadge status={status} className="w-fit px-3 py-1 text-sm" />
+          {contextLabel ? (
+            <p className="text-sm text-muted-foreground">{contextLabel}</p>
+          ) : null}
+        </div>
         {canChange ? (
           <div className="flex flex-col gap-2">
             <Select
@@ -106,7 +84,7 @@ export function StatusCard({
                 label: STATUS_LABELS[item],
               }))}
             >
-              <SelectTrigger className="w-full" aria-label="Novo status">
+              <SelectTrigger className="h-11 w-full sm:h-9" aria-label="Novo status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -118,6 +96,7 @@ export function StatusCard({
               </SelectContent>
             </Select>
             <Button
+              className="h-11 sm:h-9"
               onClick={handleConfirm}
               disabled={pending || selected === status}
             >

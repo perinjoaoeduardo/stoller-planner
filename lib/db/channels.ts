@@ -414,6 +414,8 @@ export type ActivityDetail = {
   branchCity: string | null;
   responsibleId: string | null;
   responsibleName: string | null;
+  /** Todos os responsáveis (activity_assignees ∪ responsible_id). */
+  assignees: ActivityAssignee[];
   channelId: string;
   channelName: string;
   photos: ActivityPhotoRow[];
@@ -431,7 +433,8 @@ export async function getActivityDetail(
       `id, title, category, description, status, due_date, created_at, completed_at,
        plan_id, problem_id, problem:problems(title),
        branch_id, branch:branches(name, city),
-       responsible_id, responsible:profiles(full_name),
+       responsible_id, responsible:profiles(id, full_name),
+       activity_assignees(profile:profiles(id, full_name)),
        plan:plans(channel_id, channel:channels(id, name)),
        photos:activity_photos(id, storage_path, caption, created_at),
        events:activity_events(id, type, description, created_at,
@@ -463,6 +466,7 @@ export async function getActivityDetail(
     branchCity: data.branch?.city ?? null,
     responsibleId: data.responsible_id,
     responsibleName: data.responsible?.full_name ?? null,
+    assignees: mergeAssignees(data.activity_assignees, data.responsible),
     channelId: data.plan?.channel?.id ?? "",
     channelName: data.plan?.channel?.name ?? "—",
     photos: data.photos
