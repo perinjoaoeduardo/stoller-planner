@@ -156,7 +156,7 @@ export function LoginForm() {
               Entra direto com um usuário de exemplo de cada perfil.
             </p>
           </div>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {DEMO_USERS.map((user) => (
               <Button
                 key={user.role}
