@@ -1,4 +1,5 @@
 import {
+  BrushCleaning,
   ChartColumn,
   ClipboardCheck,
   ClipboardList,
@@ -35,6 +36,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { title: "Meus Canais", href: "/canais", icon: Store },
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
     { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
+    { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],
   RTV: [

@@ -84,6 +84,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { deleteActivity } from "@/lib/actions/plan";
+import {
+  ACTIVITY_CATEGORIES,
+  CATEGORY_LABELS,
+  type ActivityCategory,
+} from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +120,7 @@ const STATUS_SORT_ORDER: Record<ActivityStatus, number> = {
 
 const COLUMN_LABELS: Record<string, string> = {
   title: "Atividade",
+  category: "Categoria",
   channel: "Canal",
   problem: "Problema",
   responsible: "Responsável",
@@ -160,6 +166,15 @@ export function ActivitiesTable({
           (ACTIVITY_STATUSES as string[]).includes(value)
         )
   );
+  const [categoryFilter, setCategoryFilter] = React.useState<
+    ActivityCategory[]
+  >(() =>
+    (searchParams.get("categoria") ?? "")
+      .split(",")
+      .filter((value): value is ActivityCategory =>
+        (ACTIVITY_CATEGORIES as readonly string[]).includes(value)
+      )
+  );
   const [problemFilter, setProblemFilter] = React.useState<string | null>(null);
   const [branchFilter, setBranchFilter] = React.useState<string | null>(
     () => searchParams.get("filial")
@@ -177,6 +192,7 @@ export function ActivitiesTable({
   const hasFilters =
     search.trim() !== "" ||
     statusFilter.length > 0 ||
+    categoryFilter.length > 0 ||
     !!problemFilter ||
     !!branchFilter ||
     !!responsibleFilter;
@@ -186,6 +202,12 @@ export function ActivitiesTable({
     return data.filter((activity) => {
       if (term && !activity.title.toLowerCase().includes(term)) return false;
       if (statusFilter.length > 0 && !statusFilter.includes(activity.status)) {
+        return false;
+      }
+      if (
+        categoryFilter.length > 0 &&
+        (!activity.category || !categoryFilter.includes(activity.category))
+      ) {
         return false;
       }
       if (problemFilter === "none") {
@@ -199,7 +221,15 @@ export function ActivitiesTable({
       }
       return true;
     });
-  }, [data, search, statusFilter, problemFilter, branchFilter, responsibleFilter]);
+  }, [
+    data,
+    search,
+    statusFilter,
+    categoryFilter,
+    problemFilter,
+    branchFilter,
+    responsibleFilter,
+  ]);
 
   const columns = React.useMemo<ColumnDef<ActivityRow>[]>(() => {
     const cols: ColumnDef<ActivityRow>[] = [
@@ -439,6 +469,7 @@ export function ActivitiesTable({
   function clearFilters() {
     setSearch("");
     setStatusFilter([]);
+    setCategoryFilter([]);
     setProblemFilter(null);
     setBranchFilter(null);
     setResponsibleFilter(null);
@@ -506,6 +537,43 @@ export function ActivitiesTable({
                 closeOnClick={false}
               >
                 {STATUS_LABELS[status]}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="outline" size="sm" className="h-9">
+                <ListFilter />
+                Categoria
+                {categoryFilter.length > 0 ? (
+                  <Badge variant="secondary" className="tabular-nums">
+                    {categoryFilter.length}
+                  </Badge>
+                ) : null}
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start" className="w-64">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Filtrar por categoria</DropdownMenuLabel>
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+            {ACTIVITY_CATEGORIES.map((category) => (
+              <DropdownMenuCheckboxItem
+                key={category}
+                checked={categoryFilter.includes(category)}
+                onCheckedChange={(checked) =>
+                  setCategoryFilter((current) =>
+                    checked
+                      ? [...current, category]
+                      : current.filter((item) => item !== category)
+                  )
+                }
+                closeOnClick={false}
+              >
+                {CATEGORY_LABELS[category]}
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>

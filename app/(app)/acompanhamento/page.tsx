@@ -5,6 +5,7 @@ import { MoonStar, PartyPopper } from "lucide-react";
 import { ActivitiesTable } from "@/components/app/activities-table";
 import { CopySummaryMenu } from "@/components/app/copy-summary-menu";
 import { PageShell } from "@/components/app/page-shell";
+import { PendenciasView } from "@/components/app/pendencias-view";
 import { PeopleTable } from "@/components/app/people-table";
 import type { SelectOption } from "@/components/app/searchable-select";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -26,6 +27,7 @@ import { requireCx, getScopedChannelIds } from "@/lib/auth/scope";
 import { DARK_CHANNEL_DAYS } from "@/lib/config";
 import { getScopedActivities } from "@/lib/db/channels";
 import { getDarkChannels, getPeopleRows, type DarkChannel } from "@/lib/db/cx";
+import { getPendencies } from "@/lib/db/pendencias";
 import { getRegions } from "@/lib/db/channels";
 
 export const dynamic = "force-dynamic";
@@ -102,12 +104,14 @@ export default async function AcompanhamentoPage({
   const { tab } = await searchParams;
 
   const channelIds = await getScopedChannelIds(profile);
-  const [darkChannels, people, regions, activities] = await Promise.all([
-    getDarkChannels(),
-    getPeopleRows(),
-    getRegions(),
-    getScopedActivities(channelIds),
-  ]);
+  const [darkChannels, people, regions, activities, pendencies] =
+    await Promise.all([
+      getDarkChannels(),
+      getPeopleRows(),
+      getRegions(),
+      getScopedActivities(channelIds),
+      getPendencies(channelIds),
+    ]);
 
   const lateActivities = activities.filter(
     (activity) => activity.status === "atrasada"
@@ -150,14 +154,19 @@ export default async function AcompanhamentoPage({
     label: region.name,
   }));
 
-  const defaultTab = ["escuro", "pessoas", "atrasadas"].includes(tab ?? "")
+  const defaultTab = [
+    "escuro",
+    "pendencias",
+    "pessoas",
+    "atrasadas",
+  ].includes(tab ?? "")
     ? tab
     : "escuro";
 
   return (
     <PageShell
       title="Acompanhamento"
-      description={`Quem precisa de um toque: canais sem registro há mais de ${DARK_CHANNEL_DAYS} dias, pessoas que sumiram e atrasadas.`}
+      description={`Quem precisa de um toque: canais sem registro há mais de ${DARK_CHANNEL_DAYS} dias, pendências de registro, pessoas que sumiram e atrasadas.`}
     >
       <Tabs defaultValue={defaultTab}>
         <TabsList className="max-w-full justify-start overflow-x-auto">
@@ -165,6 +174,12 @@ export default async function AcompanhamentoPage({
             Canais no escuro
             <span className="ml-1 tabular-nums text-muted-foreground">
               {darkChannels.length}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="pendencias">
+            Pendências
+            <span className="ml-1 tabular-nums text-muted-foreground">
+              {pendencies.total}
             </span>
           </TabsTrigger>
           <TabsTrigger value="pessoas">
@@ -215,6 +230,10 @@ export default async function AcompanhamentoPage({
               </div>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="pendencias" className="mt-2">
+          <PendenciasView data={pendencies} showDsm />
         </TabsContent>
 
         <TabsContent value="pessoas" className="mt-2">

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
+import { CategoryBadge } from "@/components/app/category-badge";
 import { MonthlyRegistrationsChart } from "@/components/app/monthly-registrations-chart";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import {
@@ -61,6 +62,11 @@ import {
   ProgressValue,
 } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import {
+  ACTIVITY_CATEGORIES,
+  CATEGORY_LABELS,
+  type ActivityCategory,
+} from "@/lib/config";
 import type {
   ReportActivity,
   ReportPhoto,
@@ -132,7 +138,12 @@ function ActivityLine({ activity }: { activity: ReportActivity }) {
       style={{ breakInside: "avoid" }}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <p className="min-w-0 flex-1 text-sm font-medium">{activity.title}</p>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 text-sm font-medium">{activity.title}</p>
+          {activity.category ? (
+            <CategoryBadge category={activity.category} />
+          ) : null}
+        </div>
         <div className="flex shrink-0 items-center gap-3">
           <span className="text-xs text-muted-foreground tabular-nums">
             {formatDate(activity.dueDate)}
@@ -246,18 +257,25 @@ function ActivitiesSection({
  */
 export function ReportView({ report }: { report: SeasonReport }) {
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
+    null
+  );
   const [lightbox, setLightbox] = React.useState<ReportPhoto | null>(null);
 
   const generatedAt = React.useMemo(() => new Date().toISOString(), []);
 
+  const hasFilters = !!branchFilter || !!categoryFilter;
+
   const filtered = React.useMemo(
     () =>
-      branchFilter
-        ? report.activities.filter(
-            (activity) => activity.branchId === branchFilter
-          )
-        : report.activities,
-    [report.activities, branchFilter]
+      report.activities.filter((activity) => {
+        if (branchFilter && activity.branchId !== branchFilter) return false;
+        if (categoryFilter && activity.category !== categoryFilter) {
+          return false;
+        }
+        return true;
+      }),
+    [report.activities, branchFilter, categoryFilter]
   );
 
   const photoCount = React.useMemo(
@@ -287,8 +305,8 @@ export function ReportView({ report }: { report: SeasonReport }) {
             (activity) => activity.problemId === problem.id
           ),
         }))
-        .filter((section) => !branchFilter || section.activities.length > 0),
-    [report.problems, filtered, branchFilter]
+        .filter((section) => !hasFilters || section.activities.length > 0),
+    [report.problems, filtered, hasFilters]
   );
 
   const unplanned = React.useMemo(
@@ -346,6 +364,21 @@ export function ReportView({ report }: { report: SeasonReport }) {
     return rows;
   }, [problemSections, unplanned]);
 
+  const byCategory = React.useMemo(() => {
+    const rows = ACTIVITY_CATEGORIES.map((category) => ({
+      label: CATEGORY_LABELS[category],
+      total: filtered.filter((activity) => activity.category === category)
+        .length,
+    }));
+    const uncategorized = filtered.filter(
+      (activity) => activity.category === null
+    ).length;
+    if (uncategorized > 0) {
+      rows.push({ label: "Sem categoria", total: uncategorized });
+    }
+    return rows;
+  }, [filtered]);
+
   const monthly = React.useMemo(() => {
     const map = new Map<string, number>();
     for (const activity of filtered) {
@@ -386,6 +419,10 @@ export function ReportView({ report }: { report: SeasonReport }) {
         ?.name
     : null;
 
+  const categoryName = categoryFilter
+    ? CATEGORY_LABELS[categoryFilter as ActivityCategory]
+    : null;
+
   return (
     <div
       className="report-root mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 md:p-6"
@@ -415,16 +452,28 @@ export function ReportView({ report }: { report: SeasonReport }) {
           </BreadcrumbList>
         </Breadcrumb>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <SearchableSelect
-            options={report.channel.branches.map((branch) => ({
-              value: branch.id,
-              label: branch.name,
-            }))}
-            value={branchFilter}
-            onValueChange={setBranchFilter}
-            placeholder="Todas as filiais"
-            className="w-56"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchableSelect
+              options={report.channel.branches.map((branch) => ({
+                value: branch.id,
+                label: branch.name,
+              }))}
+              value={branchFilter}
+              onValueChange={setBranchFilter}
+              placeholder="Todas as filiais"
+              className="w-56"
+            />
+            <SearchableSelect
+              options={ACTIVITY_CATEGORIES.map((category) => ({
+                value: category,
+                label: CATEGORY_LABELS[category],
+              }))}
+              value={categoryFilter}
+              onValueChange={setCategoryFilter}
+              placeholder="Todas as categorias"
+              className="w-56"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleCopyLink}>
               <Link2 />
@@ -454,6 +503,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
                 {report.channel.region}
                 {report.plan ? ` · ${report.plan.harvest}` : ""}
                 {branchName ? ` · ${branchName}` : ""}
+                {categoryName ? ` · ${categoryName}` : ""}
               </p>
             </div>
             <div className="text-right text-xs text-muted-foreground">
@@ -508,8 +558,8 @@ export function ReportView({ report }: { report: SeasonReport }) {
                 </EmptyMedia>
                 <EmptyTitle>Nada para relatar neste recorte</EmptyTitle>
                 <EmptyDescription>
-                  {branchFilter
-                    ? "Nenhuma atividade da safra pertence a esta filial. Limpe o filtro para ver o relatório completo."
+                  {hasFilters
+                    ? "Nenhuma atividade da safra corresponde a este recorte. Limpe os filtros para ver o relatório completo."
                     : "O plano ainda não tem problemas nem atividades registradas."}
                 </EmptyDescription>
               </EmptyHeader>
@@ -543,8 +593,8 @@ export function ReportView({ report }: { report: SeasonReport }) {
             <CardHeader>
               <CardTitle>Números da safra</CardTitle>
               <CardDescription>
-                A execução do plano em três visões: status, problema e ritmo
-                de registros.
+                A execução do plano em quatro visões: status, problema,
+                categoria e ritmo de registros.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
@@ -560,6 +610,12 @@ export function ReportView({ report }: { report: SeasonReport }) {
                     Atividades por problema
                   </p>
                   <ActivitiesByProblemChart data={byProblem} />
+                </div>
+                <div className="lg:col-span-2">
+                  <p className="mb-2 text-sm font-medium">
+                    Atividades por categoria
+                  </p>
+                  <ActivitiesByProblemChart data={byCategory} />
                 </div>
               </div>
               <div>

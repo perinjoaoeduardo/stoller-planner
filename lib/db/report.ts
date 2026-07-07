@@ -1,4 +1,5 @@
 import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityCategory } from "@/lib/config";
 import { getDisplayStatus } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,6 +22,7 @@ export type ReportPhoto = {
 export type ReportActivity = {
   id: string;
   title: string;
+  category: ActivityCategory | null;
   description: string | null;
   status: ActivityStatus;
   dueDate: string | null;
@@ -103,7 +105,7 @@ export async function getSeasonReport(
     supabase
       .from("activities")
       .select(
-        `id, title, description, status, due_date, completed_at,
+        `id, title, category, description, status, due_date, completed_at,
          problem_id, branch_id, branch:branches(name),
          responsible:profiles(full_name),
          photos:activity_photos(id, storage_path, caption, created_at),
@@ -124,6 +126,7 @@ export async function getSeasonReport(
     return {
       id: activity.id,
       title: activity.title,
+      category: activity.category as ActivityCategory | null,
       description: activity.description,
       status: getDisplayStatus({
         status: activity.status as ActivityStatus,
