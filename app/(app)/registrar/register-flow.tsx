@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, ClipboardList, Search, SearchX } from "lucide-react";
+import { ChevronRight, PenLine, Search, SearchX } from "lucide-react";
 
 import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -14,6 +14,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import type {
   BranchOption,
   BranchPlanInfo,
@@ -103,6 +104,31 @@ export function RegisterFlow({
       </header>
 
       <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
+        {/* Card — ação fora do plano (Situação B) */}
+        <button
+          type="button"
+          onClick={() => setAdhoc(true)}
+          className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-[#0063A7]/15 bg-[#0063A7]/5 p-3 text-left transition-colors hover:bg-[#0063A7]/10 active:bg-[#0063A7]/15 dark:border-[#0063A7]/20 dark:bg-[#0063A7]/10 dark:hover:bg-[#0063A7]/15"
+        >
+          <PenLine className="size-5 shrink-0 text-[#0063A7]" />
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <p className="font-medium">Registrar ação fora do plano</p>
+            <p className="text-sm text-muted-foreground">
+              Realizou uma ação que não estava no plano? Registre aqui.
+            </p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-[#0063A7]" />
+        </button>
+
+        {/* Divisor */}
+        <div className="relative my-3 flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="shrink-0 text-xs text-muted-foreground">
+            ou selecione uma atividade planejada
+          </span>
+          <Separator className="flex-1" />
+        </div>
+
         <div className="relative">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -159,8 +185,8 @@ export function RegisterFlow({
                 </EmptyMedia>
                 <EmptyTitle>Nenhuma atividade aberta</EmptyTitle>
                 <EmptyDescription>
-                  Nada encontrado no recorte atual — você ainda pode
-                  registrar uma ação fora do plano abaixo.
+                  Nada encontrado no recorte atual — você pode registrar
+                  uma ação fora do plano no topo da tela.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -195,22 +221,6 @@ export function RegisterFlow({
             ))
           )}
 
-          <button
-            type="button"
-            onClick={() => setAdhoc(true)}
-            className="flex min-h-16 w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left text-muted-foreground transition-colors hover:bg-muted/50 active:bg-muted"
-          >
-            <ClipboardList className="size-5 shrink-0" />
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="font-medium text-foreground">
-                Registrar ação fora do plano
-              </p>
-              <p className="text-sm">
-                Não estava no plano? A ação vira uma atividade concluída.
-              </p>
-            </div>
-            <ChevronRight className="size-4 shrink-0" />
-          </button>
         </div>
       </div>
     </div>
