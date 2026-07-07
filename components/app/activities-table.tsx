@@ -28,6 +28,7 @@ import {
   Search,
   Settings2,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -258,10 +259,21 @@ export function ActivitiesTable({
         accessorKey: "problemTitle",
         enableSorting: false,
         header: "Problema",
-        cell: ({ row }) =>
-          row.original.problemTitle ? (
+        cell: ({ row }) => {
+          // Pendência do "vincular depois": concluída sem problema.
+          const pending =
+            !row.original.problemId && row.original.status === "concluida";
+          const badge = row.original.problemTitle ? (
             <Badge variant="outline" className="max-w-48">
               <span className="truncate">{row.original.problemTitle}</span>
+            </Badge>
+          ) : pending ? (
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            >
+              <TriangleAlert aria-hidden="true" />
+              Vincular problema
             </Badge>
           ) : (
             <Badge
@@ -270,7 +282,24 @@ export function ActivitiesTable({
             >
               Sem vínculo
             </Badge>
-          ),
+          );
+
+          // Edição trivial: um clique no vínculo abre o Sheet de edição.
+          if (canEdit && onEdit) {
+            return (
+              <button
+                type="button"
+                onClick={() => onEdit(row.original)}
+                className="cursor-pointer rounded-md text-left underline-offset-4 hover:opacity-80"
+                aria-label="Editar problema vinculado"
+                title="Editar problema vinculado"
+              >
+                {badge}
+              </button>
+            );
+          }
+          return badge;
+        },
       },
       {
         id: "responsible",

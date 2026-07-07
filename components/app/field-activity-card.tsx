@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Camera } from "lucide-react";
+import { Camera, TriangleAlert } from "lucide-react";
 
 import { StatusBadge, type ActivityStatus } from "@/components/app/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRelativeDue } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,11 @@ export type FieldActivityCardData = {
   dueDate: string | null;
   branchName: string | null;
   channelName: string;
+  completedAt?: string | null;
+  /** Foto mais recente no bucket activity-photos (concluídas). */
+  latestPhotoPath?: string | null;
+  /** Concluída sem problema num plano que tem problemas. */
+  needsProblemLink?: boolean;
 };
 
 const OPEN_STATUSES: ActivityStatus[] = [
@@ -23,10 +29,15 @@ const OPEN_STATUSES: ActivityStatus[] = [
   "atrasada",
 ];
 
+function photoUrl(storagePath: string) {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
+}
+
 /**
  * Card de atividade do RTV em campo (Minhas Atividades e home):
  * mobile-first, alvo de toque generoso, prazo relativo em português e
- * ação rápida "Registrar" que abre o fluxo já com a atividade escolhida.
+ * ação rápida "Registrar" que abre a atividade já preenchida para
+ * concluir (Situação A). Concluídas mostram a foto e o horário.
  */
 export function FieldActivityCard({
   activity,
@@ -39,6 +50,7 @@ export function FieldActivityCard({
 }) {
   const open = OPEN_STATUSES.includes(activity.status);
   const late = activity.status === "atrasada";
+  const completed = activity.status === "concluida";
 
   return (
     <div
@@ -52,6 +64,15 @@ export function FieldActivityCard({
         className="absolute inset-0 rounded-xl"
         aria-label={activity.title}
       />
+      {completed && activity.latestPhotoPath ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={photoUrl(activity.latestPhotoPath)}
+          alt=""
+          aria-hidden="true"
+          className="size-14 shrink-0 rounded-lg border object-cover"
+        />
+      ) : null}
       <div className="min-w-0 flex-1 space-y-1">
         <p className="line-clamp-2 leading-snug font-medium">
           {activity.title}
@@ -61,6 +82,15 @@ export function FieldActivityCard({
         </p>
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
           <StatusBadge status={activity.status} />
+          {activity.needsProblemLink ? (
+            <Badge
+              variant="outline"
+              className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            >
+              <TriangleAlert aria-hidden="true" />
+              Vincular problema
+            </Badge>
+          ) : null}
           <span
             className={cn(
               "text-xs tabular-nums",
@@ -71,11 +101,17 @@ export function FieldActivityCard({
           >
             {open
               ? formatRelativeDue(activity.dueDate)
-              : activity.dueDate
-                ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
-                    locale: ptBR,
-                  })
-                : "Sem prazo"}
+              : completed && activity.completedAt
+                ? `Registrada em ${format(
+                    parseISO(activity.completedAt),
+                    "dd MMM 'às' HH:mm",
+                    { locale: ptBR }
+                  )}`
+                : activity.dueDate
+                  ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
+                      locale: ptBR,
+                    })
+                  : "Sem prazo"}
           </span>
         </div>
       </div>

@@ -19,7 +19,6 @@ import {
 import { PageShell } from "@/components/app/page-shell";
 import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge } from "@/components/app/status-badge";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -50,10 +49,11 @@ import {
   getCurrentProfile,
   getScopedChannelIds,
 } from "@/lib/auth/scope";
-import { getActivityDetail } from "@/lib/db/channels";
+import { getActivityDetail, getPlanProblems } from "@/lib/db/channels";
 import { isLateActivity } from "@/lib/db/status";
 
 import { PhotosCard } from "./photos-card";
+import { ProblemEditor } from "./problem-editor";
 import { StatusCard } from "./status-card";
 
 export const dynamic = "force-dynamic";
@@ -136,17 +136,25 @@ export default async function AtividadePage({
   const channelIds = await getScopedChannelIds(profile);
   if (!channelIds.includes(activity.channelId)) return <ActivityNotFound />;
 
-  const [canEdit, canRegister] = await Promise.all([
+  const [canEdit, canRegister, planProblems] = await Promise.all([
     canEditPlan(profile, activity.channelId),
     canRegisterExecution(profile, {
       responsible_id: activity.responsibleId,
       branch_id: activity.branchId,
       channel_id: activity.channelId,
     }),
+    getPlanProblems(activity.planId),
   ]);
 
   const overdue =
     isLateActivity(activity) && activity.status !== "concluida";
+
+  // Pendência do "vincular depois": concluída, sem problema, num plano
+  // que tem problemas cadastrados.
+  const needsProblemLink =
+    activity.status === "concluida" &&
+    activity.problemId === null &&
+    planProblems.length > 0;
 
   const timeline = [...activity.events];
   const hasCreationEvent = timeline.some((event) => event.type === "criada");
@@ -154,19 +162,15 @@ export default async function AtividadePage({
   const aboutRows = [
     {
       label: "Problema vinculado",
-      value: activity.problemTitle ? (
-        <Link
-          href={`/canais/${activity.channelId}?tab=problemas`}
-          className="underline-offset-4 hover:underline"
-        >
-          <Badge variant="outline" className="max-w-full">
-            <span className="truncate">{activity.problemTitle}</span>
-          </Badge>
-        </Link>
-      ) : (
-        <Badge variant="outline" className="border-dashed text-muted-foreground">
-          Sem vínculo
-        </Badge>
+      value: (
+        <ProblemEditor
+          activityId={activity.id}
+          problemId={activity.problemId}
+          problemTitle={activity.problemTitle}
+          problems={planProblems}
+          canEdit={canEdit || canRegister}
+          showPendency={needsProblemLink}
+        />
       ),
     },
     {

@@ -311,6 +311,22 @@ export async function getScopedActivities(
   }));
 }
 
+export type ProblemOption = { id: string; title: string };
+
+/** Problemas do plano, em ordem — para o editor de vínculo da atividade. */
+export async function getPlanProblems(
+  planId: string
+): Promise<ProblemOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("problems")
+    .select("id, title")
+    .eq("plan_id", planId)
+    .order("order_index");
+  if (error) throw error;
+  return data;
+}
+
 export type ActivityEventRow = {
   id: string;
   type: string;

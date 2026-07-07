@@ -78,9 +78,9 @@ export type ActivityFormValues = z.infer<
 
 /**
  * Heurística de categoria a partir de um texto livre (mesmos padrões do
- * backfill em migration). Usada pelo registro avulso enquanto o fluxo
- * Registrar ainda não pergunta a categoria explicitamente — garante que
- * nenhuma atividade nasça sem categoria.
+ * backfill em migration). O fluxo Registrar agora pergunta a categoria
+ * explicitamente; mantida como referência do backfill e para eventuais
+ * importações em lote.
  */
 export function inferCategoryFromText(text: string): ActivityCategory {
   const normalized = text.toLowerCase();

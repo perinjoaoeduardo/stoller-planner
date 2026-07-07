@@ -323,6 +323,74 @@ export async function updateActivity(
   return { ok: true };
 }
 
+/**
+ * Vincula/desvincula só o problema da atividade (edição trivial pós
+ * "vincular depois"). Permissão ampla: além de quem edita o plano, o
+ * RTV/RDC que pode registrar execução também pode ajustar o vínculo.
+ */
+export async function updateActivityProblem(input: {
+  activityId: string;
+  problemId: string | null;
+}): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  const supabase = await createClient();
+
+  const { data: activity } = await supabase
+    .from("activities")
+    .select(
+      "plan_id, problem_id, responsible_id, branch_id, plan:plans(channel_id)"
+    )
+    .eq("id", input.activityId)
+    .maybeSingle();
+  if (!activity?.plan) return { ok: false, error: "Atividade não encontrada." };
+
+  const [editor, registrar] = await Promise.all([
+    canEditPlan(profile, activity.plan.channel_id),
+    canRegisterExecution(profile, {
+      responsible_id: activity.responsible_id,
+      branch_id: activity.branch_id,
+      channel_id: activity.plan.channel_id,
+    }),
+  ]);
+  if (!editor && !registrar) {
+    return { ok: false, error: "Você não pode alterar esta atividade." };
+  }
+
+  let problemTitle: string | null = null;
+  if (input.problemId) {
+    const { data: problem } = await supabase
+      .from("problems")
+      .select("id, title, plan_id")
+      .eq("id", input.problemId)
+      .maybeSingle();
+    if (!problem || problem.plan_id !== activity.plan_id) {
+      return { ok: false, error: "Este problema não pertence ao plano." };
+    }
+    problemTitle = problem.title;
+  }
+
+  if (activity.problem_id === input.problemId) return { ok: true };
+
+  const { error } = await supabase
+    .from("activities")
+    .update({ problem_id: input.problemId })
+    .eq("id", input.activityId);
+  if (error) return { ok: false, error: GENERIC_ERROR };
+
+  await logEvent({
+    activityId: input.activityId,
+    profileId: profile.id,
+    type: "editada",
+    description: input.problemId
+      ? `Problema vinculado por ${profile.fullName}: ${problemTitle}`
+      : `Vínculo com problema removido por ${profile.fullName}`,
+  });
+
+  revalidatePlanPages(activity.plan.channel_id, input.activityId);
+  revalidatePath("/minhas-atividades");
+  return { ok: true };
+}
+
 export async function deleteActivity(input: {
   activityId: string;
 }): Promise<ActionResult> {

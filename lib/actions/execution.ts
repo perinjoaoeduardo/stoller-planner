@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import {
-  inferCategoryFromText,
+  isCategoryRequired,
   isDescriptionRequired,
 } from "@/lib/activities/rules";
+import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
 import {
   canRegisterExecution,
   getCurrentProfile,
@@ -25,11 +26,20 @@ const GENERIC_ERROR =
   "Não foi possível concluir o registro. Verifique o sinal e tente de novo.";
 
 export type RegisterExecutionInput = {
-  /** Atividade existente do plano (fluxo normal). */
+  /** Atividade existente do plano (Situação A: abrir e concluir). */
   activityId?: string;
-  /** Registro avulso: filial onde a ação aconteceu. */
+  /** Registro avulso (Situação B): filial onde a ação aconteceu. */
   adhocBranchId?: string;
+  /**
+   * O que foi feito. Obrigatória no avulso; opcional na atividade
+   * planejada (o plano já descreve) — se vier diferente, atualiza a
+   * descrição da atividade.
+   */
   description: string;
+  /** Categoria do registro avulso (obrigatória na Situação B). */
+  category?: ActivityCategory;
+  /** Problema do plano no registro avulso; null = "vincular depois". */
+  problemId?: string | null;
   /** Marcar a atividade como concluída ao registrar. */
   markCompleted: boolean;
   /** Caminhos no bucket activity-photos, já enviados pelo client. */
@@ -53,23 +63,25 @@ export async function registerExecution(
   const profile = await getCurrentProfile();
   const supabase = await createClient();
 
-  // Regras centrais (lib/activities/rules.ts): descrição é o mínimo
-  // obrigatório; foto é opcional — nunca bloqueia o registro.
+  // Regras centrais (lib/activities/rules.ts): no registro avulso a
+  // descrição é o mínimo obrigatório; na atividade planejada o plano já
+  // descreve — ajustar é opcional. Foto nunca bloqueia o registro.
   const description = input.description.trim();
-  if (isDescriptionRequired() && !description) {
+  if (!input.activityId && isDescriptionRequired() && !description) {
     return { ok: false, error: "Descreva o que foi feito antes de registrar." };
   }
 
   let activityId: string;
   let channelId: string;
   let completed: boolean;
+  let photoCaption = description || null;
 
   if (input.activityId) {
-    // ── Fluxo normal: vincular a uma atividade do plano ────────────────
+    // ── Situação A: abrir a atividade planejada e concluir ─────────────
     const { data: activity } = await supabase
       .from("activities")
       .select(
-        "id, status, responsible_id, branch_id, plan:plans(channel_id)"
+        "id, title, description, status, responsible_id, branch_id, plan:plans(channel_id)"
       )
       .eq("id", input.activityId)
       .maybeSingle();
@@ -92,14 +104,27 @@ export async function registerExecution(
     activityId = activity.id;
     channelId = activity.plan.channel_id;
     completed = input.markCompleted;
+    photoCaption = description || activity.title;
 
+    const updates: {
+      status?: "concluida";
+      completed_at?: string;
+      description?: string;
+    } = {};
     if (input.markCompleted && activity.status !== "concluida") {
+      // completed_at automático — nunca digitado pelo usuário.
+      updates.status = "concluida";
+      updates.completed_at = new Date().toISOString();
+    }
+    // A realidade foi diferente do planejado: a descrição ajustada
+    // substitui a planejada na própria atividade.
+    if (description && description !== (activity.description ?? "")) {
+      updates.description = description;
+    }
+    if (Object.keys(updates).length > 0) {
       const { error } = await supabase
         .from("activities")
-        .update({
-          status: "concluida",
-          completed_at: new Date().toISOString(),
-        })
+        .update(updates)
         .eq("id", activity.id);
       if (error) return { ok: false, error: GENERIC_ERROR };
     }
@@ -117,9 +142,17 @@ export async function registerExecution(
       .maybeSingle();
     if (!branch) return { ok: false, error: "Filial não encontrada." };
 
+    // Categoria: obrigatória em toda criação (regra central).
+    if (
+      isCategoryRequired() &&
+      (!input.category || !ACTIVITY_CATEGORIES.includes(input.category))
+    ) {
+      return { ok: false, error: "Selecione a categoria da ação." };
+    }
+
     const { data: plan } = await supabase
       .from("plans")
-      .select("id")
+      .select("id, problems(id)")
       .eq("channel_id", branch.channel_id)
       .eq("status", "ativo")
       .maybeSingle();
@@ -130,16 +163,21 @@ export async function registerExecution(
       };
     }
 
+    // Problema: se veio, precisa ser do plano do canal. null = pendência
+    // "vincular depois" (derivada: concluída + plano com problemas).
+    const planProblemIds = new Set(plan.problems.map((problem) => problem.id));
+    if (input.problemId && !planProblemIds.has(input.problemId)) {
+      return { ok: false, error: "Este problema não pertence ao plano do canal." };
+    }
+
     const { data: created, error } = await supabase
       .from("activities")
       .insert({
         plan_id: plan.id,
         title: titleFromDescription(description),
-        // Categoria é obrigatória em toda criação; enquanto o fluxo
-        // Registrar não pergunta explicitamente, inferimos da descrição.
-        category: inferCategoryFromText(description),
+        category: input.category,
         description,
-        problem_id: null,
+        problem_id: input.problemId ?? null,
         branch_id: branch.id,
         responsible_id: profile.id,
         due_date: null,
@@ -164,10 +202,12 @@ export async function registerExecution(
     return { ok: false, error: "Escolha uma atividade ou o registro avulso." };
   }
 
-  // ── Fotos (caption = descrição do registro) ──────────────────────────
+  // ── Fotos (caption = descrição do registro ou título da atividade) ──
   if (input.photoPaths.length > 0) {
     const caption =
-      description.length > 140 ? `${description.slice(0, 137)}...` : description;
+      photoCaption && photoCaption.length > 140
+        ? `${photoCaption.slice(0, 137)}...`
+        : photoCaption;
     const { error } = await supabase.from("activity_photos").insert(
       input.photoPaths.map((path) => ({
         activity_id: activityId,
@@ -182,7 +222,9 @@ export async function registerExecution(
     activityId,
     profileId: profile.id,
     type: "execucao_registrada",
-    description: `Execução registrada por ${profile.fullName}: ${description}`,
+    description: description
+      ? `Execução registrada por ${profile.fullName}: ${description}`
+      : `Execução registrada por ${profile.fullName}`,
   });
 
   revalidatePath("/");

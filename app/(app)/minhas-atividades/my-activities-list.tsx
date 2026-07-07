@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { differenceInCalendarDays, parseISO } from "date-fns";
 import {
@@ -10,6 +11,7 @@ import {
   ChevronDown,
   CircleAlert,
   ClipboardList,
+  ClipboardPlus,
   RefreshCw,
 } from "lucide-react";
 
@@ -147,6 +149,20 @@ export function MyActivitiesList({
           <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
         </Button>
       </div>
+
+      {/* Situação B: registro de ação que não estava no plano */}
+      <Button
+        variant="outline"
+        size="lg"
+        className="h-12 w-full border-dashed text-base"
+        nativeButton={false}
+        render={
+          <Link href="/registrar?avulso=1">
+            <ClipboardPlus className="size-5" />
+            Registrar ação fora do plano
+          </Link>
+        }
+      />
 
       {!hasAnything ? (
         <Empty className="py-14">

@@ -4,6 +4,7 @@ import {
   getScopedChannelIds,
   type CurrentProfile,
 } from "@/lib/auth/scope";
+import type { ActivityCategory } from "@/lib/config";
 import { getDisplayStatus } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,6 +24,8 @@ export type FieldActivity = {
   id: string;
   title: string;
   status: ActivityStatus;
+  category: ActivityCategory | null;
+  description: string | null;
   dueDate: string | null;
   completedAt: string | null;
   branchId: string | null;
@@ -30,6 +33,15 @@ export type FieldActivity = {
   channelId: string;
   channelName: string;
   responsibleId: string | null;
+  problemId: string | null;
+  problemTitle: string | null;
+  /** Quantos problemas o plano da atividade tem cadastrados. */
+  planProblemCount: number;
+  photoCount: number;
+  /** Foto mais recente (caminho no bucket activity-photos). */
+  latestPhotoPath: string | null;
+  /** Pendência derivada: concluída sem problema num plano que tem problemas. */
+  needsProblemLink: boolean;
   /** O usuário logado é o responsável. */
   isMine: boolean;
   /** A atividade é de uma filial linkada ao usuário. */
@@ -78,10 +90,13 @@ export async function getFieldActivities(
     supabase
       .from("activities")
       .select(
-        `id, title, status, due_date, completed_at,
+        `id, title, status, category, description, due_date, completed_at,
          branch_id, branch:branches(name),
          responsible_id,
-         plan:plans!inner(status, channel_id, channel:channels(id, name))`
+         problem_id, problem:problems(title),
+         photos:activity_photos(storage_path, created_at),
+         plan:plans!inner(status, channel_id, channel:channels(id, name),
+           problems(id))`
       )
       .eq("plan.status", "ativo")
       .in("plan.channel_id", channelIds),
@@ -92,24 +107,42 @@ export async function getFieldActivities(
 
   const branchIdSet = new Set(branchIds);
 
-  const activities: FieldActivity[] = activitiesRes.data.map((activity) => ({
-    id: activity.id,
-    title: activity.title,
-    status: getDisplayStatus({
+  const activities: FieldActivity[] = activitiesRes.data.map((activity) => {
+    const status = getDisplayStatus({
       status: activity.status as ActivityStatus,
       dueDate: activity.due_date,
-    }),
-    dueDate: activity.due_date,
-    completedAt: activity.completed_at,
-    branchId: activity.branch_id,
-    branchName: activity.branch?.name ?? null,
-    channelId: activity.plan?.channel?.id ?? "",
-    channelName: activity.plan?.channel?.name ?? "—",
-    responsibleId: activity.responsible_id,
-    isMine: activity.responsible_id === profile.id,
-    isMyBranch:
-      activity.branch_id !== null && branchIdSet.has(activity.branch_id),
-  }));
+    });
+    const planProblemCount = activity.plan?.problems?.length ?? 0;
+    const photos = [...activity.photos].sort((a, b) =>
+      a.created_at < b.created_at ? 1 : -1
+    );
+    return {
+      id: activity.id,
+      title: activity.title,
+      status,
+      category: activity.category as ActivityCategory | null,
+      description: activity.description,
+      dueDate: activity.due_date,
+      completedAt: activity.completed_at,
+      branchId: activity.branch_id,
+      branchName: activity.branch?.name ?? null,
+      channelId: activity.plan?.channel?.id ?? "",
+      channelName: activity.plan?.channel?.name ?? "—",
+      responsibleId: activity.responsible_id,
+      problemId: activity.problem_id,
+      problemTitle: activity.problem?.title ?? null,
+      planProblemCount,
+      photoCount: photos.length,
+      latestPhotoPath: photos[0]?.storage_path ?? null,
+      needsProblemLink:
+        status === "concluida" &&
+        activity.problem_id === null &&
+        planProblemCount > 0,
+      isMine: activity.responsible_id === profile.id,
+      isMyBranch:
+        activity.branch_id !== null && branchIdSet.has(activity.branch_id),
+    };
+  });
 
   // Relevância: minhas → da minha filial → demais; empate por prazo
   // mais próximo (sem prazo por último).
@@ -124,6 +157,46 @@ export async function getFieldActivities(
   });
 
   return { activities, branchOptions };
+}
+
+export type BranchPlanInfo = {
+  branchId: string;
+  planId: string | null;
+  /** Problemas do plano ativo do canal da filial (Situação B). */
+  problems: { id: string; title: string }[];
+};
+
+/**
+ * Para cada filial do usuário, o plano ativo do canal dela e os
+ * problemas cadastrados — alimenta o registro avulso (fora do plano).
+ */
+export async function getBranchPlans(
+  branchIds: string[]
+): Promise<BranchPlanInfo[]> {
+  if (branchIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("branches")
+    .select(
+      `id,
+       channel:channels(id,
+         plans(id, status, problems(id, title, order_index)))`
+    )
+    .in("id", branchIds);
+
+  if (error) throw error;
+
+  return data.map((branch) => {
+    const plan = branch.channel?.plans.find((item) => item.status === "ativo");
+    return {
+      branchId: branch.id,
+      planId: plan?.id ?? null,
+      problems: (plan?.problems ?? [])
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((problem) => ({ id: problem.id, title: problem.title })),
+    };
+  });
 }
 
 export type RecentExecution = {
