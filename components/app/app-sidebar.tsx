@@ -54,10 +54,8 @@ export function AppSidebar({
           >
             <BrandLogo variant="icon" className="text-sidebar-foreground" />
           </Link>
-          <div className="flex items-center gap-0.5 group-data-[collapsible=icon]:hidden">
-            <ThemeToggle className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
-            <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
-          </div>
+          <ThemeToggle className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
+          <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground" />
         </div>
       </SidebarHeader>
       <SidebarContent>
