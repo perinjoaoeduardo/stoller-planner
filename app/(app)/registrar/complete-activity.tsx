@@ -187,11 +187,11 @@ export function CompleteActivity({
                   </span>
                 </MetaRow>
                 {activity.problemTitle ? (
-                  <MetaRow icon={CheckCircle2} label="Problema do plano">
+                  <MetaRow icon={CheckCircle2} label="Meta do plano">
                     {activity.problemTitle}
                   </MetaRow>
                 ) : activity.planProblemCount > 0 ? (
-                  <MetaRow icon={CheckCircle2} label="Problema do plano">
+                  <MetaRow icon={CheckCircle2} label="Meta do plano">
                     <span className="text-muted-foreground">
                       Sem vínculo (você pode vincular depois na página da
                       atividade)

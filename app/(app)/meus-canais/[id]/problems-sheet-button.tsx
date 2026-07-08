@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 /**
- * Botão "Ver problemas" no header da visão do canal. Dispara um
+ * Botão "Ver metas" no header da visão do canal. Dispara um
  * CustomEvent que o client MeuCanalView escuta para abrir o Sheet
  * lateral de problemas.
  */
@@ -20,7 +20,7 @@ export function ProblemsSheetButton({ count }: { count: number }) {
       className="gap-2"
     >
       <Target className="size-4" />
-      Ver problemas
+      Ver metas
       <Badge variant="secondary" className="ml-1 tabular-nums">
         {count}
       </Badge>

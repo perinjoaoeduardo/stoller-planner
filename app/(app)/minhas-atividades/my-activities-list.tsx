@@ -400,7 +400,7 @@ export function MyActivitiesList({
               options={problemOptions}
               value={problemFilter}
               onValueChange={setProblemFilter}
-              placeholder="Problema"
+              placeholder="Meta"
               className="h-10 min-w-44"
             />
           ) : null}

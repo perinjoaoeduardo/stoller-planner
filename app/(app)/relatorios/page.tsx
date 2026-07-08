@@ -86,7 +86,7 @@ export default async function RelatoriosPage() {
                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                   <Badge variant="secondary" className="tabular-nums">
                     {channel.problemCount}{" "}
-                    {channel.problemCount === 1 ? "problema" : "problemas"}
+                    {channel.problemCount === 1 ? "meta" : "metas"}
                   </Badge>
                   <Badge variant="secondary" className="tabular-nums">
                     {channel.activityCount}{" "}

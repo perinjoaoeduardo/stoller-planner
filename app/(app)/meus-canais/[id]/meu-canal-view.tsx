@@ -182,7 +182,7 @@ function KpiCard({
 /**
  * Visão do canal do RTV — uma tela focada em atividades: KPIs
  * clicáveis funcionam como filtros de status na tabela densa abaixo.
- * Problemas do plano vivem em Sheet lateral acionável.
+ * Metas do plano vivem em Sheet lateral acionável.
  */
 export function MeuCanalView({
   channel,
@@ -468,10 +468,10 @@ export function MeuCanalView({
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="gap-1.5 py-1 pl-3 pr-1">
             <Target className="size-3" />
-            Problema: {problemFilter.title}
+            Meta: {problemFilter.title}
             <button
               type="button"
-              aria-label="Remover filtro de problema"
+              aria-label="Remover filtro de meta"
               onClick={() => setProblemFilter(null)}
               className="ml-1 flex size-4 items-center justify-center rounded-full hover:bg-muted"
             >
@@ -567,7 +567,7 @@ export function MeuCanalView({
                     Categoria
                   </TableHead>
                   <TableHead className="hidden xl:table-cell">
-                    Problema
+                    Meta
                   </TableHead>
                   <TableHead className="hidden lg:table-cell">
                     Responsáveis
@@ -798,9 +798,9 @@ export function MeuCanalView({
       <Sheet open={problemsOpen} onOpenChange={setProblemsOpen}>
         <SheetContent className="w-full sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Problemas do plano</SheetTitle>
+            <SheetTitle>Metas do plano</SheetTitle>
             <SheetDescription>
-              Os problemas mapeados no papel em branco desta safra.
+              As metas definidas no papel em branco desta safra.
             </SheetDescription>
           </SheetHeader>
           <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 pb-6">
@@ -810,9 +810,9 @@ export function MeuCanalView({
                   <EmptyMedia variant="icon">
                     <Target />
                   </EmptyMedia>
-                  <EmptyTitle>Sem problemas mapeados</EmptyTitle>
+                  <EmptyTitle>Sem metas definidas</EmptyTitle>
                   <EmptyDescription>
-                    Este canal ainda não tem problemas cadastrados no plano.
+                    Este canal ainda não tem metas cadastradas no plano.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -839,19 +839,22 @@ export function MeuCanalView({
                         setProblemFilter(problem);
                         setProblemsOpen(false);
                       }}
-                      className="flex w-full flex-col gap-3 p-4 text-left"
+                      className="flex w-full flex-col gap-3 p-5 text-left"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="font-medium leading-snug">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="min-w-0 font-medium leading-snug">
                           {problem.title}
                         </p>
-                        <Badge variant="secondary" className="shrink-0">
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 tabular-nums"
+                        >
                           {linked.length}{" "}
                           {linked.length === 1 ? "atividade" : "atividades"}
                         </Badge>
                       </div>
                       {problem.description ? (
-                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                        <p className="text-sm leading-relaxed text-muted-foreground">
                           {problem.description}
                         </p>
                       ) : null}

@@ -200,7 +200,7 @@ export function ActivityForm({
 
           {options.problems.length > 0 ? (
             <Field data-invalid={!!errors.problemId || undefined}>
-              <FieldLabel htmlFor="activity-problem">Problema</FieldLabel>
+              <FieldLabel htmlFor="activity-problem">Meta</FieldLabel>
               <Controller
                 control={form.control}
                 name="problemId"
@@ -212,7 +212,7 @@ export function ActivityForm({
                     onValueChange={field.onChange}
                     placeholder={
                       problemRequired
-                        ? "Selecione o problema do plano"
+                        ? "Selecione a meta do plano"
                         : "Sem vínculo por enquanto"
                     }
                   />
@@ -220,11 +220,11 @@ export function ActivityForm({
               />
               {problemRequired ? (
                 <FieldDescription>
-                  Toda atividade responde a um problema do plano.
+                  Toda atividade apoia uma meta do plano.
                 </FieldDescription>
               ) : (
                 <FieldDescription>
-                  Vincular a um problema fortalece o relatório de safra.
+                  Vincular a uma meta fortalece o relatório de safra.
                 </FieldDescription>
               )}
               <FieldError errors={[errors.problemId]} />

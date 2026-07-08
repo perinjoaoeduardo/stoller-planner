@@ -88,7 +88,7 @@ export function ProblemsTab({
       toast.error(result.error);
       return;
     }
-    toast.success("Problema excluído. As atividades foram mantidas.");
+    toast.success("Meta excluída. As atividades foram mantidas.");
     setDeleting(null);
   }
 
@@ -102,7 +102,7 @@ export function ProblemsTab({
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={openCreate}>
             <Plus />
-            Novo problema
+            Nova meta
           </Button>
         </div>
       ) : null}
@@ -115,17 +115,17 @@ export function ProblemsTab({
                 <EmptyMedia variant="icon">
                   <ListTodo />
                 </EmptyMedia>
-                <EmptyTitle>Nenhum problema mapeado</EmptyTitle>
+                <EmptyTitle>Nenhuma meta definida</EmptyTitle>
                 <EmptyDescription>
-                  Todo bom plano começa nomeando os problemas do canal. As
-                  atividades da safra nascem deles.
+                  Todo bom plano começa nomeando as metas do canal. As
+                  atividades da safra nascem delas.
                 </EmptyDescription>
               </EmptyHeader>
               {canEdit ? (
                 <EmptyContent>
                   <Button onClick={openCreate}>
                     <Plus />
-                    Mapear primeiro problema
+                    Mapear primeira meta
                   </Button>
                 </EmptyContent>
               ) : null}
@@ -155,7 +155,7 @@ export function ProblemsTab({
                         {problem.title}
                       </p>
                       {problem.description ? (
-                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                        <p className="text-sm leading-relaxed text-muted-foreground">
                           {problem.description}
                         </p>
                       ) : null}
@@ -169,7 +169,7 @@ export function ProblemsTab({
                           onClick={() => handleMove(problem.id, "up")}
                         >
                           <ArrowUp />
-                          <span className="sr-only">Subir problema</span>
+                          <span className="sr-only">Subir meta</span>
                         </Button>
                         <Button
                           variant="ghost"
@@ -178,7 +178,7 @@ export function ProblemsTab({
                           onClick={() => handleMove(problem.id, "down")}
                         >
                           <ArrowDown />
-                          <span className="sr-only">Descer problema</span>
+                          <span className="sr-only">Descer meta</span>
                         </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger
@@ -186,7 +186,7 @@ export function ProblemsTab({
                               <Button variant="ghost" size="icon-sm">
                                 <MoreHorizontal />
                                 <span className="sr-only">
-                                  Ações do problema
+                                  Ações da meta
                                 </span>
                               </Button>
                             }
@@ -242,21 +242,21 @@ export function ProblemsTab({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir problema?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir meta?</AlertDialogTitle>
             <AlertDialogDescription>
               {deletingCount > 0
                 ? `${deletingCount} ${
                     deletingCount === 1
-                      ? "atividade ficará sem problema vinculado"
-                      : "atividades ficarão sem problema vinculado"
+                      ? "atividade ficará sem meta vinculada"
+                      : "atividades ficarão sem meta vinculada"
                   } — elas não serão excluídas. Essa ação não pode ser desfeita.`
-                : "Este problema não tem atividades vinculadas. Essa ação não pode ser desfeita."}
+                : "Esta meta não tem atividades vinculadas. Essa ação não pode ser desfeita."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={handleDelete}>
-              Excluir problema
+              Excluir meta
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

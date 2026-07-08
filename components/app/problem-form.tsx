@@ -78,7 +78,7 @@ export function ProblemForm({
     }
 
     toast.success(
-      isEditing ? "Problema atualizado." : "Problema adicionado ao plano."
+      isEditing ? "Meta atualizada." : "Meta adicionada ao plano."
     );
     onOpenChange(false);
   }
@@ -89,8 +89,8 @@ export function ProblemForm({
     <FormShell
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "Editar problema" : "Novo problema"}
-      description="O problema é o ponto de partida da corrente Problema → Atividades → Resultado."
+      title={isEditing ? "Editar meta" : "Nova meta"}
+      description="A meta é o ponto de partida da corrente Meta → Atividades → Resultado."
     >
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
         <FieldGroup className="gap-5 pt-4">
@@ -115,7 +115,7 @@ export function ProblemForm({
             <Textarea
               id="problem-description"
               rows={4}
-              placeholder="Contexto do problema: números, causas e impacto no canal."
+              placeholder="Contexto da meta: números, causas e impacto no canal."
               {...form.register("description")}
             />
           </Field>
@@ -130,7 +130,7 @@ export function ProblemForm({
               ) : isEditing ? (
                 "Salvar alterações"
               ) : (
-                "Criar problema"
+                "Criar meta"
               )}
             </Button>
             <Button

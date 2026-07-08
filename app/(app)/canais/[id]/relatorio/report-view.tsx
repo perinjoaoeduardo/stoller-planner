@@ -216,7 +216,7 @@ function ActivitiesSection({
 
         {total === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nenhuma atividade registrada para este problema no recorte atual.
+            Nenhuma atividade registrada para esta meta no recorte atual.
           </p>
         ) : (
           <div className="flex flex-col divide-y">
@@ -400,7 +400,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
       icon: CircleCheckBig,
     },
     {
-      label: "Problemas trabalhados",
+      label: "Metas trabalhadas",
       value: workedProblems.toString(),
       icon: ListChecks,
     },
@@ -560,7 +560,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
                 <EmptyDescription>
                   {hasFilters
                     ? "Nenhuma atividade da safra corresponde a este recorte. Limpe os filtros para ver o relatório completo."
-                    : "O plano ainda não tem problemas nem atividades registradas."}
+                    : "O plano ainda não tem metas nem atividades registradas."}
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -593,7 +593,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
             <CardHeader>
               <CardTitle>Números da safra</CardTitle>
               <CardDescription>
-                A execução do plano em quatro visões: status, problema,
+                A execução do plano em quatro visões: status, meta,
                 categoria e ritmo de registros.
               </CardDescription>
             </CardHeader>
@@ -607,7 +607,7 @@ export function ReportView({ report }: { report: SeasonReport }) {
                 </div>
                 <div>
                   <p className="mb-2 text-sm font-medium">
-                    Atividades por problema
+                    Atividades por meta
                   </p>
                   <ActivitiesByProblemChart data={byProblem} />
                 </div>

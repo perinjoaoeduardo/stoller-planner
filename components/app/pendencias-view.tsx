@@ -47,7 +47,7 @@ const ISSUE_CONFIG: Record<
     className:
       "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
     description:
-      "Atividades concluídas sem vínculo com um problema do plano.",
+      "Atividades concluídas sem vínculo com uma meta do plano.",
   },
   sem_categoria: {
     icon: Tag,
@@ -87,7 +87,7 @@ export function PendenciasView({
               </EmptyMedia>
               <EmptyTitle>Nenhuma pendência por aqui</EmptyTitle>
               <EmptyDescription>
-                Todos os registros concluídos têm foto, problema vinculado e
+                Todos os registros concluídos têm foto, meta vinculada e
                 categoria. Plano organizado!
               </EmptyDescription>
             </EmptyHeader>

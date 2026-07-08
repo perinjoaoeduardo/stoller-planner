@@ -150,7 +150,7 @@ export function ChannelView({
         .length,
     }));
     const unlinked = filtered.filter((activity) => !activity.problemId).length;
-    rows.push({ label: "Sem problema vinculado", total: unlinked });
+    rows.push({ label: "Sem meta vinculada", total: unlinked });
     return rows;
   }, [problems, filtered]);
 
@@ -238,7 +238,7 @@ export function ChannelView({
                 onClick={() => setProblemFormOpen(true)}
               >
                 <Plus />
-                Novo problema
+                Nova meta
               </Button>
               <Button size="sm" className="h-9" onClick={openCreateActivity}>
                 <Plus />
@@ -317,7 +317,7 @@ export function ChannelView({
             <TabsList>
               <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
               <TabsTrigger value="problemas">
-                Problemas
+                Metas
                 <span className="ml-1 tabular-nums text-muted-foreground">
                   {problems.length}
                 </span>
@@ -345,7 +345,7 @@ export function ChannelView({
                 </Card>
                 <Card>
                   <CardHeader>
-                    <CardTitle>Atividades por problema</CardTitle>
+                    <CardTitle>Atividades por meta</CardTitle>
                     <CardDescription>
                       Onde o plano concentra esforço — e o débito de vínculo.
                     </CardDescription>

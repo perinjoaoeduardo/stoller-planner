@@ -73,7 +73,7 @@ function ChannelCardTile({ channel }: { channel: ChannelCard }) {
         <p className="-mt-2 text-sm text-muted-foreground">{channel.region}</p>
 
         <div className="grid grid-cols-3 gap-4">
-          <MetricCol value={channel.problemCount} label="problemas" />
+          <MetricCol value={channel.problemCount} label="metas" />
           <MetricCol value={channel.activityCount} label="atividades" />
           <MetricCol
             value={`${channel.completedPercent}%`}

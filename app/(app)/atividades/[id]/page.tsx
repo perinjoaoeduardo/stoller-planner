@@ -237,7 +237,7 @@ export default async function AtividadePage({
       ),
     },
     {
-      label: "Problema vinculado",
+      label: "Meta vinculada",
       value: (
         <ProblemEditor
           activityId={activity.id}

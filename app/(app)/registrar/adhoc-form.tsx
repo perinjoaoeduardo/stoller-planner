@@ -147,7 +147,7 @@ export function AdhocForm({
       : !category
         ? "Escolha o tipo de ação."
         : !problemOk
-          ? 'Escolha um problema do plano ou "Vincular depois".'
+          ? 'Escolha uma meta do plano ou "Vincular depois".'
           : null;
 
   async function submit() {
@@ -357,9 +357,9 @@ export function AdhocForm({
           {planProblems.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>A qual problema essa ação responde?</CardTitle>
+                <CardTitle>Qual meta do plano essa ação apoia?</CardTitle>
                 <CardDescription>
-                  Vincular a um problema fortalece o relatório de safra.
+                  Vincular a uma meta fortalece o relatório de safra.
                 </CardDescription>
               </CardHeader>
               <CardContent>

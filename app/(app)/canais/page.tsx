@@ -48,7 +48,7 @@ function ChannelCardItem({ channel }: { channel: ChannelCard }) {
               <p className="text-xl font-semibold tabular-nums">
                 {channel.problemCount}
               </p>
-              <p className="text-xs text-muted-foreground">problemas</p>
+              <p className="text-xs text-muted-foreground">metas</p>
             </div>
             <div>
               <p className="text-xl font-semibold tabular-nums">

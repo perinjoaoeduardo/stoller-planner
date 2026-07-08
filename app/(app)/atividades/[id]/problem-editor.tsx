@@ -59,8 +59,8 @@ export function ProblemEditor({
     }
     toast.success(
       nextProblemId
-        ? "Problema vinculado à atividade."
-        : "Vínculo com problema removido."
+        ? "Meta vinculada à atividade."
+        : "Vínculo com meta removido."
     );
     setOpen(false);
   }
@@ -79,7 +79,7 @@ export function ProblemEditor({
             {problemTitle ? (
               <>
                 <Pencil className="size-3.5" />
-                <span className="sr-only">Alterar problema vinculado</span>
+                <span className="sr-only">Alterar meta vinculada</span>
               </>
             ) : (
               <>
@@ -92,9 +92,9 @@ export function ProblemEditor({
       />
       <PopoverContent align="start" className="w-80">
         <PopoverHeader>
-          <PopoverTitle>Vincular a um problema</PopoverTitle>
+          <PopoverTitle>Vincular a uma meta</PopoverTitle>
           <PopoverDescription>
-            Escolha o problema do plano que esta ação ataca.
+            Escolha a meta do plano que esta ação apoia.
           </PopoverDescription>
         </PopoverHeader>
         <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto">
@@ -170,7 +170,7 @@ export function ProblemEditor({
           className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
         >
           <TriangleAlert aria-hidden="true" />
-          Vincular problema
+          Vincular meta
         </Badge>
       ) : (
         <Badge

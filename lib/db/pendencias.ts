@@ -27,7 +27,7 @@ export type PendencyType = (typeof PENDENCY_TYPES)[number];
 
 export const PENDENCY_LABELS: Record<PendencyType, string> = {
   sem_foto: "Sem foto",
-  sem_problema: "Sem problema vinculado",
+  sem_problema: "Sem meta vinculada",
   sem_categoria: "Sem categoria",
 };
 

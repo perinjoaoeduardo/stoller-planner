@@ -33,7 +33,7 @@ export default async function PendenciasPage() {
   return (
     <PageShell
       title="Pendências"
-      description="Registros crus do campo que precisam de um acabamento: foto, vínculo com problema ou categoria. Clique para resolver."
+      description="Registros crus do campo que precisam de um acabamento: foto, vínculo com meta ou categoria. Clique para resolver."
     >
       <PendenciasView data={pendencies} showDsm={profile.role === "CX"} />
     </PageShell>

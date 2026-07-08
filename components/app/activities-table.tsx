@@ -127,7 +127,7 @@ const COLUMN_LABELS: Record<string, string> = {
   title: "Atividade",
   category: "Categoria",
   channel: "Canal",
-  problem: "Problema",
+  problem: "Meta",
   responsible: "Responsável",
   dueDate: "Prazo",
   status: "Status",
@@ -303,7 +303,7 @@ export function ActivitiesTable({
         id: "problem",
         accessorKey: "problemTitle",
         enableSorting: false,
-        header: "Problema",
+        header: "Meta",
         cell: ({ row }) => {
           // Pendência do "vincular depois": concluída sem problema.
           const pending =
@@ -318,7 +318,7 @@ export function ActivitiesTable({
               className="border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
             >
               <TriangleAlert aria-hidden="true" />
-              Vincular problema
+              Vincular meta
             </Badge>
           ) : (
             <Badge
@@ -336,8 +336,8 @@ export function ActivitiesTable({
                 type="button"
                 onClick={() => onEdit(row.original)}
                 className="cursor-pointer rounded-md text-left underline-offset-4 hover:opacity-80"
-                aria-label="Editar problema vinculado"
-                title="Editar problema vinculado"
+                aria-label="Editar meta vinculada"
+                title="Editar meta vinculada"
               >
                 {badge}
               </button>
@@ -527,7 +527,7 @@ export function ActivitiesTable({
   }
 
   const problemOptions: SelectOption[] = [
-    { value: "none", label: "Sem problema vinculado" },
+    { value: "none", label: "Sem meta vinculada" },
     ...problems,
   ];
 
@@ -622,7 +622,7 @@ export function ActivitiesTable({
           options={problemOptions}
           value={problemFilter}
           onValueChange={setProblemFilter}
-          placeholder="Problema"
+          placeholder="Meta"
           className="w-44"
         />
         <SearchableSelect

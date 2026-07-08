@@ -371,7 +371,7 @@ export function GlobalSearch({
             ) : null}
 
             {results && results.problems.length > 0 ? (
-              <CommandGroup heading="Problemas do plano">
+              <CommandGroup heading="Metas do plano">
                 {results.problems.map((problem) => (
                   <CommandItem
                     key={`problema-${problem.id}`}
