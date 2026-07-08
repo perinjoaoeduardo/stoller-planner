@@ -1,25 +1,45 @@
 "use client";
 
 import * as React from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
-  Check,
-  ChevronDown,
-  ChevronLeft,
+  ArrowLeft,
+  ArrowLeftRight,
+  Camera,
+  CheckCircle2,
   CircleAlert,
   GraduationCap,
-  LinkIcon,
+  ImagePlus,
+  Lightbulb,
+  Link2,
   Megaphone,
   Presentation,
   Route,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
+import { PageShell } from "@/components/app/page-shell";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { registerExecution } from "@/lib/actions/execution";
@@ -36,9 +56,9 @@ import type {
 import { cn } from "@/lib/utils";
 
 import {
+  ACCEPTED_PHOTO_TYPES,
   MAX_DESCRIPTION,
   PhotoNudgeDrawer,
-  PhotoSection,
   SuccessScreen,
   usePhotoDrafts,
 } from "./register-shared";
@@ -50,10 +70,9 @@ const CATEGORY_ICONS: Record<ActivityCategory, LucideIcon> = {
   geracao_demanda: Megaphone,
 };
 
-/** Escolha de problema: id do problema ou "later" = vincular depois. */
 type ProblemChoice = string | "later" | null;
 
-/** Mesma regra do servidor: título do avulso = primeiras palavras. */
+/** Título do avulso = primeiras palavras (mesma regra do servidor). */
 function titlePreview(description: string): string {
   const words = description.trim().split(/\s+/);
   const title = words.slice(0, 8).join(" ");
@@ -62,10 +81,9 @@ function titlePreview(description: string): string {
 
 /**
  * Situação B — ação fora do plano: preenche do zero (descrição,
- * categoria em 4 botões grandes, problema quando o plano tem, filial
- * opcional — "Canal geral" é o padrão) e nasce como atividade concluída.
- * Canal é sempre exibido; RTVs com múltiplos canais podem trocar direto
- * no formulário via Popover sem perder o que já preencheram.
+ * categoria, filial opcional, problema quando o plano tem) e nasce como
+ * atividade já concluída. Layout 2 col espelhando o P7 pra coerência
+ * visual do fluxo Registrar.
  */
 export function AdhocForm({
   allBranches,
@@ -84,11 +102,10 @@ export function AdhocForm({
   const { photos, rejected, addFiles, removePhoto, reset, uploadAll } =
     usePhotoDrafts();
 
-  const [channelId, setChannelId] = React.useState(initialChannelId);
-  const [channelPickerOpen, setChannelPickerOpen] = React.useState(false);
+  const [channelId] = React.useState(initialChannelId);
+  const [confirmSwitchOpen, setConfirmSwitchOpen] = React.useState(false);
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState<ActivityCategory | null>(null);
-  // null = "Canal geral" (padrão); id de filial = filial específica
   const [branchId, setBranchId] = React.useState<string | null>(null);
   const [problemChoice, setProblemChoice] = React.useState<ProblemChoice>(null);
   const [nudgeOpen, setNudgeOpen] = React.useState(false);
@@ -101,7 +118,6 @@ export function AdhocForm({
     [channels, channelId]
   );
 
-  // Filiais e planos do canal atual
   const branches = React.useMemo(
     () => allBranches.filter((b) => b.channelId === channelId),
     [allBranches, channelId]
@@ -111,8 +127,6 @@ export function AdhocForm({
     return allBranchPlans.filter((bp) => ids.has(bp.branchId));
   }, [allBranchPlans, branches]);
 
-  // Problemas: do branchPlan da filial selecionada ou do primeiro disponível
-  // (todas as filiais do canal compartilham o mesmo plano).
   const planProblems = React.useMemo(() => {
     if (branchId) {
       return branchPlans.find((p) => p.branchId === branchId)?.problems ?? [];
@@ -121,14 +135,21 @@ export function AdhocForm({
   }, [branchId, branchPlans]);
 
   const problemOk = planProblems.length === 0 || problemChoice !== null;
-  const canSubmit = description.trim().length > 0 && category !== null && problemOk;
+  const canSubmit =
+    description.trim().length > 0 && category !== null && problemOk;
 
-  function handleChannelChange(newId: string) {
-    setChannelId(newId);
-    setBranchId(null);
-    setProblemChoice(null);
-    setChannelPickerOpen(false);
-  }
+  const currentDateTime = format(new Date(), "dd MMM yyyy · HH:mm", {
+    locale: ptBR,
+  });
+
+  const disabledHint =
+    description.trim().length === 0
+      ? "Descreva o que foi feito para registrar."
+      : !category
+        ? "Escolha o tipo de ação."
+        : !problemOk
+          ? 'Escolha um problema do plano ou "Vincular depois".'
+          : null;
 
   async function submit() {
     if (!canSubmit || !category) return;
@@ -190,261 +211,415 @@ export function AdhocForm({
     );
   }
 
+  const showTip = photos.length === 0;
+
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
-      <header className="flex items-center gap-2 px-4 py-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-11 shrink-0"
-          onClick={onBack}
-          aria-label="Voltar"
-        >
-          <ChevronLeft className="size-5" />
-        </Button>
-        <div className="min-w-0 flex-1">
-          {/* Canal — sempre visível; clicável quando RTV tem 2+ canais */}
-          <div className="mb-1">
-            {channels.length > 1 ? (
-              <Popover
-                open={channelPickerOpen}
-                onOpenChange={setChannelPickerOpen}
-              >
-                <PopoverTrigger className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/70">
-                  {activeChannel.name}
-                  <ChevronDown className="size-3" />
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  className="w-56 gap-1 p-1.5"
-                >
-                  {channels.map((ch) => (
-                    <button
-                      key={ch.id}
-                      type="button"
-                      onClick={() => handleChannelChange(ch.id)}
-                      className={cn(
-                        "w-full rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
-                        ch.id === channelId &&
-                          "bg-primary/10 font-medium text-primary"
-                      )}
-                    >
-                      {ch.name}
-                    </button>
-                  ))}
-                </PopoverContent>
-              </Popover>
-            ) : (
-              <span className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
-                {activeChannel.name}
-              </span>
-            )}
-          </div>
-          <h1 className="text-lg leading-tight font-semibold tracking-tight">
-            Registrar ação fora do plano
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            A ação vira uma atividade já concluída no plano do canal.
-          </p>
-        </div>
-      </header>
-
-      <div className="flex flex-1 flex-col gap-5 px-4 pb-4">
-        {/* Descrição — obrigatória */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="descricao-avulsa" className="text-sm font-medium">
-            O que foi feito?
-          </label>
-          <Textarea
-            id="descricao-avulsa"
-            value={description}
-            maxLength={MAX_DESCRIPTION}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Ex: Dia de campo sobre biológicos com 18 produtores na filial Sorriso"
-            className="min-h-24 text-base"
-          />
-          <span className="self-end text-xs text-muted-foreground tabular-nums">
-            {description.length}/{MAX_DESCRIPTION}
-          </span>
-        </div>
-
-        {/* Categoria — obrigatória, 4 botões grandes */}
-        <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">Qual o tipo da ação?</p>
-          <div className="grid grid-cols-2 gap-2">
-            {ACTIVITY_CATEGORIES.map((item) => {
-              const Icon = CATEGORY_ICONS[item];
-              const active = category === item;
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setCategory(item)}
-                  aria-pressed={active}
-                  className={cn(
-                    "flex min-h-16 flex-col items-start justify-center gap-1 rounded-xl border p-3 text-left text-sm font-medium transition-colors",
-                    active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "bg-card text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  <Icon className="size-5" />
-                  <span className="leading-tight">{CATEGORY_LABELS[item]}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Filial — opcional; some completamente quando canal não tem filiais */}
-        {branches.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">Em qual local foi a ação?</p>
-            <div className="flex flex-wrap gap-2">
-              {/* Canal geral: opção neutra, sempre primeiro */}
-              <button
-                type="button"
-                onClick={() => {
-                  setBranchId(null);
-                  setProblemChoice(null);
-                }}
-                className={cn(
-                  "h-11 rounded-full border px-4 text-sm font-medium transition-colors",
-                  branchId === null
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted/50"
-                )}
-              >
-                Canal geral
-              </button>
-              {branches.map((branch) => (
-                <button
-                  key={branch.id}
-                  type="button"
-                  onClick={() => {
-                    setBranchId(branch.id);
-                    setProblemChoice(null);
-                  }}
-                  className={cn(
-                    "h-11 rounded-full border px-4 text-sm font-medium transition-colors",
-                    branchId === branch.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-card text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {branch.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Problema — só quando o plano do canal tem problemas */}
-        {planProblems.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">
-              Qual problema do plano essa ação ataca?
-            </p>
-            <div className="flex flex-col gap-2">
-              {planProblems.map((problem) => (
-                <button
-                  key={problem.id}
-                  type="button"
-                  onClick={() => setProblemChoice(problem.id)}
-                  aria-pressed={problemChoice === problem.id}
-                  className={cn(
-                    "flex min-h-11 w-full items-center gap-3 rounded-xl border p-3 text-left text-sm font-medium transition-colors",
-                    problemChoice === problem.id
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "bg-card hover:bg-muted"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-full border",
-                      problemChoice === problem.id
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "text-transparent"
-                    )}
-                  >
-                    <Check className="size-3.5" />
-                  </span>
-                  <span className="leading-snug">{problem.title}</span>
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setProblemChoice("later")}
-                aria-pressed={problemChoice === "later"}
-                className={cn(
-                  "flex min-h-11 w-full items-center gap-3 rounded-xl border-2 border-dashed p-3 text-left text-sm transition-colors",
-                  problemChoice === "later"
-                    ? "border-primary/60 bg-primary/5 text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50"
-                )}
-              >
-                <LinkIcon className="size-4 shrink-0" />
-                <span>
-                  Vincular depois
-                  <span className="block text-xs text-muted-foreground">
-                    Fica como pendência para ajustar na tabela ou no detalhe.
-                  </span>
-                </span>
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Foto — opcional, com o mesmo nudge da Situação A */}
-        <PhotoSection
-          photos={photos}
-          rejected={rejected}
-          onAdd={addFiles}
-          onRemove={removePhoto}
-          inputRef={fileRef}
-        />
-
-        {error ? (
-          <div
-            className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-            role="alert"
-          >
-            <CircleAlert className="mt-0.5 size-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        ) : null}
-
-        <div className="sticky bottom-0 z-10 mt-auto -mx-4 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85">
+    <PageShell
+      title="Registrar ação fora do plano"
+      description="A ação vira uma atividade já concluída no plano do canal."
+      breadcrumb={
+        <div className="mb-1">
           <Button
-            size="lg"
-            className="h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
-            disabled={submitting || !canSubmit}
-            onClick={handleRegister}
+            variant="ghost"
+            size="sm"
+            className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+            onClick={onBack}
           >
-            {submitting ? (
-              <>
-                <Spinner />
-                Registrando...
-              </>
-            ) : error ? (
-              "Tentar de novo"
-            ) : (
-              <>
-                <Check className="size-5" />
-                Registrar ação concluída
-              </>
-            )}
+            <ArrowLeft className="size-4" />
+            Voltar
           </Button>
-          {!canSubmit ? (
-            <p className="mt-2 text-center text-xs text-muted-foreground">
-              {description.trim().length === 0
-                ? "Descreva o que foi feito para registrar."
-                : !category
-                  ? "Escolha o tipo da ação."
-                  : 'Escolha um problema do plano ou "Vincular depois".'}
-            </p>
+        </div>
+      }
+      actions={
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="max-w-52 truncate">
+            {activeChannel?.name ?? "Canal"}
+          </Badge>
+          {channels.length > 1 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setConfirmSwitchOpen(true)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeftRight className="size-4" />
+              Trocar
+            </Button>
           ) : null}
         </div>
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* ── Coluna principal ─────────────────────────────────────── */}
+        <div className="flex flex-col gap-6 lg:col-span-2">
+          {/* O que foi feito? */}
+          <Card>
+            <CardHeader>
+              <CardTitle>O que foi feito?</CardTitle>
+              <CardDescription>
+                Uma frase curta descrevendo a ação — vira o título da
+                atividade.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Textarea
+                value={description}
+                maxLength={MAX_DESCRIPTION}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Ex: Dia de campo sobre biológicos com 18 produtores na filial Sorriso"
+                className="min-h-24 text-base"
+              />
+              <span className="self-end text-xs text-muted-foreground tabular-nums">
+                {description.length}/{MAX_DESCRIPTION}
+              </span>
+            </CardContent>
+          </Card>
+
+          {/* Tipo de ação */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tipo de ação</CardTitle>
+              <CardDescription>
+                Escolha a categoria que melhor representa.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {ACTIVITY_CATEGORIES.map((item) => {
+                  const Icon = CATEGORY_ICONS[item];
+                  const active = category === item;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCategory(item)}
+                      aria-pressed={active}
+                      className={cn(
+                        "flex min-h-16 items-center gap-3 rounded-xl border p-4 text-left text-sm font-medium transition-colors",
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "bg-card text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "size-6 shrink-0",
+                          active ? "text-primary" : "text-muted-foreground"
+                        )}
+                      />
+                      <span className="leading-tight">
+                        {CATEGORY_LABELS[item]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Onde foi? */}
+          {branches.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Onde foi?</CardTitle>
+                <CardDescription>
+                  Selecione o local (opcional).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBranchId(null);
+                      setProblemChoice(null);
+                    }}
+                    className={cn(
+                      "h-10 rounded-full border px-4 text-sm font-medium transition-colors",
+                      branchId === null
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    Canal geral
+                  </button>
+                  {branches.map((branch) => (
+                    <button
+                      key={branch.id}
+                      type="button"
+                      onClick={() => {
+                        setBranchId(branch.id);
+                        setProblemChoice(null);
+                      }}
+                      className={cn(
+                        "h-10 rounded-full border px-4 text-sm font-medium transition-colors",
+                        branchId === branch.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "bg-card text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {branch.name}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {/* Problema — só se plano tem problemas */}
+          {planProblems.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>A qual problema essa ação responde?</CardTitle>
+                <CardDescription>
+                  Vincular a um problema fortalece o relatório de safra.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-2">
+                  {planProblems.map((problem) => {
+                    const active = problemChoice === problem.id;
+                    return (
+                      <button
+                        key={problem.id}
+                        type="button"
+                        onClick={() => setProblemChoice(problem.id)}
+                        aria-pressed={active}
+                        className={cn(
+                          "flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+                          active
+                            ? "border-primary bg-primary/10"
+                            : "bg-card hover:bg-muted/60"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2",
+                            active
+                              ? "border-primary bg-primary"
+                              : "border-muted-foreground/50"
+                          )}
+                        >
+                          {active ? (
+                            <span className="size-1.5 rounded-full bg-primary-foreground" />
+                          ) : null}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={cn(
+                              "line-clamp-1 text-sm font-medium leading-snug",
+                              active && "text-primary"
+                            )}
+                          >
+                            {problem.title}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setProblemChoice("later")}
+                    aria-pressed={problemChoice === "later"}
+                    className={cn(
+                      "flex w-full items-start gap-3 rounded-xl border-2 border-dashed p-4 text-left transition-colors",
+                      problemChoice === "later"
+                        ? "border-primary/60 bg-primary/5"
+                        : "text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    <Link2 className="mt-0.5 size-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug">
+                        Vincular depois
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Fica como pendência para o DSM ajustar.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {/* Fotos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Fotos</CardTitle>
+              <CardDescription>
+                Anexe evidências da ação (opcional).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <input
+                ref={fileRef}
+                type="file"
+                accept={ACCEPTED_PHOTO_TYPES.join(",")}
+                capture="environment"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  event.target.value = "";
+                  addFiles(files);
+                }}
+              />
+
+              {photos.length === 0 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
+                  >
+                    <Camera className="size-8" />
+                    <span className="text-sm font-semibold">
+                      Adicionar foto
+                    </span>
+                  </button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Você pode adicionar várias fotos.
+                  </p>
+                </>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {photos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="relative aspect-square overflow-hidden rounded-xl border bg-muted"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.url}
+                        alt="Foto da execução"
+                        className="h-full w-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(photo.id)}
+                        aria-label="Remover foto"
+                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    aria-label="Adicionar mais fotos"
+                    className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed text-muted-foreground hover:bg-muted/60"
+                  >
+                    <ImagePlus className="size-6" />
+                  </button>
+                </div>
+              )}
+              {rejected ? (
+                <p className="text-xs text-destructive" role="alert">
+                  Alguma foto foi ignorada: use JPG, PNG ou WEBP até 10MB.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {error ? (
+            <div
+              className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+              role="alert"
+            >
+              <CircleAlert className="mt-0.5 size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {/* ── Coluna lateral ───────────────────────────────────────── */}
+        <div className="flex flex-col gap-4">
+          <Card className="lg:sticky lg:top-6">
+            <CardHeader>
+              <CardTitle>Registrar ação concluída</CardTitle>
+              <CardDescription>
+                Data e hora capturadas automaticamente.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div className="rounded-lg bg-muted/60 px-3 py-2">
+                <p className="text-xs text-muted-foreground">Registro</p>
+                <p className="font-medium tabular-nums">{currentDateTime}</p>
+              </div>
+              <Button
+                size="lg"
+                className="h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+                disabled={submitting || !canSubmit}
+                onClick={handleRegister}
+              >
+                {submitting ? (
+                  <>
+                    <Spinner />
+                    Registrando...
+                  </>
+                ) : error ? (
+                  "Tentar de novo"
+                ) : (
+                  <>
+                    <CheckCircle2 className="size-5" />
+                    Registrar ação concluída
+                  </>
+                )}
+              </Button>
+              {disabledHint ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  {disabledHint}
+                </p>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onBack}
+                className="text-muted-foreground"
+                disabled={submitting}
+              >
+                Cancelar
+              </Button>
+            </CardContent>
+          </Card>
+
+          {showTip ? (
+            <Card className="border-dashed bg-muted/30">
+              <CardContent className="flex items-start gap-3 py-4">
+                <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <p className="text-sm text-muted-foreground">
+                  Uma foto fortalece o registro nas reuniões com o canal.
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Botão sticky no rodapé mobile */}
+      <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:-mx-8 lg:hidden">
+        <Button
+          size="lg"
+          className="h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+          disabled={submitting || !canSubmit}
+          onClick={handleRegister}
+        >
+          {submitting ? (
+            <>
+              <Spinner />
+              Registrando...
+            </>
+          ) : error ? (
+            "Tentar de novo"
+          ) : (
+            <>
+              <CheckCircle2 className="size-5" />
+              Registrar ação concluída
+            </>
+          )}
+        </Button>
       </div>
 
       <PhotoNudgeDrawer
@@ -453,6 +628,27 @@ export function AdhocForm({
         onAddPhoto={() => fileRef.current?.click()}
         onConfirm={() => void submit()}
       />
-    </div>
+
+      {/* Confirmação de troca de canal — perde tudo preenchido */}
+      <AlertDialog
+        open={confirmSwitchOpen}
+        onOpenChange={setConfirmSwitchOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Trocar canal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              As informações preenchidas serão perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={onBack}>
+              Trocar canal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </PageShell>
   );
 }
