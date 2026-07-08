@@ -11,7 +11,6 @@ import {
   SearchX,
 } from "lucide-react";
 
-import { BackButton } from "@/components/app/back-button";
 import { CategoryBadge } from "@/components/app/category-badge";
 import { PageShell } from "@/components/app/page-shell";
 import {
@@ -132,9 +131,7 @@ export function RegisterFlow({
     return (
       <PageShell
         title="Registrar execução"
-        breadcrumb={
-          <BackButton fallbackHref="/" />
-        }
+        backHref="/"
       >
         <Empty className="rounded-3xl border border-dashed py-16">
           <EmptyHeader>
@@ -157,9 +154,7 @@ export function RegisterFlow({
       <PageShell
         title="De qual canal é essa ação?"
         description="Selecione o canal para ver as atividades disponíveis."
-        breadcrumb={
-          <BackButton fallbackHref="/" />
-        }
+        backHref="/"
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {channels.map((channel) => (
@@ -260,11 +255,8 @@ export function RegisterFlow({
     <PageShell
       title="Registrar execução"
       description="Toque na atividade planejada para concluí-la — ou registre uma ação fora do plano."
-      breadcrumb={
-        <BackButton
-          fallbackHref={canGoBackToPicker ? "/registrar" : "/"}
-        />
-      }
+      onBack={canGoBackToPicker ? () => clearChannel() : undefined}
+      backHref={canGoBackToPicker ? undefined : "/"}
       actions={
         activeChannel && channels.length > 1 ? (
           <div className="flex items-center gap-2">

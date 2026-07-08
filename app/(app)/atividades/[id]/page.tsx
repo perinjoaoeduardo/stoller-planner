@@ -328,6 +328,7 @@ export default async function AtividadePage({
   return (
     <PageShell
       title={activity.title}
+      backHref={isField ? "/minhas-atividades" : channelHref}
       breadcrumb={
         <Breadcrumb>
           <BreadcrumbList>

@@ -95,6 +95,7 @@ export default async function MeuCanalPage({
     <PageShell
       title={channel.name}
       description={`${harvestLabel(channel.plan?.harvest)} · ${channel.region} · ${channel.branches.length} ${channel.branches.length === 1 ? "filial" : "filiais"}`}
+      backHref="/meus-canais"
       breadcrumb={
         <Breadcrumb>
           <BreadcrumbList>

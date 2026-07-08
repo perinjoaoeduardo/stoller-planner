@@ -4,7 +4,6 @@ import * as React from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  ArrowLeft,
   ArrowLeftRight,
   Camera,
   CheckCircle2,
@@ -217,17 +216,7 @@ export function AdhocForm({
     <PageShell
       title="Registrar ação fora do plano"
       description="A ação vira uma atividade já concluída no plano do canal."
-      breadcrumb={
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-          onClick={onBack}
-        >
-          <ArrowLeft className="size-4" />
-          Voltar
-        </Button>
-      }
+      onBack={onBack}
       actions={
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="max-w-52 truncate">

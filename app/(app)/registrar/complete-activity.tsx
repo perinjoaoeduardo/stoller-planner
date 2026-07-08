@@ -4,7 +4,6 @@ import * as React from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  ArrowLeft,
   CalendarClock,
   Camera,
   CheckCircle2,
@@ -141,19 +140,7 @@ export function CompleteActivity({
     <PageShell
       title="Concluir atividade"
       description="Anexe uma evidência e confirme a execução."
-      breadcrumb={
-        onBack ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={onBack}
-          >
-            <ArrowLeft className="size-4" />
-            Voltar
-          </Button>
-        ) : null
-      }
+      onBack={onBack ?? undefined}
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* ── Coluna principal ─────────────────────────────────────── */}
