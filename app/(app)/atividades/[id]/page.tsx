@@ -18,7 +18,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { BackButton } from "@/components/app/back-button";
 import { PageShell } from "@/components/app/page-shell";
 import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
@@ -330,30 +329,25 @@ export default async function AtividadePage({
     <PageShell
       title={activity.title}
       breadcrumb={
-        <div className="mb-1 space-y-2">
-          <BackButton
-            fallbackHref={isField ? "/minhas-atividades" : channelHref}
-          />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href={channelBase} />}>
-                  {isField ? "Meus Canais" : "Canais"}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href={channelHref} />}>
-                  {activity.channelName}
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Atividade</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href={channelBase} />}>
+                {isField ? "Meus Canais" : "Canais"}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href={channelHref} />}>
+                {activity.channelName}
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Atividade</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       }
       description={
         <span className="flex flex-wrap items-center gap-2">

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, Store } from "lucide-react";
 
-import { BackButton } from "@/components/app/back-button";
 import { PageShell } from "@/components/app/page-shell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -97,22 +96,19 @@ export default async function MeuCanalPage({
       title={channel.name}
       description={`${harvestLabel(channel.plan?.harvest)} · ${channel.region} · ${channel.branches.length} ${channel.branches.length === 1 ? "filial" : "filiais"}`}
       breadcrumb={
-        <div className="mb-1 flex items-center gap-2">
-          <BackButton fallbackHref="/meus-canais" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href="/meus-canais" />}>
-                  Meus Canais
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{channel.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink render={<Link href="/meus-canais" />}>
+                Meus Canais
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{channel.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       }
       actions={
         <>

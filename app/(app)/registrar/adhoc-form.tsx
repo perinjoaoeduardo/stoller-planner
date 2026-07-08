@@ -218,17 +218,15 @@ export function AdhocForm({
       title="Registrar ação fora do plano"
       description="A ação vira uma atividade já concluída no plano do canal."
       breadcrumb={
-        <div className="mb-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-            onClick={onBack}
-          >
-            <ArrowLeft className="size-4" />
-            Voltar
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+          onClick={onBack}
+        >
+          <ArrowLeft className="size-4" />
+          Voltar
+        </Button>
       }
       actions={
         <div className="flex items-center gap-2">

@@ -133,9 +133,7 @@ export function RegisterFlow({
       <PageShell
         title="Registrar execução"
         breadcrumb={
-          <div className="mb-1">
-            <BackButton fallbackHref="/" />
-          </div>
+          <BackButton fallbackHref="/" />
         }
       >
         <Empty className="rounded-3xl border border-dashed py-16">
@@ -160,9 +158,7 @@ export function RegisterFlow({
         title="De qual canal é essa ação?"
         description="Selecione o canal para ver as atividades disponíveis."
         breadcrumb={
-          <div className="mb-1">
-            <BackButton fallbackHref="/" />
-          </div>
+          <BackButton fallbackHref="/" />
         }
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -265,11 +261,9 @@ export function RegisterFlow({
       title="Registrar execução"
       description="Toque na atividade planejada para concluí-la — ou registre uma ação fora do plano."
       breadcrumb={
-        <div className="mb-1">
-          <BackButton
-            fallbackHref={canGoBackToPicker ? "/registrar" : "/"}
-          />
-        </div>
+        <BackButton
+          fallbackHref={canGoBackToPicker ? "/registrar" : "/"}
+        />
       }
       actions={
         activeChannel && channels.length > 1 ? (

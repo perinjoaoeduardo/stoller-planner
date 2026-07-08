@@ -143,17 +143,15 @@ export function CompleteActivity({
       description="Anexe uma evidência e confirme a execução."
       breadcrumb={
         onBack ? (
-          <div className="mb-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
-              onClick={onBack}
-            >
-              <ArrowLeft className="size-4" />
-              Voltar
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+            onClick={onBack}
+          >
+            <ArrowLeft className="size-4" />
+            Voltar
+          </Button>
         ) : null
       }
     >
