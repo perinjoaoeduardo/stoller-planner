@@ -103,9 +103,10 @@ export function RtvActivitiesTable({
                   <TableCell className="max-w-72 truncate font-medium">
                     {activity.title}
                   </TableCell>
-                  <TableCell className="max-w-40 truncate text-muted-foreground">
-                    {activity.channelName}
-                    {activity.branchName ? ` · ${activity.branchName}` : ""}
+                  <TableCell className="max-w-48 truncate text-muted-foreground">
+                    {activity.branchName ?? (
+                      <span className="italic">Canal geral</span>
+                    )}
                   </TableCell>
                   <TableCell
                     className={cn(

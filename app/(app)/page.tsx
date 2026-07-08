@@ -445,18 +445,20 @@ function ChannelsSummaryCard({ channels }: { channels: ChannelCard[] }) {
             ))}
           </ItemGroup>
         )}
-        <div className="mt-auto pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            nativeButton={false}
-            render={<Link href="/meus-canais" />}
-          >
-            Ver todos os canais
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        {channels.length > 4 ? (
+          <div className="mt-auto pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              nativeButton={false}
+              render={<Link href="/meus-canais" />}
+            >
+              Ver todos os canais
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -472,7 +474,7 @@ function RecentExecutionsCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <ClipboardCheck className="size-4 text-muted-foreground" />
+          <Camera className="size-4 text-muted-foreground" />
           Registros recentes
         </CardTitle>
         <CardDescription>
@@ -575,12 +577,24 @@ async function FieldHome() {
       ? "text-sm font-medium text-amber-600 dark:text-amber-400"
       : "text-sm text-muted-foreground";
 
-  // Urgentes: atrasadas primeiro (por prazo mais antigo), depois abertas
-  // por prazo mais próximo. Sem prazo por último.
-  const urgent = [...open].sort((a, b) => {
-    const lateA = a.status === "atrasada" ? 0 : 1;
-    const lateB = b.status === "atrasada" ? 0 : 1;
-    if (lateA !== lateB) return lateA - lateB;
+  // Ordem: atrasadas (por dias de atraso desc = prazo mais antigo primeiro)
+  // > vencendo em 7 dias > outras abertas > planejadas por prazo asc. Sem
+  // prazo por último. Preenche a tabela até 8 linhas mesmo sem urgência —
+  // "abertas" inclui planejada + em_andamento + atrasada.
+  const tomorrow = new Date();
+  const openOrdered = [...open].sort((a, b) => {
+    const rank = (activity: (typeof open)[number]) => {
+      if (activity.status === "atrasada") return 0;
+      if (
+        activity.dueDate !== null &&
+        differenceInCalendarDays(parseISO(activity.dueDate), tomorrow) <= 7
+      )
+        return 1;
+      return 2;
+    };
+    const rA = rank(a);
+    const rB = rank(b);
+    if (rA !== rB) return rA - rB;
     if (a.dueDate === b.dueDate) return a.title.localeCompare(b.title);
     if (a.dueDate === null) return 1;
     if (b.dueDate === null) return -1;
@@ -593,9 +607,8 @@ async function FieldHome() {
     (execution) => differenceInDays(now, parseISO(execution.createdAt)) <= 7
   );
 
-  // Até 8 atividades para a tabela da home; ordenadas por urgência
-  // (o array `urgent` já vem ordenado atrasadas → prazo próximo).
-  const tableRows = urgent.slice(0, 8).map((activity) => ({
+  // Até 8 abertas para a tabela da home.
+  const tableRows = openOrdered.slice(0, 8).map((activity) => ({
     id: activity.id,
     title: activity.title,
     status: activity.status,
@@ -639,15 +652,18 @@ async function FieldHome() {
               <ClipboardList className="size-4 text-muted-foreground" />
               Minhas atividades
             </CardTitle>
-            <CardDescription>
-              As {tableRows.length} próximas abertas — atrasadas primeiro,
-              depois prazo mais próximo.
-            </CardDescription>
+            {tableRows.length > 0 ? (
+              <CardDescription>
+                {tableRows.length === 1
+                  ? "A próxima atividade aberta."
+                  : `As ${tableRows.length} próximas atividades abertas — atrasadas primeiro.`}
+              </CardDescription>
+            ) : null}
           </CardHeader>
           <CardContent>
             <RtvActivitiesTable
               activities={tableRows}
-              totalOpen={urgent.length}
+              totalOpen={openOrdered.length}
               profileId={profile.id}
               profileName={profile.fullName}
             />
