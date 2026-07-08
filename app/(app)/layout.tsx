@@ -1,3 +1,4 @@
+import { ActivityDrawerProvider } from "@/components/app/activity-drawer";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { ContentTopBar } from "@/components/app/content-topbar";
 import { SettingsProvider } from "@/components/app/settings-provider";
@@ -52,6 +53,7 @@ export default async function AppLayout({
   return (
     <SettingsProvider user={user}>
       <WizardProvider>
+      <ActivityDrawerProvider>
       <SidebarProvider
         style={{ "--sidebar-width": "19rem" } as React.CSSProperties}
         className="h-svh overflow-hidden bg-muted dark:bg-black"
@@ -68,6 +70,7 @@ export default async function AppLayout({
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         </SidebarInset>
       </SidebarProvider>
+      </ActivityDrawerProvider>
       </WizardProvider>
     </SettingsProvider>
   );

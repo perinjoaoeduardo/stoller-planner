@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { CategoryBadge } from "@/components/app/category-badge";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import { useWizardProvider } from "@/components/app/wizard-provider";
@@ -197,7 +198,7 @@ export function MeuCanalView({
   activities: ActivityRow[];
   profileId: string;
 }) {
-  const router = useRouter();
+  const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>("todos");
@@ -607,7 +608,7 @@ export function MeuCanalView({
                       key={activity.id}
                       className="cursor-pointer"
                       onClick={() =>
-                        router.push(`/atividades/${activity.id}`)
+                        openActivity(activity.id)
                       }
                     >
                       <TableCell className="max-w-72">
@@ -710,7 +711,7 @@ export function MeuCanalView({
                               ) : null}
                               <DropdownMenuItem
                                 onClick={() =>
-                                  router.push(`/atividades/${activity.id}`)
+                                  openActivity(activity.id)
                                 }
                               >
                                 <Eye />
@@ -732,10 +733,11 @@ export function MeuCanalView({
             {paged.map((activity) => {
               const overdue = activity.status === "atrasada";
               return (
-                <Link
+                <button
                   key={activity.id}
-                  href={`/atividades/${activity.id}`}
-                  className="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:bg-muted/40"
+                  type="button"
+                  onClick={() => openActivity(activity.id)}
+                  className="flex flex-col gap-2 rounded-xl border bg-card p-4 text-left shadow-xs transition-colors hover:bg-muted/40"
                 >
                   <p className="line-clamp-2 leading-snug font-medium">
                     {activity.title}
@@ -762,7 +764,7 @@ export function MeuCanalView({
                         : "sem prazo"}
                     </span>
                   </div>
-                </Link>
+                </button>
               );
             })}
           </div>

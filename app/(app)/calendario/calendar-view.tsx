@@ -20,6 +20,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { StatusBadge } from "@/components/app/status-badge";
 import type { ActivityStatus } from "@/components/app/status-badge";
@@ -293,6 +294,7 @@ function DayActivitiesList({
   activities: ActivityRow[];
 }) {
   const dateStr = format(day, "yyyy-MM-dd");
+  const { openActivity } = useActivityDrawer();
 
   return (
     <div className="flex flex-col gap-3">
@@ -303,11 +305,12 @@ function DayActivitiesList({
       ) : (
         <div className="flex flex-col gap-1.5">
           {activities.map((activity) => (
-            <a
+            <button
               key={activity.id}
-              href={`/atividades/${activity.id}`}
+              type="button"
+              onClick={() => openActivity(activity.id)}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:opacity-80",
+                "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:opacity-80",
                 PILL_COLORS[activity.status]
               )}
             >
@@ -318,7 +321,7 @@ function DayActivitiesList({
                 status={activity.status}
                 className="shrink-0 text-[10px]"
               />
-            </a>
+            </button>
           ))}
         </div>
       )}
@@ -347,6 +350,7 @@ function DesktopGrid({
   activityMap: Map<string, ActivityRow[]>;
 }) {
   const MAX_PILLS = 3;
+  const { openActivity } = useActivityDrawer();
 
   return (
     <div className="overflow-hidden rounded-xl border">
@@ -400,17 +404,20 @@ function DesktopGrid({
                 {/* Activity pills */}
                 <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
                   {dayActivities.slice(0, MAX_PILLS).map((activity) => (
-                    <a
+                    <button
                       key={activity.id}
-                      href={`/atividades/${activity.id}`}
-                      onClick={(e) => e.stopPropagation()}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openActivity(activity.id);
+                      }}
                       className={cn(
                         "flex h-5 w-full items-center rounded px-1.5 text-left text-xs font-medium transition-opacity hover:opacity-80",
                         PILL_COLORS[activity.status]
                       )}
                     >
                       <span className="truncate">{activity.title}</span>
-                    </a>
+                    </button>
                   ))}
                   {overflow > 0 && (
                     <span className="px-1.5 text-xs text-muted-foreground">
@@ -444,6 +451,8 @@ function WeekGrid({
   days: Date[];
   activityMap: Map<string, ActivityRow[]>;
 }) {
+  const { openActivity } = useActivityDrawer();
+
   return (
     <div className="overflow-hidden rounded-xl border">
       <div className="grid grid-cols-7">
@@ -483,11 +492,12 @@ function WeekGrid({
               {/* Activities column */}
               <div className="flex flex-1 flex-col gap-1 p-1.5">
                 {dayActivities.map((activity) => (
-                  <a
+                  <button
                     key={activity.id}
-                    href={`/atividades/${activity.id}`}
+                    type="button"
+                    onClick={() => openActivity(activity.id)}
                     className={cn(
-                      "flex flex-col gap-0.5 rounded-lg px-2 py-1.5 text-xs transition-opacity hover:opacity-80",
+                      "flex flex-col gap-0.5 rounded-lg px-2 py-1.5 text-left text-xs transition-opacity hover:opacity-80",
                       PILL_COLORS[activity.status]
                     )}
                   >
@@ -497,7 +507,7 @@ function WeekGrid({
                     <span className="text-[10px] opacity-70">
                       {activity.channelName}
                     </span>
-                  </a>
+                  </button>
                 ))}
                 {dayActivities.length === 0 && (
                   <div className="flex flex-1 items-center justify-center">
@@ -546,6 +556,7 @@ function MobileList({
   currentMonth: Date;
   activityMap: Map<string, ActivityRow[]>;
 }) {
+  const { openActivity } = useActivityDrawer();
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
 
   const selectedKey = selectedDay ? format(selectedDay, "yyyy-MM-dd") : null;
@@ -686,11 +697,12 @@ function MobileList({
                   </p>
                   <div className="flex flex-col gap-1">
                     {dayActivities.map((activity) => (
-                      <a
+                      <button
                         key={activity.id}
-                        href={`/atividades/${activity.id}`}
+                        type="button"
+                        onClick={() => openActivity(activity.id)}
                         className={cn(
-                          "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+                          "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                           PILL_COLORS[activity.status]
                         )}
                       >
@@ -701,7 +713,7 @@ function MobileList({
                           status={activity.status}
                           className="shrink-0 text-[10px]"
                         />
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -723,6 +735,8 @@ function MobileWeekList({
   days: Date[];
   activityMap: Map<string, ActivityRow[]>;
 }) {
+  const { openActivity } = useActivityDrawer();
+
   return (
     <div className="flex flex-col gap-3">
       {days.map((day) => {
@@ -766,11 +780,12 @@ function MobileWeekList({
             {dayActivities.length > 0 ? (
               <div className="flex flex-col gap-1">
                 {dayActivities.map((activity) => (
-                  <a
+                  <button
                     key={activity.id}
-                    href={`/atividades/${activity.id}`}
+                    type="button"
+                    onClick={() => openActivity(activity.id)}
                     className={cn(
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:opacity-80",
+                      "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:opacity-80",
                       PILL_COLORS[activity.status]
                     )}
                   >
@@ -781,7 +796,7 @@ function MobileWeekList({
                       status={activity.status}
                       className="shrink-0 text-[10px]"
                     />
-                  </a>
+                  </button>
                 ))}
               </div>
             ) : (

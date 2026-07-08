@@ -5,6 +5,8 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Camera } from "lucide-react";
 
+import { useActivityDrawer } from "@/components/app/activity-drawer";
+
 import {
   StatusBadge,
   type ActivityStatus,
@@ -85,6 +87,7 @@ export function ActivityCard({
   showCanal?: boolean;
   className?: string;
 }) {
+  const { openActivity } = useActivityDrawer();
   const open = OPEN_STATUSES.includes(activity.status);
   const late = activity.status === "atrasada";
   const completed = activity.status === "concluida";
@@ -103,8 +106,9 @@ export function ActivityCard({
         className
       )}
     >
-      <Link
-        href={`/atividades/${activity.id}`}
+      <button
+        type="button"
+        onClick={() => openActivity(activity.id)}
         className="absolute inset-0 rounded-xl"
         aria-label={activity.title}
       />

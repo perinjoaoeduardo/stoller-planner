@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -23,6 +22,7 @@ import {
   SearchX,
 } from "lucide-react";
 
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { ActivityCard } from "@/components/app/activity-card";
 import { CategoryBadge } from "@/components/app/category-badge";
 import {
@@ -179,7 +179,7 @@ export function MyActivitiesList({
   activities: ActivityRow[];
   initialStatus?: InitialStatus;
 }) {
-  const router = useRouter();
+  const { openActivity } = useActivityDrawer();
 
   // Mapeia initialStatus legado (P10) para o novo KpiFilter.
   const mapInitial = (s: InitialStatus): KpiFilter =>
@@ -593,7 +593,7 @@ export function MyActivitiesList({
                       key={activity.id}
                       className="cursor-pointer"
                       onClick={() =>
-                        router.push(`/atividades/${activity.id}`)
+                        openActivity(activity.id)
                       }
                     >
                       <TableCell className="max-w-72">
@@ -665,7 +665,7 @@ export function MyActivitiesList({
                               ) : null}
                               <DropdownMenuItem
                                 onClick={() =>
-                                  router.push(`/atividades/${activity.id}`)
+                                  openActivity(activity.id)
                                 }
                               >
                                 <Eye />

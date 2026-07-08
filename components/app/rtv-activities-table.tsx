@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
 import { Camera, ChevronRight } from "lucide-react";
 
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { ActivityCard } from "@/components/app/activity-card";
 import {
   StatusBadge,
@@ -58,7 +59,7 @@ export function RtvActivitiesTable({
   profileId: string;
   profileName: string;
 }) {
-  const router = useRouter();
+  const { openActivity } = useActivityDrawer();
   const hasMore = totalOpen > activities.length;
 
   if (activities.length === 0) {
@@ -98,7 +99,7 @@ export function RtvActivitiesTable({
                 <TableRow
                   key={activity.id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/atividades/${activity.id}`)}
+                  onClick={() => openActivity(activity.id)}
                 >
                   <TableCell className="max-w-72 truncate font-medium">
                     {activity.title}
