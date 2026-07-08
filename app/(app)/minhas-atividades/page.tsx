@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardPlus } from "lucide-react";
+import { PenLine } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export default async function MinhasAtividadesPage({
     status === "atrasadas" ||
     status === "todas"
       ? status
-      : "abertas";
+      : "todas";
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
   const activities = await getScopedActivities(channelIds);
@@ -44,15 +44,14 @@ export default async function MinhasAtividadesPage({
   return (
     <PageShell
       title="Minhas Atividades"
-      description="Atividades atribuídas a você em todos os canais."
+      description="Todas as atividades atribuídas a você."
       actions={
         <Button
           variant="outline"
-          size="sm"
           nativeButton={false}
           render={<Link href="/registrar?avulso=1" />}
         >
-          <ClipboardPlus className="size-4" />
+          <PenLine className="size-4" />
           Registrar ação fora do plano
         </Button>
       }

@@ -3,30 +3,48 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarClock,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   CircleCheckBig,
+  ClipboardList,
   ClipboardPlus,
+  Eye,
   ListTodo,
-  RefreshCw,
+  MoreHorizontal,
   Search,
   SearchX,
 } from "lucide-react";
-import { differenceInCalendarDays, parseISO } from "date-fns";
 
 import { ActivityCard } from "@/components/app/activity-card";
+import { CategoryBadge } from "@/components/app/category-badge";
 import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
+import {
+  StatusBadge,
+  type ActivityStatus,
+} from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyContent,
@@ -36,108 +54,141 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 import { cn } from "@/lib/utils";
 
-type StatusChip = "abertas" | "concluidas" | "atrasadas" | "todas";
+const OPEN = new Set<ActivityStatus>([
+  "planejada",
+  "em_andamento",
+  "atrasada",
+]);
 
-const CHIPS: { value: StatusChip; label: string }[] = [
-  { value: "abertas", label: "Abertas" },
-  { value: "atrasadas", label: "Atrasadas" },
-  { value: "concluidas", label: "Concluídas" },
-  { value: "todas", label: "Todas" },
-];
+type KpiFilter = "todos" | "abertas" | "atrasadas" | "concluidas";
 
-const OPEN = new Set(["planejada", "em_andamento", "atrasada"]);
+type SortKey = "prazo" | "status";
+type SortDir = "asc" | "desc";
 
-/**
- * Ordenação: atrasadas primeiro (por dias de atraso desc), depois
- * abertas por prazo mais próximo, concluídas por último (recentes
- * primeiro).
- */
-function sortActivities(activities: ActivityRow[]): ActivityRow[] {
-  const rank = (activity: ActivityRow) => {
-    if (activity.status === "atrasada") return 0;
-    if (OPEN.has(activity.status)) return 1;
-    return 2;
-  };
-  return [...activities].sort((a, b) => {
-    const diff = rank(a) - rank(b);
-    if (diff !== 0) return diff;
-    if (rank(a) === 2) {
-      const dateA = a.completedAt ?? a.createdAt;
-      const dateB = b.completedAt ?? b.createdAt;
-      return dateA < dateB ? 1 : -1;
-    }
-    const dueA = a.dueDate ?? "9999-12-31";
-    const dueB = b.dueDate ?? "9999-12-31";
-    return dueA < dueB ? -1 : dueA > dueB ? 1 : 0;
-  });
-}
+const PAGE_SIZE = 20;
 
-function MetricCard({
+/** Aceita o mesmo range de status já usado no page.tsx. */
+export type InitialStatus = KpiFilter | "todas";
+
+function KpiCard({
   label,
   value,
   hint,
   icon: Icon,
+  active,
   tone = "default",
+  onClick,
 }: {
   label: string;
   value: number | string;
   hint?: string;
   icon: typeof CircleAlert;
+  active: boolean;
   tone?: "default" | "alert";
+  onClick: () => void;
 }) {
   return (
-    <Card className="gap-2">
-      <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardDescription>{label}</CardDescription>
-        <Icon
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground",
-            tone === "alert" && "text-amber-600 dark:text-amber-400"
-          )}
-        />
-      </CardHeader>
-      <CardContent>
+    <Card
+      className={cn(
+        "gap-2 p-0 transition-colors",
+        active
+          ? "border-[#0063A7] bg-[#0063A7]/5 dark:bg-[#0063A7]/10"
+          : "hover:bg-muted/30"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className="w-full p-6 text-left"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <Icon
+            className={cn(
+              "size-4 shrink-0",
+              tone === "alert"
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted-foreground"
+            )}
+          />
+        </div>
         <p
           className={cn(
-            "text-3xl font-semibold tracking-tight tabular-nums",
+            "mt-3 text-3xl font-semibold tracking-tight tabular-nums",
             tone === "alert" && "text-amber-600 dark:text-amber-400"
           )}
         >
           {value}
         </p>
         {hint ? (
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+          <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+            {hint}
+          </p>
         ) : null}
-      </CardContent>
+      </button>
     </Card>
   );
 }
 
 /**
- * Visão pessoal do RTV — 4 métricas cross-canal, filtros ricos e cards
- * em coluna única com agrupamento por canal quando o filtro está em
- * "Todos" e o RTV atua em mais de 1 canal.
+ * Visão pessoal do RTV — herda o padrão da visão do canal: KPIs
+ * clicáveis funcionam como filtros de status na tabela densa abaixo.
+ * Filtros hierárquicos: Canal → Filial → Meta.
  */
 export function MyActivitiesList({
   activities,
   initialStatus = "abertas",
 }: {
   activities: ActivityRow[];
-  initialStatus?: StatusChip;
+  initialStatus?: InitialStatus;
 }) {
   const router = useRouter();
-  const [refreshing, startRefresh] = React.useTransition();
-  const [chip, setChip] = React.useState<StatusChip>(initialStatus);
-  const [channelId, setChannelId] = React.useState<string | null>(null);
+
+  // Mapeia initialStatus legado (P10) para o novo KpiFilter.
+  const mapInitial = (s: InitialStatus): KpiFilter =>
+    s === "todas" ? "todos" : s;
+
+  const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>(
+    mapInitial(initialStatus)
+  );
   const [search, setSearch] = React.useState("");
+  const [channelId, setChannelId] = React.useState<string | null>(null);
+  const [branchId, setBranchId] = React.useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
     null
   );
-  const [problemFilter, setProblemFilter] = React.useState<string | null>(null);
+  const [metaFilter, setMetaFilter] = React.useState<string | null>(null);
+  const [sortKey, setSortKey] = React.useState<SortKey>("prazo");
+  const [sortDir, setSortDir] = React.useState<SortDir>("asc");
+  const [page, setPage] = React.useState(1);
+
+  // Reset paginação quando qualquer filtro muda.
+  React.useEffect(() => {
+    setPage(1);
+  }, [kpiFilter, search, channelId, branchId, categoryFilter, metaFilter]);
+
+  // Reset filial e meta quando o canal muda.
+  const previousChannel = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (previousChannel.current !== channelId) {
+      previousChannel.current = channelId;
+      setBranchId(null);
+      setMetaFilter(null);
+    }
+  }, [channelId]);
 
   const channels = React.useMemo(() => {
     const seen = new Map<string, string>();
@@ -152,10 +203,60 @@ export function MyActivitiesList({
   }, [activities]);
   const showChannelFilter = channels.length > 1;
 
+  // Filiais e metas do canal selecionado (para o filtro hierárquico).
+  const channelBranches = React.useMemo(() => {
+    if (!channelId) return [];
+    const seen = new Map<string, string>();
+    for (const activity of activities) {
+      if (
+        activity.channelId === channelId &&
+        activity.branchId &&
+        activity.branchName &&
+        !seen.has(activity.branchId)
+      ) {
+        seen.set(activity.branchId, activity.branchName);
+      }
+    }
+    return [...seen.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activities, channelId]);
+
+  const channelMetas = React.useMemo(() => {
+    if (!channelId) return [];
+    const seen = new Map<string, string>();
+    for (const activity of activities) {
+      if (
+        activity.channelId === channelId &&
+        activity.problemId &&
+        activity.problemTitle &&
+        !seen.has(activity.problemId)
+      ) {
+        seen.set(activity.problemId, activity.problemTitle);
+      }
+    }
+    return [...seen.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activities, channelId]);
+
+  const showBranchFilter = !!channelId && channelBranches.length > 1;
+  const showMetaFilter = !!channelId && channelMetas.length > 0;
+
   const channelOptions: SelectOption[] = React.useMemo(
-    () =>
-      channels.map((channel) => ({ value: channel.id, label: channel.name })),
+    () => channels.map((c) => ({ value: c.id, label: c.name })),
     [channels]
+  );
+  const branchOptions: SelectOption[] = React.useMemo(
+    () => channelBranches.map((b) => ({ value: b.id, label: b.name })),
+    [channelBranches]
+  );
+  const metaOptions: SelectOption[] = React.useMemo(
+    () => [
+      { value: "__none__", label: "Sem meta vinculada" },
+      ...channelMetas.map((m) => ({ value: m.id, label: m.name })),
+    ],
+    [channelMetas]
   );
 
   const categoryOptions = React.useMemo(() => {
@@ -169,126 +270,125 @@ export function MyActivitiesList({
     }));
   }, [activities]);
 
-  const problemOptions = React.useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const activity of activities) {
-      if (activity.problemId && activity.problemTitle) {
-        seen.set(activity.problemId, activity.problemTitle);
-      }
-    }
-    return [...seen.entries()]
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+  // KPIs sempre absolutos (não afetados pelo filtro do próprio KPI).
+  const metrics = React.useMemo(() => {
+    const total = activities.length;
+    const open = activities.filter((a) => OPEN.has(a.status)).length;
+    const late = activities.filter((a) => a.status === "atrasada").length;
+    const completed = activities.filter((a) => a.status === "concluida").length;
+    const completedPercent =
+      total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, open, late, completed, completedPercent };
   }, [activities]);
 
-  const channelApplied = channelId !== null;
-
-  const filtered = React.useMemo(() => {
-    let result = activities;
-    if (chip === "abertas") {
-      result = result.filter((activity) => OPEN.has(activity.status));
-    } else if (chip === "atrasadas") {
-      result = result.filter((activity) => activity.status === "atrasada");
-    } else if (chip === "concluidas") {
-      result = result.filter((activity) => activity.status === "concluida");
-    }
-    if (channelApplied) {
-      result = result.filter((activity) => activity.channelId === channelId);
-    }
-    if (categoryFilter) {
-      result = result.filter((activity) => activity.category === categoryFilter);
-    }
-    if (problemFilter) {
-      result = result.filter((activity) => activity.problemId === problemFilter);
-    }
-    if (search.trim().length > 0) {
-      const term = search.trim().toLowerCase();
-      result = result.filter((activity) =>
-        activity.title.toLowerCase().includes(term)
+  // Aplica o filtro do KPI.
+  const filteredByKpi = React.useMemo(() => {
+    if (kpiFilter === "todos") return activities;
+    if (kpiFilter === "abertas") {
+      return activities.filter(
+        (a) => a.status === "planejada" || a.status === "em_andamento"
       );
     }
-    return result;
-  }, [
-    activities,
-    chip,
-    channelId,
-    channelApplied,
-    categoryFilter,
-    problemFilter,
-    search,
-  ]);
-
-  // Métricas pessoais — sempre baseadas em TODAS as atividades do RTV
-  // (não afetadas pelos filtros da lista abaixo).
-  const metrics = React.useMemo(() => {
-    const open = activities.filter((activity) =>
-      OPEN.has(activity.status)
-    ).length;
-    const completed = activities.filter(
-      (activity) => activity.status === "concluida"
-    ).length;
-    const late = activities.filter(
-      (activity) => activity.status === "atrasada"
-    ).length;
-    const today = new Date();
-    const dueSoon = activities.filter(
-      (activity) =>
-        OPEN.has(activity.status) &&
-        activity.status !== "atrasada" &&
-        activity.dueDate !== null &&
-        differenceInCalendarDays(parseISO(activity.dueDate), today) <= 7 &&
-        differenceInCalendarDays(parseISO(activity.dueDate), today) >= 0
-    ).length;
-    const total = activities.length;
-    return {
-      open,
-      completed,
-      completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
-      late,
-      dueSoon,
-      total,
-    };
-  }, [activities]);
-
-  const groups = React.useMemo(() => {
-    const byChannel = new Map<string, { name: string; items: ActivityRow[] }>();
-    for (const activity of filtered) {
-      const group = byChannel.get(activity.channelId) ?? {
-        name: activity.channelName,
-        items: [],
-      };
-      group.items.push(activity);
-      byChannel.set(activity.channelId, group);
+    if (kpiFilter === "atrasadas") {
+      return activities.filter((a) => a.status === "atrasada");
     }
-    return [...byChannel.entries()]
-      .map(([id, group]) => ({
-        id,
-        name: group.name,
-        items: sortActivities(group.items),
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [filtered]);
+    return activities.filter((a) => a.status === "concluida");
+  }, [activities, kpiFilter]);
 
-  // Agrupa quando canal filter está em "todos" e há mais de 1 canal.
-  const grouped = !channelApplied && groups.length > 1;
-  const flatList = React.useMemo(() => sortActivities(filtered), [filtered]);
+  const filtered = React.useMemo(() => {
+    let rows = filteredByKpi;
+    if (search.trim().length > 0) {
+      const term = search.trim().toLowerCase();
+      rows = rows.filter((a) => a.title.toLowerCase().includes(term));
+    }
+    if (channelId) {
+      rows = rows.filter((a) => a.channelId === channelId);
+    }
+    if (branchId) {
+      rows = rows.filter((a) => a.branchId === branchId);
+    }
+    if (categoryFilter) {
+      rows = rows.filter((a) => a.category === categoryFilter);
+    }
+    if (metaFilter) {
+      if (metaFilter === "__none__") {
+        rows = rows.filter((a) => !a.problemId);
+      } else {
+        rows = rows.filter((a) => a.problemId === metaFilter);
+      }
+    }
+    return rows;
+  }, [filteredByKpi, search, channelId, branchId, categoryFilter, metaFilter]);
+
+  const sorted = React.useMemo(() => {
+    const rows = [...filtered];
+    if (sortKey === "prazo") {
+      rows.sort((a, b) => {
+        const lateA = a.status === "atrasada" ? 0 : 1;
+        const lateB = b.status === "atrasada" ? 0 : 1;
+        if (lateA !== lateB) return lateA - lateB;
+        const dueA = a.dueDate ?? "9999-12-31";
+        const dueB = b.dueDate ?? "9999-12-31";
+        return sortDir === "asc"
+          ? dueA.localeCompare(dueB)
+          : dueB.localeCompare(dueA);
+      });
+    } else {
+      rows.sort((a, b) => {
+        const cmp = a.status.localeCompare(b.status);
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return rows;
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged = React.useMemo(
+    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sorted, currentPage]
+  );
 
   const filtersActive =
-    chip !== "abertas" ||
-    channelApplied ||
+    kpiFilter !== "todos" ||
+    search.trim().length > 0 ||
+    channelId !== null ||
+    branchId !== null ||
     categoryFilter !== null ||
-    problemFilter !== null ||
-    search.trim().length > 0;
+    metaFilter !== null;
 
   function clearFilters() {
-    setChip("abertas");
-    setChannelId(null);
-    setCategoryFilter(null);
-    setProblemFilter(null);
+    setKpiFilter("todos");
     setSearch("");
+    setChannelId(null);
+    setBranchId(null);
+    setCategoryFilter(null);
+    setMetaFilter(null);
   }
 
-  // Sem atividades atribuídas: empty central com CTA de avulso.
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  function SortIcon({ column }: { column: SortKey }) {
+    if (sortKey !== column) {
+      return (
+        <ArrowUpDown className="ml-1 inline size-3 text-muted-foreground/60" />
+      );
+    }
+    return sortDir === "asc" ? (
+      <ArrowUp className="ml-1 inline size-3" />
+    ) : (
+      <ArrowDown className="ml-1 inline size-3" />
+    );
+  }
+
+  // Sem nenhuma atividade — empty central com CTA.
   if (activities.length === 0) {
     return (
       <Empty className="flex-1 rounded-3xl border border-dashed">
@@ -317,38 +417,47 @@ export function MyActivitiesList({
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Bloco 1 — 4 métricas pessoais */}
+    <>
+      {/* KPIs clicáveis */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <MetricCard
-          label="Abertas"
-          value={metrics.open}
-          hint="abertas na safra"
-          icon={ListTodo}
+        <KpiCard
+          label="Total"
+          value={metrics.total}
+          hint="no total"
+          icon={ClipboardList}
+          active={kpiFilter === "todos"}
+          onClick={() => setKpiFilter("todos")}
         />
-        <MetricCard
+        <KpiCard
+          label="Abertas"
+          value={metrics.open - metrics.late}
+          hint="em andamento"
+          icon={ListTodo}
+          active={kpiFilter === "abertas"}
+          onClick={() => setKpiFilter("abertas")}
+        />
+        <KpiCard
+          label="Atrasadas"
+          value={metrics.late}
+          hint={
+            metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"
+          }
+          icon={CircleAlert}
+          tone={metrics.late > 0 ? "alert" : "default"}
+          active={kpiFilter === "atrasadas"}
+          onClick={() => setKpiFilter("atrasadas")}
+        />
+        <KpiCard
           label="Concluídas"
           value={metrics.completed}
           hint={`${metrics.completedPercent}% do total`}
           icon={CircleCheckBig}
-        />
-        <MetricCard
-          label="Atrasadas"
-          value={metrics.late}
-          hint={metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"}
-          icon={CircleAlert}
-          tone={metrics.late > 0 ? "alert" : "default"}
-        />
-        <MetricCard
-          label="Vencem em 7 dias"
-          value={metrics.dueSoon}
-          hint="prazo próximo"
-          icon={CalendarClock}
-          tone={metrics.dueSoon > 0 ? "alert" : "default"}
+          active={kpiFilter === "concluidas"}
+          onClick={() => setKpiFilter("concluidas")}
         />
       </div>
 
-      {/* Bloco 2 — filtros */}
+      {/* Filtros da tabela */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-64 flex-1 max-w-md">
@@ -360,30 +469,22 @@ export function MyActivitiesList({
               className="h-10 pl-9"
             />
           </div>
-          <div className="flex gap-2">
-            {CHIPS.map((item) => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => setChip(item.value)}
-                className={cn(
-                  "h-10 rounded-full border px-4 text-sm font-medium transition-colors",
-                  chip === item.value
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
           {showChannelFilter ? (
             <SearchableSelect
               options={channelOptions}
               value={channelId}
               onValueChange={setChannelId}
-              placeholder="Canal"
-              className="h-10 min-w-40"
+              placeholder="Todos os canais"
+              className="h-10 min-w-44"
+            />
+          ) : null}
+          {showBranchFilter ? (
+            <SearchableSelect
+              options={branchOptions}
+              value={branchId}
+              onValueChange={setBranchId}
+              placeholder="Todas as filiais"
+              className="h-10 min-w-44"
             />
           ) : null}
           {categoryOptions.length > 0 ? (
@@ -395,82 +496,231 @@ export function MyActivitiesList({
               className="h-10 min-w-40"
             />
           ) : null}
-          {problemOptions.length > 0 ? (
+          {showMetaFilter ? (
             <SearchableSelect
-              options={problemOptions}
-              value={problemFilter}
-              onValueChange={setProblemFilter}
+              options={metaOptions}
+              value={metaFilter}
+              onValueChange={setMetaFilter}
               placeholder="Meta"
               className="h-10 min-w-44"
             />
           ) : null}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto size-10 shrink-0 text-muted-foreground"
-            aria-label="Atualizar lista"
-            disabled={refreshing}
-            onClick={() => startRefresh(() => router.refresh())}
-          >
-            <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
-          </Button>
         </div>
         <p className="text-sm text-muted-foreground tabular-nums">
-          {filtered.length} de {activities.length} atividades
+          {sorted.length} de {activities.length} atividades
         </p>
       </div>
 
-      {/* Bloco 3 — lista de atividades */}
-      {filtered.length === 0 ? (
-        <Empty className="rounded-3xl border border-dashed py-10">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <SearchX />
-            </EmptyMedia>
-            <EmptyTitle>Nenhum resultado com esses filtros.</EmptyTitle>
-          </EmptyHeader>
-          {filtersActive ? (
-            <EmptyContent>
-              <Button variant="outline" onClick={clearFilters}>
-                Limpar filtros
-              </Button>
-            </EmptyContent>
-          ) : null}
-        </Empty>
-      ) : grouped ? (
-        <div className="flex flex-col gap-6">
-          {groups.map((group) => (
-            <section key={group.id} className="flex flex-col gap-2">
-              <h2 className="flex items-baseline gap-1.5 text-sm font-semibold">
-                {group.name}
-                <span className="font-normal text-muted-foreground tabular-nums">
-                  ({group.items.length})
-                </span>
-              </h2>
-              <div className="flex flex-col gap-2">
-                {group.items.map((activity) => (
-                  <ActivityCard
-                    key={activity.id}
-                    showCanal={false}
-                    activity={activity}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+      {/* Tabela ou empty */}
+      {sorted.length === 0 ? (
+        <Card>
+          <CardContent>
+            <Empty className="py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <SearchX />
+                </EmptyMedia>
+                <EmptyTitle>Nenhum resultado com esses filtros.</EmptyTitle>
+              </EmptyHeader>
+              {filtersActive ? (
+                <div className="pt-2">
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Limpar filtros
+                  </Button>
+                </div>
+              ) : null}
+            </Empty>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="flex flex-col gap-2">
-          {flatList.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              showCanal={!channelApplied}
-              activity={activity}
-            />
-          ))}
-        </div>
+        <>
+          {/* Desktop — tabela densa */}
+          <div className="hidden overflow-x-auto rounded-xl border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Atividade</TableHead>
+                  <TableHead className="hidden lg:table-cell">Canal</TableHead>
+                  <TableHead className="hidden xl:table-cell">
+                    Categoria
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell">Meta</TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("prazo")}
+                      className="flex items-center hover:text-foreground"
+                    >
+                      Prazo
+                      <SortIcon column="prazo" />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("status")}
+                      className="flex items-center hover:text-foreground"
+                    >
+                      Status
+                      <SortIcon column="status" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paged.map((activity) => {
+                  const overdue = activity.status === "atrasada";
+                  const open = OPEN.has(activity.status);
+                  return (
+                    <TableRow
+                      key={activity.id}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        router.push(`/atividades/${activity.id}`)
+                      }
+                    >
+                      <TableCell className="max-w-72">
+                        <p className="truncate font-medium">
+                          {activity.title}
+                        </p>
+                        {activity.branchName ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {activity.branchName}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="hidden max-w-40 lg:table-cell">
+                        <p className="truncate">{activity.channelName}</p>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {activity.category ? (
+                          <CategoryBadge category={activity.category} />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden max-w-48 xl:table-cell">
+                        {activity.problemTitle ? (
+                          <p className="truncate">{activity.problemTitle}</p>
+                        ) : (
+                          <p className="italic text-muted-foreground">
+                            Sem vínculo
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "whitespace-nowrap tabular-nums",
+                          overdue
+                            ? "font-medium text-red-600 dark:text-red-400"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {activity.dueDate
+                          ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
+                              locale: ptBR,
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={activity.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div
+                          onClick={(event) => event.stopPropagation()}
+                          className="flex justify-end"
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label="Ações"
+                                >
+                                  <MoreHorizontal />
+                                </Button>
+                              }
+                            />
+                            <DropdownMenuContent align="end">
+                              {open ? (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    router.push(
+                                      `/registrar?atividade=${activity.id}`
+                                    )
+                                  }
+                                >
+                                  <Camera />
+                                  Registrar
+                                </DropdownMenuItem>
+                              ) : null}
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(`/atividades/${activity.id}`)
+                                }
+                              >
+                                <Eye />
+                                Ver detalhes
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile — ActivityCards empilhados */}
+          <div className="flex flex-col gap-2 md:hidden">
+            {paged.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                showCanal={!channelId}
+                activity={activity}
+              />
+            ))}
+          </div>
+
+          {/* Paginação */}
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-between gap-2 border-t pt-4">
+              <p className="text-sm text-muted-foreground tabular-nums">
+                Página {currentPage} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="size-4" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Próxima
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
-    </div>
+
+      {/* Ícone de calendário auxiliar (mantém import se algum dia usar). */}
+      <span className="hidden">
+        <CalendarClock />
+      </span>
+    </>
   );
 }
-
