@@ -1,5 +1,6 @@
 import {
   BrushCleaning,
+  CalendarDays,
   ChartColumn,
   ClipboardCheck,
   ClipboardList,
@@ -53,6 +54,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       href: "/minhas-atividades",
       icon: ListTodo,
     },
+    { title: "Calendário", href: "/calendario", icon: CalendarDays },
     {
       title: "+ Nova atividade",
       href: "#wizard",
