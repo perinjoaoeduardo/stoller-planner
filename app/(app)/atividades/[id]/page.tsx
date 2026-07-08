@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ClipboardCheck,
   ImageMinus,
+  Link2,
+  MessageSquare,
   Pencil,
   Plus,
   RefreshCw,
@@ -97,6 +99,9 @@ function eventIcon(type: string, description: string | null): LucideIcon {
   if (type === "status_alterado" && description?.includes('para "Concluída"')) {
     return CheckCircle2;
   }
+  if (type === "execucao_registrada" && description) {
+    return MessageSquare;
+  }
   const icons: Record<string, LucideIcon> = {
     criada: Plus,
     editada: Pencil,
@@ -105,6 +110,7 @@ function eventIcon(type: string, description: string | null): LucideIcon {
     foto_removida: ImageMinus,
     execucao_registrada: ClipboardCheck,
     reaberta: RotateCcw,
+    problema_vinculado: Link2,
   };
   return icons[type] ?? RefreshCw;
 }
@@ -306,10 +312,25 @@ export default async function AtividadePage({
     });
   }
 
+  // Última descrição de execução registrada (o RTV é quem contou o que
+  // aconteceu quando concluiu); vira o card "Descrição da execução".
+  const executionEvent = activity.events.find(
+    (event) =>
+      event.type === "execucao_registrada" &&
+      event.description &&
+      event.description.trim().length > 0
+  );
+
+  const isOpen =
+    activity.status === "planejada" ||
+    activity.status === "em_andamento" ||
+    activity.status === "atrasada";
+
   return (
-    <div className="flex flex-1 flex-col gap-8 p-5 md:p-8">
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <PageShell
+      title={activity.title}
+      breadcrumb={
+        <div className="mb-1 space-y-2">
           <BackButton
             fallbackHref={isField ? "/minhas-atividades" : channelHref}
           />
@@ -333,30 +354,42 @@ export default async function AtividadePage({
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {activity.title}
-          </h1>
-          <div className="flex items-center gap-2">
-            <StatusBadge
-              status={activity.status}
+      }
+      description={
+        <span className="flex flex-wrap items-center gap-2">
+          <StatusBadge
+            status={activity.status}
+            className="px-3 py-1 text-sm"
+          />
+          {activity.category ? (
+            <CategoryBadge
+              category={activity.category}
               className="px-3 py-1 text-sm"
             />
-            {activity.category ? (
-              <CategoryBadge
-                category={activity.category}
-                className="px-3 py-1 text-sm"
-              />
-            ) : null}
-          </div>
-        </div>
-      </header>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="flex flex-col gap-4 xl:col-span-2">
+          ) : null}
+        </span>
+      }
+      descriptionClassName="mt-1 flex"
+      actions={
+        isOpen && canRegister ? (
+          <Button
+            nativeButton={false}
+            render={<Link href={`/registrar?atividade=${activity.id}`} />}
+          >
+            <Camera className="size-4" />
+            Registrar
+          </Button>
+        ) : null
+      }
+    >
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-6 lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Sobre</CardTitle>
+              <CardDescription>
+                Contexto da atividade dentro do plano da safra.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-5">
               {activity.description ? (
@@ -382,9 +415,32 @@ export default async function AtividadePage({
             photos={activity.photos}
             canManage={canRegister}
           />
+
+          {executionEvent ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Descrição da execução</CardTitle>
+                <CardDescription>
+                  O que foi registrado sobre esta execução.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-relaxed">
+                  {executionEvent.description}
+                </p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Registrada{" "}
+                  {formatDistanceToNow(parseISO(executionEvent.createdAt), {
+                    locale: ptBR,
+                    addSuffix: true,
+                  })}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <StatusCard
             activityId={activity.id}
             status={activity.status}
@@ -466,6 +522,21 @@ export default async function AtividadePage({
           </Card>
         </div>
       </div>
-    </div>
+
+      {/* Botão Registrar sticky no rodapé apenas no mobile e se atividade aberta */}
+      {isOpen && canRegister ? (
+        <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:-mx-8 lg:hidden">
+          <Button
+            size="lg"
+            className="h-12 w-full text-base"
+            nativeButton={false}
+            render={<Link href={`/registrar?atividade=${activity.id}`} />}
+          >
+            <Camera className="size-5" />
+            Registrar
+          </Button>
+        </div>
+      ) : null}
+    </PageShell>
   );
 }

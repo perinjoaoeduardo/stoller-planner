@@ -13,7 +13,7 @@ export function PageShell({
   children,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   /** Sobrescreve o estilo padrão da descrição (ex: cor de alerta). */
   descriptionClassName?: string;
   /** Breadcrumb opcional, exibido acima do título (páginas profundas). */
