@@ -614,12 +614,12 @@ async function FieldHome() {
       actions={
         <Button
           size="lg"
-          className="h-11 text-base font-semibold"
+          className="h-14 gap-2 px-6 text-base font-semibold shadow-sm"
           nativeButton={false}
           render={
             <Link href="/registrar">
               <Camera className="size-5" />
-              Registrar
+              Registrar nova atividade
             </Link>
           }
         />
