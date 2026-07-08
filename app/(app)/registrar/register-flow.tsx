@@ -11,8 +11,17 @@ import {
   SearchX,
 } from "lucide-react";
 
+import { BackButton } from "@/components/app/back-button";
 import { CategoryBadge } from "@/components/app/category-badge";
+import { PageShell } from "@/components/app/page-shell";
+import {
+  SearchableSelect,
+  type SelectOption,
+} from "@/components/app/searchable-select";
 import { StatusBadge } from "@/components/app/status-badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -34,14 +43,15 @@ import { cn } from "@/lib/utils";
 import { AdhocForm } from "./adhoc-form";
 import { CompleteActivity } from "./complete-activity";
 
+const OPEN_RANK = new Set(["planejada", "em_andamento", "atrasada"]);
+
 /**
- * Fluxo Registrar — lógica invertida: a atividade planejada já existe,
- * o usuário ABRE a atividade, anexa a foto por cima e conclui
- * (Situação A). Quem não planejou registra a ação fora do plano
- * (Situação B). Quanto mais planejado, menos trabalho no campo.
+ * Fluxo Registrar — lógica invertida: a atividade planejada já existe;
+ * o RTV ABRE a atividade, anexa foto por cima e conclui (Situação A).
+ * Quem não planejou registra ação fora do plano (Situação B).
  *
- * Se o RTV tem mais de 1 canal, ele escolhe o canal primeiro.
- * Canal único: seleção automática, zero fricção extra.
+ * Se o RTV tem 2+ canais e não veio com contexto, escolhe o canal
+ * primeiro. Canal único: seleção automática, zero fricção extra.
  */
 export function RegisterFlow({
   activities,
@@ -62,8 +72,6 @@ export function RegisterFlow({
 }) {
   const router = useRouter();
 
-  // Canal inicial: inferido da atividade pre-selecionada, auto-selecionado
-  // se único, ou null (picker visível) se multi-canal.
   const preselectedActivity = React.useMemo(
     () => activities.find((a) => a.id === preselectedId) ?? null,
     [activities, preselectedId]
@@ -71,7 +79,10 @@ export function RegisterFlow({
 
   const initialChannelId = React.useMemo(() => {
     if (preselectedActivity) return preselectedActivity.channelId;
-    if (preselectedChannelId && channels.some((c) => c.id === preselectedChannelId))
+    if (
+      preselectedChannelId &&
+      channels.some((c) => c.id === preselectedChannelId)
+    )
       return preselectedChannelId;
     if (channels.length === 1) return channels[0].id;
     return null;
@@ -87,10 +98,11 @@ export function RegisterFlow({
   const [search, setSearch] = React.useState("");
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
 
-  // Dados filtrados pelo canal selecionado
   const channelActivities = React.useMemo(
     () =>
-      channelId ? activities.filter((a) => a.channelId === channelId) : activities,
+      channelId
+        ? activities.filter((a) => a.channelId === channelId)
+        : activities,
     [activities, channelId]
   );
   const channelBranches = React.useMemo(
@@ -98,10 +110,6 @@ export function RegisterFlow({
       channelId ? branches.filter((b) => b.channelId === channelId) : branches,
     [branches, channelId]
   );
-  const channelBranchPlans = React.useMemo(() => {
-    const ids = new Set(channelBranches.map((b) => b.id));
-    return branchPlans.filter((bp) => ids.has(bp.branchId));
-  }, [branchPlans, channelBranches]);
 
   const activeChannel = channelId
     ? (channels.find((c) => c.id === channelId) ?? null)
@@ -122,8 +130,15 @@ export function RegisterFlow({
   // ─── 0 canais: erro de vínculo ────────────────────────────────────────
   if (channels.length === 0) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-4 py-16">
-        <Empty>
+      <PageShell
+        title="Registrar execução"
+        breadcrumb={
+          <div className="mb-1">
+            <BackButton fallbackHref="/" />
+          </div>
+        }
+      >
+        <Empty className="rounded-3xl border border-dashed py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Building2 />
@@ -134,52 +149,56 @@ export function RegisterFlow({
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      </div>
+      </PageShell>
     );
   }
 
-  // ─── Picker de canal (multi-canal, canal não escolhido) ───────────────
+  // ─── Estado 1: seleção de canal (multi-canal, canal não escolhido) ────
   if (!channelId && channels.length > 1) {
     return (
-      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
-        <header className="px-4 py-3">
-          <h1 className="text-lg leading-tight font-semibold tracking-tight">
-            De qual canal é essa ação?
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Selecione o canal para ver as atividades disponíveis.
-          </p>
-        </header>
-        <div className="flex flex-1 flex-col gap-2 px-4 pb-4">
+      <PageShell
+        title="De qual canal é essa ação?"
+        description="Selecione o canal para ver as atividades disponíveis."
+        breadcrumb={
+          <div className="mb-1">
+            <BackButton fallbackHref="/" />
+          </div>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {channels.map((channel) => (
-            <button
+            <Card
               key={channel.id}
-              type="button"
-              onClick={() => selectChannel(channel.id)}
-              className="flex min-h-16 w-full items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:bg-muted/50 active:bg-muted"
+              className="p-0 transition-colors hover:bg-muted/40"
             >
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{channel.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {channel.openActivityCount > 0
-                    ? `${channel.openActivityCount} atividade${channel.openActivityCount !== 1 ? "s" : ""} aberta${channel.openActivityCount !== 1 ? "s" : ""}`
-                    : "Nenhuma atividade aberta"}
-                </p>
-              </div>
-              {channel.openActivityCount > 0 ? (
-                <span className="shrink-0 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-primary">
-                  {channel.openActivityCount}
-                </span>
-              ) : null}
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-            </button>
+              <button
+                type="button"
+                onClick={() => selectChannel(channel.id)}
+                className="flex w-full items-center gap-3 p-6 text-left"
+              >
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="text-lg font-medium">{channel.name}</p>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {channel.openActivityCount > 0
+                      ? `${channel.openActivityCount} ${channel.openActivityCount === 1 ? "atividade aberta" : "atividades abertas"}`
+                      : "Nenhuma atividade aberta"}
+                  </p>
+                </div>
+                {channel.openActivityCount > 0 ? (
+                  <Badge className="shrink-0 tabular-nums" variant="secondary">
+                    {channel.openActivityCount}
+                  </Badge>
+                ) : null}
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+            </Card>
           ))}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
-  // ─── Situação B: ação fora do plano ──────────────────────────────────
+  // ─── Situação B: ação fora do plano (delegada ao AdhocForm) ──────────
   if (adhoc) {
     return (
       <AdhocForm
@@ -206,164 +225,201 @@ export function RegisterFlow({
     );
   }
 
-  // ─── Picker: qual atividade você executou? ───────────────────────────
-  const filtered = channelActivities.filter((activity) => {
+  // ─── Estado 2: tela principal do registrar ───────────────────────────
+  const openActivities = channelActivities.filter((a) =>
+    OPEN_RANK.has(a.status)
+  );
+
+  // Ordenação: atrasadas > vencendo esta semana > outras abertas; dentro
+  // de cada grupo, "minhas" primeiro.
+  const sorted = [...openActivities].sort((a, b) => {
+    const rankA = a.status === "atrasada" ? 0 : 1;
+    const rankB = b.status === "atrasada" ? 0 : 1;
+    if (rankA !== rankB) return rankA - rankB;
+    if (a.isMine !== b.isMine) return a.isMine ? -1 : 1;
+    const dueA = a.dueDate ?? "9999-12-31";
+    const dueB = b.dueDate ?? "9999-12-31";
+    return dueA < dueB ? -1 : dueA > dueB ? 1 : 0;
+  });
+
+  const filtered = sorted.filter((activity) => {
     if (branchFilter && activity.branchId !== branchFilter) return false;
     if (!search.trim()) return true;
     const query = search.trim().toLowerCase();
     return (
       activity.title.toLowerCase().includes(query) ||
-      (activity.branchName ?? "").toLowerCase().includes(query) ||
-      activity.channelName.toLowerCase().includes(query)
+      (activity.branchName ?? "").toLowerCase().includes(query)
     );
   });
 
+  const branchOptions: SelectOption[] = channelBranches.map((branch) => ({
+    value: branch.id,
+    label: branch.name,
+  }));
+
+  const showBranchFilter = channelBranches.length > 1;
+  const canGoBackToPicker = channels.length > 1;
+
   return (
-    <div className="mx-auto flex w-full max-w-xl flex-1 flex-col">
-      <header className="px-4 py-3">
-        {channels.length > 1 && activeChannel ? (
-          <div className="mb-2 flex items-center gap-2">
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-              {activeChannel.name}
-            </span>
-            <button
-              type="button"
-              onClick={clearChannel}
-              className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeftRight className="size-3" />
-              Trocar
-            </button>
-          </div>
-        ) : null}
-        <h1 className="text-lg leading-tight font-semibold tracking-tight">
-          Registrar execução
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Toque na atividade planejada para concluí-la — ou registre uma
-          ação fora do plano.
-        </p>
-      </header>
-
-      <div className="flex flex-1 flex-col gap-3 px-4 pb-4">
-        {/* Card — ação fora do plano (Situação B) */}
-        <button
-          type="button"
-          onClick={() => setAdhoc(true)}
-          className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-[#0063A7]/15 bg-[#0063A7]/5 p-3 text-left transition-colors hover:bg-[#0063A7]/10 active:bg-[#0063A7]/15 dark:border-[#0063A7]/20 dark:bg-[#0063A7]/10 dark:hover:bg-[#0063A7]/15"
-        >
-          <PenLine className="size-5 shrink-0 text-[#0063A7]" />
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <p className="font-medium">Registrar ação fora do plano</p>
-            <p className="text-sm text-muted-foreground">
-              Realizou uma ação que não estava no plano? Registre aqui.
-            </p>
-          </div>
-          <ChevronRight className="size-4 shrink-0 text-[#0063A7]" />
-        </button>
-
-        {/* Divisor */}
-        <div className="relative my-3 flex items-center gap-3">
-          <Separator className="flex-1" />
-          <span className="shrink-0 text-xs text-muted-foreground">
-            ou selecione uma atividade planejada
-          </span>
-          <Separator className="flex-1" />
+    <PageShell
+      title="Registrar execução"
+      description="Toque na atividade planejada para concluí-la — ou registre uma ação fora do plano."
+      breadcrumb={
+        <div className="mb-1">
+          <BackButton
+            fallbackHref={canGoBackToPicker ? "/registrar" : "/"}
+          />
         </div>
+      }
+      actions={
+        activeChannel && channels.length > 1 ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="max-w-52 truncate">
+              {activeChannel.name}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearChannel}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeftRight className="size-4" />
+              Trocar
+            </Button>
+          </div>
+        ) : null
+      }
+    >
+      {/* Bloco 1 — CTA ação fora do plano */}
+      <button
+        type="button"
+        onClick={() => setAdhoc(true)}
+        className="flex min-h-20 w-full items-center gap-3 rounded-2xl border border-[#0063A7]/15 bg-[#0063A7]/5 p-5 text-left transition-colors hover:bg-[#0063A7]/10 active:bg-[#0063A7]/15 dark:border-[#0063A7]/25 dark:bg-[#0063A7]/10 dark:hover:bg-[#0063A7]/15"
+      >
+        <PenLine className="size-6 shrink-0 text-[#0063A7]" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="font-medium">Registrar ação fora do plano</p>
+          <p className="text-sm text-muted-foreground">
+            Realizou uma ação que não estava no plano? Registre aqui.
+          </p>
+        </div>
+        <ChevronRight className="size-5 shrink-0 text-[#0063A7]" />
+      </button>
 
-        <div className="relative">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      {/* Bloco 2 — Separador */}
+      <div className="relative my-2 flex items-center gap-3">
+        <Separator className="flex-1" />
+        <span className="shrink-0 text-xs text-muted-foreground">
+          ou selecione uma atividade planejada
+        </span>
+        <Separator className="flex-1" />
+      </div>
+
+      {/* Bloco 3 — Busca + filtro de filial */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-64 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar atividade..."
-            className="h-11 pl-9"
+            className="h-10 pl-9"
             aria-label="Buscar atividade"
           />
         </div>
-
-        {channelBranches.length > 1 ? (
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            <button
-              type="button"
-              onClick={() => setBranchFilter(null)}
-              className={cn(
-                "h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
-                branchFilter === null
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted"
-              )}
-            >
-              Todas
-            </button>
-            {channelBranches.map((branch) => (
-              <button
-                key={branch.id}
-                type="button"
-                onClick={() =>
-                  setBranchFilter((current) =>
-                    current === branch.id ? null : branch.id
-                  )
-                }
-                className={cn(
-                  "h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
-                  branchFilter === branch.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {branch.name}
-              </button>
-            ))}
-          </div>
+        {showBranchFilter ? (
+          <SearchableSelect
+            options={branchOptions}
+            value={branchFilter}
+            onValueChange={setBranchFilter}
+            placeholder="Todos os locais"
+            className="h-10 min-w-52"
+          />
         ) : null}
+      </div>
 
-        <div className="flex flex-col gap-2">
-          {filtered.length === 0 ? (
-            <Empty className="py-10">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <SearchX />
-                </EmptyMedia>
-                <EmptyTitle>Nenhuma atividade aberta</EmptyTitle>
-                <EmptyDescription>
-                  Nada encontrado no recorte atual — você pode registrar
-                  uma ação fora do plano no topo da tela.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
-          ) : (
-            filtered.map((activity) => (
-              <button
-                key={activity.id}
-                type="button"
-                onClick={() => setSelected(activity)}
-                className="flex min-h-16 w-full items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:bg-muted/50 active:bg-muted"
-              >
-                <div className="min-w-0 flex-1 space-y-1">
+      {/* Bloco 4 — Lista de atividades planejadas */}
+      <div className="flex flex-col gap-2">
+        {filtered.length === 0 ? (
+          <Empty className="rounded-3xl border border-dashed py-10">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SearchX />
+              </EmptyMedia>
+              <EmptyTitle>
+                {search.trim().length > 0
+                  ? "Nenhum resultado para essa busca."
+                  : "Nenhuma atividade planejada aberta neste canal."}
+              </EmptyTitle>
+              <EmptyDescription>
+                {search.trim().length > 0
+                  ? "Ajuste a busca ou registre uma ação fora do plano no topo."
+                  : "Você ainda pode registrar uma ação fora do plano acima."}
+              </EmptyDescription>
+            </EmptyHeader>
+            {search.trim().length > 0 ? (
+              <div className="pt-2">
+                <Button variant="ghost" size="sm" onClick={() => setSearch("")}>
+                  Limpar busca
+                </Button>
+              </div>
+            ) : null}
+          </Empty>
+        ) : (
+          filtered.map((activity) => (
+            <button
+              key={activity.id}
+              type="button"
+              onClick={() => setSelected(activity)}
+              className="flex w-full items-center gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-colors hover:bg-muted/50 active:bg-muted"
+            >
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
                   <p className="line-clamp-2 leading-snug font-medium">
                     {activity.title}
-                    {activity.isMine ? (
-                      <span className="ml-1.5 align-middle text-[10px] font-semibold text-primary uppercase">
-                        minha
-                      </span>
-                    ) : null}
                   </p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {activity.branchName ?? "Canal geral"} ·{" "}
-                    {formatRelativeDue(activity.dueDate)}
-                  </p>
-                  {activity.category ? (
-                    <CategoryBadge category={activity.category} />
+                  {activity.isMine ? (
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "shrink-0 bg-primary/10 text-primary",
+                        "hover:bg-primary/10"
+                      )}
+                    >
+                      minha
+                    </Badge>
                   ) : null}
                 </div>
-                <StatusBadge status={activity.status} />
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-              </button>
-            ))
-          )}
-        </div>
+                <p className="truncate text-sm text-muted-foreground">
+                  {activity.branchName ?? "Canal geral"}
+                  {activity.category ? " · " : ""}
+                  {activity.category ? (
+                    <CategoryBadge
+                      category={activity.category}
+                      className="ml-1"
+                    />
+                  ) : null}
+                </p>
+                <div className="flex items-center gap-3">
+                  <StatusBadge status={activity.status} />
+                  <span
+                    className={cn(
+                      "text-xs tabular-nums",
+                      activity.status === "atrasada"
+                        ? "font-medium text-red-600 dark:text-red-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {formatRelativeDue(activity.dueDate)}
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </button>
+          ))
+        )}
       </div>
-    </div>
+    </PageShell>
   );
 }
+
