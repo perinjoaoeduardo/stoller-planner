@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -16,10 +15,10 @@ import {
   CircleAlert,
   CircleCheckBig,
   ClipboardList,
-  ClipboardPlus,
   Eye,
   ListTodo,
   MoreHorizontal,
+  Plus,
   Search,
   SearchX,
 } from "lucide-react";
@@ -34,6 +33,7 @@ import {
   StatusBadge,
   type ActivityStatus,
 } from "@/components/app/status-badge";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -148,6 +148,30 @@ function KpiCard({
  * clicáveis funcionam como filtros de status na tabela densa abaixo.
  * Filtros hierárquicos: Canal → Filial → Meta.
  */
+function WizardEmptyButton() {
+  const { openWizard } = useWizardProvider();
+  return (
+    <Button onClick={() => openWizard()}>
+      <Plus className="size-4" />
+      Nova atividade
+    </Button>
+  );
+}
+
+function RegisterMenuItem({ activityId }: { activityId: string }) {
+  const { openWizard } = useWizardProvider();
+  return (
+    <DropdownMenuItem
+      onClick={() =>
+        openWizard({ mode: "registrar", activityId })
+      }
+    >
+      <Camera />
+      Registrar
+    </DropdownMenuItem>
+  );
+}
+
 export function MyActivitiesList({
   activities,
   initialStatus = "abertas",
@@ -402,15 +426,7 @@ export function MyActivitiesList({
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button
-            nativeButton={false}
-            render={
-              <Link href="/registrar?avulso=1">
-                <ClipboardPlus />
-                Registrar ação fora do plano
-              </Link>
-            }
-          />
+          <WizardEmptyButton />
         </EmptyContent>
       </Empty>
     );
@@ -645,16 +661,7 @@ export function MyActivitiesList({
                             />
                             <DropdownMenuContent align="end">
                               {open ? (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    router.push(
-                                      `/registrar?atividade=${activity.id}`
-                                    )
-                                  }
-                                >
-                                  <Camera />
-                                  Registrar
-                                </DropdownMenuItem>
+                                <RegisterMenuItem activityId={activity.id} />
                               ) : null}
                               <DropdownMenuItem
                                 onClick={() =>

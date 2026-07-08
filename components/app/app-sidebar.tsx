@@ -7,6 +7,7 @@ import { BrandLogo } from "@/components/app/brand-logo";
 import { NavUser } from "@/components/app/nav-user";
 import type { SettingsUser } from "@/components/app/settings-dialog";
 import { ThemeToggle } from "@/components/app/theme-toggle";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
@@ -35,6 +36,7 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { role: Role; user: SettingsUser }) {
   const pathname = usePathname();
   const navItems = NAV_BY_ROLE[role];
+  const { openWizard } = useWizardProvider();
 
   return (
     <Sidebar collapsible="icon" variant="floating" {...props}>
@@ -63,20 +65,30 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     tooltip={item.title}
-                    isActive={pathname === item.href}
+                    isActive={!item.action && pathname === item.href}
                     className={
                       item.highlight
                         ? "bg-primary/15 font-medium text-white hover:bg-primary/25 hover:text-white data-[active=true]:bg-primary/25 data-[active=true]:text-white"
                         : undefined
                     }
                     render={
-                      <Link href={item.href}>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </Link>
+                      item.action === "wizard" ? (
+                        <button
+                          type="button"
+                          onClick={() => openWizard()}
+                        >
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </button>
+                      ) : (
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      )
                     }
                   />
                 </SidebarMenuItem>

@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Eye,
   MoreHorizontal,
+  Plus,
   Search,
   Target,
   X,
@@ -26,6 +27,7 @@ import {
 
 import { CategoryBadge } from "@/components/app/category-badge";
 import { SearchableSelect } from "@/components/app/searchable-select";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import {
   StatusBadge,
   type ActivityStatus,
@@ -196,6 +198,7 @@ export function MeuCanalView({
   profileId: string;
 }) {
   const router = useRouter();
+  const { openWizard } = useWizardProvider();
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>("todos");
   const [search, setSearch] = React.useState("");
@@ -695,9 +698,10 @@ export function MeuCanalView({
                               {open ? (
                                 <DropdownMenuItem
                                   onClick={() =>
-                                    router.push(
-                                      `/registrar?atividade=${activity.id}`
-                                    )
+                                    openWizard({
+                                      mode: "registrar",
+                                      activityId: activity.id,
+                                    })
                                   }
                                 >
                                   <Camera />
@@ -881,14 +885,15 @@ export function MeuCanalView({
           "handle" via CustomEvent para permitir controle externo. */}
       <ProblemsSheetOpener onClick={() => setProblemsOpen(true)} />
 
-      {/* FAB mobile Registrar */}
-      <Link
-        href={`/registrar?canal=${channel.id}`}
+      {/* FAB mobile — Nova atividade */}
+      <button
+        type="button"
+        onClick={() => openWizard({ channelId: channel.id })}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
       >
-        <Camera className="size-5" />
-        Registrar
-      </Link>
+        <Plus className="size-5" />
+        Nova atividade
+      </button>
 
       {/* Ícone auxiliar para lint (usado indireto no import) */}
       <span className="hidden">

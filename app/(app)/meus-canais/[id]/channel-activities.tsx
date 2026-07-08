@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { ClipboardList, ClipboardPlus, SearchX } from "lucide-react";
-import Link from "next/link";
+import { ClipboardList, Plus, SearchX } from "lucide-react";
 
 import { ActivityCard } from "@/components/app/activity-card";
 import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -62,6 +62,16 @@ function sortActivities(activities: ActivityRow[]): ActivityRow[] {
  * nada somem — canal com 1 filial não tem Combobox, RTV que participa
  * de tudo (ou de nada) não vê o toggle.
  */
+function WizardButton() {
+  const { openWizard } = useWizardProvider();
+  return (
+    <Button onClick={() => openWizard()}>
+      <Plus className="size-4" />
+      Nova atividade
+    </Button>
+  );
+}
+
 export function ChannelActivities({
   activities,
   branches,
@@ -144,15 +154,7 @@ export function ChannelActivities({
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button
-            nativeButton={false}
-            render={
-              <Link href="/registrar?avulso=1">
-                <ClipboardPlus />
-                Registrar ação avulsa
-              </Link>
-            }
-          />
+          <WizardButton />
         </EmptyContent>
       </Empty>
     );

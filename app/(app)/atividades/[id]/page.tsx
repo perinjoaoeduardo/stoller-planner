@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
 import { CategoryBadge } from "@/components/app/category-badge";
 import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
@@ -367,13 +368,7 @@ export default async function AtividadePage({
       descriptionClassName="mt-1 flex"
       actions={
         isOpen && canRegister ? (
-          <Button
-            nativeButton={false}
-            render={<Link href={`/registrar?atividade=${activity.id}`} />}
-          >
-            <Camera className="size-4" />
-            Registrar
-          </Button>
+          <NewActivityButton mode="registrar" label="Registrar" />
         ) : null
       }
     >
@@ -521,15 +516,12 @@ export default async function AtividadePage({
       {/* Botão Registrar sticky no rodapé apenas no mobile e se atividade aberta */}
       {isOpen && canRegister ? (
         <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:-mx-8 lg:hidden">
-          <Button
+          <NewActivityButton
+            mode="registrar"
+            label="Registrar"
             size="lg"
             className="h-12 w-full text-base"
-            nativeButton={false}
-            render={<Link href={`/registrar?atividade=${activity.id}`} />}
-          >
-            <Camera className="size-5" />
-            Registrar
-          </Button>
+          />
         </div>
       ) : null}
     </PageShell>

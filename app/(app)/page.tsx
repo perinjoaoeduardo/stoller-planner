@@ -24,6 +24,7 @@ import {
 import { ptBR } from "date-fns/locale";
 
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
+import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
 import { RtvActivitiesTable } from "@/components/app/rtv-activities-table";
 import { StatusBadge } from "@/components/app/status-badge";
@@ -625,16 +626,9 @@ async function FieldHome() {
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
       actions={
-        <Button
+        <NewActivityButton
           size="lg"
           className="h-14 gap-2 px-6 text-base font-semibold shadow-sm"
-          nativeButton={false}
-          render={
-            <Link href="/registrar">
-              <Camera className="size-5" />
-              Registrar nova atividade
-            </Link>
-          }
         />
       }
     >

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Camera, Store } from "lucide-react";
+import { Store } from "lucide-react";
 
+import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -119,14 +120,10 @@ export default async function MeuCanalPage({
           {board.problems.length > 0 ? (
             <ProblemsSheetButton count={board.problems.length} />
           ) : null}
-          <Button
-            nativeButton={false}
-            render={<Link href={`/registrar?canal=${id}`} />}
+          <NewActivityButton
+            channelId={id}
             className="hidden md:flex"
-          >
-            <Camera className="size-4" />
-            Registrar
-          </Button>
+          />
         </>
       }
     >

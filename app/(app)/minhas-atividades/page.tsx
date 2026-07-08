@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { PenLine } from "lucide-react";
 
+import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
-import { Button } from "@/components/ui/button";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getScopedActivities } from "@/lib/db/channels";
 
@@ -45,16 +43,7 @@ export default async function MinhasAtividadesPage({
     <PageShell
       title="Minhas Atividades"
       description="Todas as atividades atribuídas a você."
-      actions={
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={<Link href="/registrar?avulso=1" />}
-        >
-          <PenLine className="size-4" />
-          Registrar ação fora do plano
-        </Button>
-      }
+      actions={<NewActivityButton variant="outline" />}
     >
       <MyActivitiesList activities={mine} initialStatus={initialStatus} />
     </PageShell>

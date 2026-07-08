@@ -1,12 +1,12 @@
 import {
   BrushCleaning,
-  Camera,
   ChartColumn,
   ClipboardCheck,
   ClipboardList,
   Home,
   ListTodo,
   Map,
+  Plus,
   Radar,
   Store,
   type LucideIcon,
@@ -20,6 +20,8 @@ export type NavItem = {
   icon: LucideIcon;
   /** Item de destaque (CTA principal do perfil, ex.: Registrar do RTV). */
   highlight?: boolean;
+  /** Abre o wizard em vez de navegar. */
+  action?: "wizard";
 };
 
 /**
@@ -51,7 +53,13 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       href: "/minhas-atividades",
       icon: ListTodo,
     },
-    { title: "Registrar", href: "/registrar", icon: Camera, highlight: true },
+    {
+      title: "+ Nova atividade",
+      href: "#wizard",
+      icon: Plus,
+      highlight: true,
+      action: "wizard",
+    },
   ],
 };
 

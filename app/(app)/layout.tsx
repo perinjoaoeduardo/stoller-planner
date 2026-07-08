@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { ContentTopBar } from "@/components/app/content-topbar";
 import { SettingsProvider } from "@/components/app/settings-provider";
+import { WizardProvider } from "@/components/app/wizard-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +51,7 @@ export default async function AppLayout({
 
   return (
     <SettingsProvider user={user}>
+      <WizardProvider>
       <SidebarProvider
         style={{ "--sidebar-width": "19rem" } as React.CSSProperties}
         className="h-svh overflow-hidden bg-muted dark:bg-black"
@@ -66,6 +68,7 @@ export default async function AppLayout({
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         </SidebarInset>
       </SidebarProvider>
+      </WizardProvider>
     </SettingsProvider>
   );
 }
