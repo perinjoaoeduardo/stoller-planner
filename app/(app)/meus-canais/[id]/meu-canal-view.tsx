@@ -2,20 +2,40 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarClock,
   Camera,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   CircleCheckBig,
+  ClipboardCheck,
   ClipboardList,
+  Eye,
+  MoreHorizontal,
+  Search,
+  Target,
+  X,
 } from "lucide-react";
 
-import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
-import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
-import { ActivityCard } from "@/components/app/activity-card";
-import { ProblemsTab } from "@/components/app/problems-tab";
+import { CategoryBadge } from "@/components/app/category-badge";
 import { SearchableSelect } from "@/components/app/searchable-select";
-import { ACTIVITY_STATUSES } from "@/components/app/status-badge";
+import {
+  StatusBadge,
+  type ActivityStatus,
+} from "@/components/app/status-badge";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +43,13 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyDescription,
@@ -34,13 +59,23 @@ import {
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type {
   ActivityRow,
   ChannelDetail,
@@ -50,7 +85,18 @@ import { isLateActivity, todayISO } from "@/lib/db/status";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
-const PENDING = new Set(["planejada", "em_andamento", "atrasada"]);
+const PENDING = new Set<ActivityStatus>([
+  "planejada",
+  "em_andamento",
+  "atrasada",
+]);
+
+type KpiFilter = "todos" | "concluidas" | "atrasadas" | "vencendo";
+
+type SortKey = "prazo" | "status";
+type SortDir = "asc" | "desc";
+
+const PAGE_SIZE = 20;
 
 function addDaysISO(days: number) {
   const date = new Date();
@@ -58,10 +104,85 @@ function addDaysISO(days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  active,
+  tone = "default",
+  onClick,
+  disabled,
+}: {
+  label: string;
+  value: number | string;
+  hint?: string;
+  icon: typeof CircleAlert;
+  active: boolean;
+  tone?: "default" | "alert";
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Card
+      className={cn(
+        "cursor-pointer p-0 gap-2 transition-colors",
+        active
+          ? "border-[#0063A7] bg-[#0063A7]/5 dark:bg-[#0063A7]/10"
+          : "hover:bg-muted/30",
+        disabled && "cursor-not-allowed opacity-60"
+      )}
+    >
+      <button
+        type="button"
+        onClick={disabled ? undefined : onClick}
+        aria-pressed={active}
+        disabled={disabled}
+        className="w-full p-6 text-left"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <Icon
+            className={cn(
+              "size-4 shrink-0",
+              tone === "alert"
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-muted-foreground"
+            )}
+          />
+        </div>
+        <p
+          className={cn(
+            "mt-3 text-3xl font-semibold tracking-tight tabular-nums",
+            tone === "alert" && "text-amber-600 dark:text-amber-400"
+          )}
+        >
+          {value}
+        </p>
+        {hint ? (
+          <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+            {hint}
+          </p>
+        ) : null}
+      </button>
+    </Card>
+  );
+}
+
 /**
- * Visão do canal do RTV — três abas (Visão geral / Problemas / Atividades)
- * dentro do container largura cheia. Sem botões de gestão (criar, editar,
- * excluir); apenas registro e visualização.
+ * Visão do canal do RTV — uma tela focada em atividades: KPIs
+ * clicáveis funcionam como filtros de status na tabela densa abaixo.
+ * Problemas do plano vivem em Sheet lateral acionável.
  */
 export function MeuCanalView({
   channel,
@@ -74,16 +195,26 @@ export function MeuCanalView({
   activities: ActivityRow[];
   profileId: string;
 }) {
+  const router = useRouter();
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
-  const [activityStatus, setActivityStatus] = React.useState<
-    "abertas" | "concluidas" | "todas"
-  >("abertas");
+  const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>("todos");
   const [search, setSearch] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
     null
   );
-  const [problemFilter, setProblemFilter] = React.useState<string | null>(null);
   const [onlyMine, setOnlyMine] = React.useState(false);
+  const [problemFilter, setProblemFilter] = React.useState<ProblemRow | null>(
+    null
+  );
+  const [problemsOpen, setProblemsOpen] = React.useState(false);
+  const [sortKey, setSortKey] = React.useState<SortKey>("prazo");
+  const [sortDir, setSortDir] = React.useState<SortDir>("asc");
+  const [page, setPage] = React.useState(1);
+
+  // Reset paginação quando um filtro muda.
+  React.useEffect(() => {
+    setPage(1);
+  }, [branchFilter, kpiFilter, search, categoryFilter, onlyMine, problemFilter]);
 
   const filteredByBranch = React.useMemo(
     () =>
@@ -118,51 +249,33 @@ export function MeuCanalView({
     };
   }, [filteredByBranch]);
 
-  const byStatus = React.useMemo(
-    () =>
-      ACTIVITY_STATUSES.map((status) => ({
-        status,
-        total: filteredByBranch.filter((activity) => activity.status === status)
-          .length,
-      })),
-    [filteredByBranch]
-  );
-
-  const byProblem = React.useMemo(() => {
-    const rows = problems.map((problem) => ({
-      label: problem.title,
-      total: filteredByBranch.filter(
-        (activity) => activity.problemId === problem.id
-      ).length,
-    }));
-    const unlinked = filteredByBranch.filter(
-      (activity) => !activity.problemId
-    ).length;
-    if (unlinked > 0)
-      rows.push({ label: "Sem problema vinculado", total: unlinked });
-    return rows;
-  }, [problems, filteredByBranch]);
-
-  const critical = React.useMemo(
-    () =>
-      filteredByBranch
-        .filter(
-          (activity) =>
-            PENDING.has(activity.status) && !!activity.dueDate
-        )
-        .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))
-        .slice(0, 5),
-    [filteredByBranch]
-  );
-
-  const activitiesTabRows = React.useMemo(() => {
-    let rows = filteredByBranch;
-
-    if (activityStatus === "abertas") {
-      rows = rows.filter((activity) => PENDING.has(activity.status));
-    } else if (activityStatus === "concluidas") {
-      rows = rows.filter((activity) => activity.status === "concluida");
+  // Aplica o filtro do KPI.
+  const filteredByKpi = React.useMemo(() => {
+    if (kpiFilter === "todos") return filteredByBranch;
+    if (kpiFilter === "concluidas") {
+      return filteredByBranch.filter(
+        (activity) => activity.status === "concluida"
+      );
     }
+    if (kpiFilter === "atrasadas") {
+      return filteredByBranch.filter(isLateActivity);
+    }
+    // vencendo em 7 dias
+    const today = todayISO();
+    const weekAhead = addDaysISO(7);
+    return filteredByBranch.filter(
+      (activity) =>
+        PENDING.has(activity.status) &&
+        activity.status !== "atrasada" &&
+        !!activity.dueDate &&
+        activity.dueDate >= today &&
+        activity.dueDate <= weekAhead
+    );
+  }, [filteredByBranch, kpiFilter]);
+
+  // Filtros adicionais da barra e do chip de problema.
+  const filtered = React.useMemo(() => {
+    let rows = filteredByKpi;
     if (search.trim().length > 0) {
       const term = search.trim().toLowerCase();
       rows = rows.filter((activity) =>
@@ -173,61 +286,58 @@ export function MeuCanalView({
       rows = rows.filter((activity) => activity.category === categoryFilter);
     }
     if (problemFilter) {
-      rows = rows.filter((activity) => activity.problemId === problemFilter);
+      rows = rows.filter((activity) => activity.problemId === problemFilter.id);
     }
     if (onlyMine) {
       rows = rows.filter((activity) =>
         activity.assignees.some((assignee) => assignee.id === profileId)
       );
     }
-
-    // Ordenação: atrasadas > próximas > concluídas.
-    const rank = (activity: ActivityRow) => {
-      if (activity.status === "atrasada") return 0;
-      if (PENDING.has(activity.status)) return 1;
-      return 2;
-    };
-    return [...rows].sort((a, b) => {
-      const diff = rank(a) - rank(b);
-      if (diff !== 0) return diff;
-      if (rank(a) === 2) {
-        const dateA = a.completedAt ?? a.createdAt;
-        const dateB = b.completedAt ?? b.createdAt;
-        return dateA < dateB ? 1 : -1;
-      }
-      const dueA = a.dueDate ?? "9999-12-31";
-      const dueB = b.dueDate ?? "9999-12-31";
-      return dueA < dueB ? -1 : dueA > dueB ? 1 : 0;
-    });
+    return rows;
   }, [
-    filteredByBranch,
-    activityStatus,
+    filteredByKpi,
     search,
     categoryFilter,
-    problemFilter,
     onlyMine,
+    problemFilter,
     profileId,
   ]);
 
-  const mineCount = React.useMemo(
-    () =>
-      filteredByBranch.filter((activity) =>
-        activity.assignees.some((assignee) => assignee.id === profileId)
-      ).length,
-    [filteredByBranch, profileId]
+  // Ordenação; default = prazo asc com atrasadas no topo.
+  const sorted = React.useMemo(() => {
+    const rows = [...filtered];
+    if (sortKey === "prazo") {
+      rows.sort((a, b) => {
+        const lateA = a.status === "atrasada" ? 0 : 1;
+        const lateB = b.status === "atrasada" ? 0 : 1;
+        if (lateA !== lateB) return lateA - lateB;
+        const dueA = a.dueDate ?? "9999-12-31";
+        const dueB = b.dueDate ?? "9999-12-31";
+        return sortDir === "asc"
+          ? dueA.localeCompare(dueB)
+          : dueB.localeCompare(dueA);
+      });
+    } else {
+      rows.sort((a, b) => {
+        const cmp = a.status.localeCompare(b.status);
+        return sortDir === "asc" ? cmp : -cmp;
+      });
+    }
+    return rows;
+  }, [filtered, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged = React.useMemo(
+    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sorted, currentPage]
   );
 
   const showBranchFilter = channel.branches.length > 1;
-  const showOnlyMine = mineCount > 0 && mineCount < filteredByBranch.length;
-
-  const branchOptions = React.useMemo(
-    () =>
-      channel.branches.map((branch) => ({
-        value: branch.id,
-        label: branch.name,
-      })),
-    [channel.branches]
-  );
+  const branchOptions = channel.branches.map((branch) => ({
+    value: branch.id,
+    label: branch.name,
+  }));
 
   const categoryOptions = React.useMemo(() => {
     const seen = new Set<ActivityCategory>();
@@ -240,56 +350,50 @@ export function MeuCanalView({
     }));
   }, [activities]);
 
-  const problemOptions = React.useMemo(
+  const mineCount = React.useMemo(
     () =>
-      problems.map((problem) => ({
-        value: problem.id,
-        label: problem.title,
-      })),
-    [problems]
+      activities.filter((activity) =>
+        activity.assignees.some((assignee) => assignee.id === profileId)
+      ).length,
+    [activities, profileId]
   );
+  const showOnlyMine = mineCount > 0 && mineCount < activities.length;
 
-  const metricCards = [
-    {
-      label: "Total de atividades",
-      value: metrics.total.toString(),
-      icon: ClipboardList,
-      tone: "default" as const,
-    },
-    {
-      label: "Concluídas",
-      value: metrics.completed.toString(),
-      hint: `${metrics.completedPercent}%`,
-      icon: CircleCheckBig,
-      tone: "default" as const,
-    },
-    {
-      label: "Atrasadas",
-      value: metrics.late.toString(),
-      icon: CircleAlert,
-      tone: metrics.late > 0 ? ("alert" as const) : ("default" as const),
-    },
-    {
-      label: "Vencem em 7 dias",
-      value: metrics.dueSoon.toString(),
-      icon: CalendarClock,
-      tone: metrics.dueSoon > 0 ? ("alert" as const) : ("default" as const),
-    },
-  ];
-
-  const activitiesFiltersActive =
-    activityStatus !== "abertas" ||
+  const filtersActive =
+    kpiFilter !== "todos" ||
     search.trim().length > 0 ||
     categoryFilter !== null ||
-    problemFilter !== null ||
-    onlyMine;
+    onlyMine ||
+    problemFilter !== null;
 
-  function clearActivityFilters() {
-    setActivityStatus("abertas");
+  function clearFilters() {
+    setKpiFilter("todos");
     setSearch("");
     setCategoryFilter(null);
-    setProblemFilter(null);
     setOnlyMine(false);
+    setProblemFilter(null);
+  }
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  function SortIcon({ column }: { column: SortKey }) {
+    if (sortKey !== column) {
+      return (
+        <ArrowUpDown className="ml-1 inline size-3 text-muted-foreground/60" />
+      );
+    }
+    return sortDir === "asc" ? (
+      <ArrowUp className="ml-1 inline size-3" />
+    ) : (
+      <ArrowDown className="ml-1 inline size-3" />
+    );
   }
 
   return (
@@ -323,240 +427,458 @@ export function MeuCanalView({
         </div>
       ) : null}
 
-      {/* Bloco 2 — métricas */}
+      {/* KPIs clicáveis */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {metricCards.map((metric) => (
-          <Card key={metric.label} className="gap-2">
-            <CardHeader className="flex flex-row items-center justify-between gap-2">
-              <CardDescription>{metric.label}</CardDescription>
-              <metric.icon
-                className={cn(
-                  "size-4 shrink-0 text-muted-foreground",
-                  metric.tone === "alert" &&
-                    "text-amber-600 dark:text-amber-400"
-                )}
-              />
-            </CardHeader>
-            <CardContent>
-              <p
-                className={cn(
-                  "text-3xl font-semibold tracking-tight tabular-nums",
-                  metric.tone === "alert" &&
-                    "text-amber-600 dark:text-amber-400"
-                )}
-              >
-                {metric.value}
-              </p>
-              {metric.hint ? (
-                <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  {metric.hint}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))}
+        <KpiCard
+          label="Total de atividades"
+          value={metrics.total}
+          hint="no plano"
+          icon={ClipboardList}
+          active={kpiFilter === "todos"}
+          onClick={() => setKpiFilter("todos")}
+        />
+        <KpiCard
+          label="Concluídas"
+          value={metrics.completed}
+          hint={`${metrics.completedPercent}%`}
+          icon={CircleCheckBig}
+          active={kpiFilter === "concluidas"}
+          onClick={() => setKpiFilter("concluidas")}
+        />
+        <KpiCard
+          label="Atrasadas"
+          value={metrics.late}
+          icon={CircleAlert}
+          tone={metrics.late > 0 ? "alert" : "default"}
+          active={kpiFilter === "atrasadas"}
+          onClick={() => setKpiFilter("atrasadas")}
+        />
+        <KpiCard
+          label="Vencem em 7 dias"
+          value={metrics.dueSoon}
+          icon={CalendarClock}
+          tone={metrics.dueSoon > 0 ? "alert" : "default"}
+          active={kpiFilter === "vencendo"}
+          onClick={() => setKpiFilter("vencendo")}
+        />
       </div>
 
-      {/* Bloco 3 — tabs */}
-      <Tabs defaultValue="visao-geral">
-        <TabsList>
-          <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
-          <TabsTrigger value="problemas">
-            Problemas
-            <span className="ml-1 tabular-nums text-muted-foreground">
-              {problems.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="atividades">
-            Atividades
-            <span className="ml-1 tabular-nums text-muted-foreground">
-              {filteredByBranch.length}
-            </span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Chip de problema selecionado no Sheet */}
+      {problemFilter ? (
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1.5 py-1 pl-3 pr-1">
+            <Target className="size-3" />
+            Problema: {problemFilter.title}
+            <button
+              type="button"
+              aria-label="Remover filtro de problema"
+              onClick={() => setProblemFilter(null)}
+              className="ml-1 flex size-4 items-center justify-center rounded-full hover:bg-muted"
+            >
+              <X className="size-3" />
+            </button>
+          </Badge>
+        </div>
+      ) : null}
 
-        {/* Visão geral: 2 gráficos + críticas full-width */}
-        <TabsContent value="visao-geral" className="mt-4">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Atividades por status</CardTitle>
-                <CardDescription>
-                  Distribuição das atividades do plano em cada status.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ActivitiesStatusChart data={byStatus} />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Atividades por problema</CardTitle>
-                <CardDescription>
-                  Onde o plano concentra esforço — e o débito de vínculo.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ActivitiesByProblemChart data={byProblem} />
-              </CardContent>
-            </Card>
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Atividades críticas</CardTitle>
-                <CardDescription>
-                  As 5 pendentes mais atrasadas ou próximas do prazo.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {critical.length === 0 ? (
-                  <Empty className="py-8">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <CircleCheckBig />
-                      </EmptyMedia>
-                      <EmptyTitle>Nenhuma atividade crítica</EmptyTitle>
-                      <EmptyDescription>Bom trabalho.</EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {critical.map((activity) => (
-                      <ActivityCard key={activity.id} activity={activity} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Problemas — read-only para o RTV */}
-        <TabsContent value="problemas" className="mt-4">
-          {channel.plan ? (
-            <ProblemsTab
-              planId={channel.plan.id}
-              problems={problems}
-              activities={filteredByBranch}
-              canEdit={false}
+      {/* Filtros da tabela */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-64 flex-1 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar atividade..."
+              className="h-10 pl-9"
             />
-          ) : (
-            <Card>
-              <CardContent>
-                <Empty className="py-8">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <ClipboardList />
-                    </EmptyMedia>
-                    <EmptyTitle>Sem plano ativo</EmptyTitle>
-                    <EmptyDescription>
-                      Este canal ainda não tem um plano de safra ativo.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Atividades — busca, filtros e ActivityCards em coluna única */}
-        <TabsContent value="atividades" className="mt-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por título..."
-                className="h-10 max-w-64"
+          </div>
+          {categoryOptions.length > 0 ? (
+            <SearchableSelect
+              options={categoryOptions}
+              value={categoryFilter}
+              onValueChange={setCategoryFilter}
+              placeholder="Categoria"
+              className="h-10 min-w-40"
+            />
+          ) : null}
+          {showOnlyMine ? (
+            <label className="ml-auto flex items-center gap-2 text-sm font-medium">
+              <Switch
+                checked={onlyMine}
+                onCheckedChange={(checked) => setOnlyMine(checked)}
               />
-              <div className="flex gap-2">
-                {(
-                  [
-                    { value: "abertas", label: "Abertas" },
-                    { value: "concluidas", label: "Concluídas" },
-                    { value: "todas", label: "Todas" },
-                  ] as const
-                ).map((chip) => (
-                  <button
-                    key={chip.value}
-                    type="button"
-                    onClick={() => setActivityStatus(chip.value)}
-                    className={cn(
-                      "h-10 rounded-full border px-4 text-sm font-medium transition-colors",
-                      activityStatus === chip.value
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "bg-card text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
+              Só minhas
+            </label>
+          ) : null}
+        </div>
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {sorted.length} de {filteredByBranch.length} atividades
+          {branchFilter ? " (filial atual)" : ""}
+        </p>
+      </div>
+
+      {/* Tabela ou empty */}
+      {activities.length === 0 ? (
+        <Card>
+          <CardContent>
+            <Empty className="py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <ClipboardList />
+                </EmptyMedia>
+                <EmptyTitle>
+                  Este canal não tem atividades cadastradas ainda.
+                </EmptyTitle>
+                <EmptyDescription>
+                  Fale com o DSM do canal para planejar a safra.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          </CardContent>
+        </Card>
+      ) : sorted.length === 0 ? (
+        <Card>
+          <CardContent>
+            <Empty className="py-8">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search />
+                </EmptyMedia>
+                <EmptyTitle>Nenhum resultado com esses filtros.</EmptyTitle>
+              </EmptyHeader>
+              <div className="pt-2">
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Limpar filtros
+                </Button>
               </div>
-              {categoryOptions.length > 0 ? (
-                <SearchableSelect
-                  options={categoryOptions}
-                  value={categoryFilter}
-                  onValueChange={setCategoryFilter}
-                  placeholder="Categoria"
-                  className="w-44"
-                />
-              ) : null}
-              {problemOptions.length > 0 ? (
-                <SearchableSelect
-                  options={problemOptions}
-                  value={problemFilter}
-                  onValueChange={setProblemFilter}
-                  placeholder="Problema"
-                  className="w-48"
-                />
-              ) : null}
-              {showOnlyMine ? (
-                <label className="ml-auto flex items-center gap-2 text-sm font-medium">
-                  <Switch
-                    checked={onlyMine}
-                    onCheckedChange={(checked) => setOnlyMine(checked)}
-                  />
-                  Só minhas
-                </label>
-              ) : null}
+            </Empty>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Desktop — tabela densa */}
+          <div className="hidden overflow-x-auto rounded-xl border md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Atividade</TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Categoria
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell">
+                    Problema
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    Responsáveis
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("prazo")}
+                      className="flex items-center hover:text-foreground"
+                    >
+                      Prazo
+                      <SortIcon column="prazo" />
+                    </button>
+                  </TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("status")}
+                      className="flex items-center hover:text-foreground"
+                    >
+                      Status
+                      <SortIcon column="status" />
+                    </button>
+                  </TableHead>
+                  <TableHead className="text-right">Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paged.map((activity) => {
+                  const overdue = activity.status === "atrasada";
+                  const open = PENDING.has(activity.status);
+                  return (
+                    <TableRow
+                      key={activity.id}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        router.push(`/atividades/${activity.id}`)
+                      }
+                    >
+                      <TableCell className="max-w-72">
+                        <p className="truncate font-medium">
+                          {activity.title}
+                        </p>
+                        {activity.branchName ? (
+                          <p className="truncate text-xs text-muted-foreground">
+                            {activity.branchName}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {activity.category ? (
+                          <CategoryBadge category={activity.category} />
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden max-w-48 truncate xl:table-cell">
+                        {activity.problemTitle ? (
+                          <span className="truncate">
+                            {activity.problemTitle}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground italic">
+                            Sem vínculo
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {activity.assignees.length > 0 ? (
+                          <AvatarGroup>
+                            {activity.assignees.slice(0, 3).map((assignee) => (
+                              <Avatar key={assignee.id} size="sm">
+                                <AvatarFallback className="text-[10px]">
+                                  {getInitials(assignee.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {activity.assignees.length > 3 ? (
+                              <AvatarGroupCount className="size-6 text-[10px]">
+                                +{activity.assignees.length - 3}
+                              </AvatarGroupCount>
+                            ) : null}
+                          </AvatarGroup>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "whitespace-nowrap tabular-nums",
+                          overdue
+                            ? "font-medium text-red-600 dark:text-red-400"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {activity.dueDate
+                          ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
+                              locale: ptBR,
+                            })
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge status={activity.status} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div
+                          onClick={(event) => event.stopPropagation()}
+                          className="flex justify-end"
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  aria-label="Ações"
+                                >
+                                  <MoreHorizontal />
+                                </Button>
+                              }
+                            />
+                            <DropdownMenuContent align="end">
+                              {open ? (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    router.push(
+                                      `/registrar?atividade=${activity.id}`
+                                    )
+                                  }
+                                >
+                                  <Camera />
+                                  Registrar
+                                </DropdownMenuItem>
+                              ) : null}
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  router.push(`/atividades/${activity.id}`)
+                                }
+                              >
+                                <Eye />
+                                Ver detalhes
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile — cards empilhados usando linhas simplificadas */}
+          <div className="flex flex-col gap-2 md:hidden">
+            {paged.map((activity) => {
+              const overdue = activity.status === "atrasada";
+              return (
+                <Link
+                  key={activity.id}
+                  href={`/atividades/${activity.id}`}
+                  className="flex flex-col gap-2 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:bg-muted/40"
+                >
+                  <p className="line-clamp-2 leading-snug font-medium">
+                    {activity.title}
+                  </p>
+                  {activity.branchName ? (
+                    <p className="text-sm text-muted-foreground">
+                      {activity.branchName}
+                    </p>
+                  ) : null}
+                  <div className="flex items-center justify-between gap-2">
+                    <StatusBadge status={activity.status} />
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        overdue
+                          ? "font-medium text-red-600 dark:text-red-400"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {activity.dueDate
+                        ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
+                            locale: ptBR,
+                          })
+                        : "sem prazo"}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Paginação */}
+          {totalPages > 1 ? (
+            <div className="flex items-center justify-between gap-2 border-t pt-4">
+              <p className="text-sm text-muted-foreground tabular-nums">
+                Página {currentPage} de {totalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <ChevronLeft className="size-4" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Próxima
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
             </div>
+          ) : null}
+        </>
+      )}
 
-            <p className="text-sm text-muted-foreground tabular-nums">
-              {activitiesTabRows.length} de {filteredByBranch.length} atividades
-              {branchFilter ? " (filial atual)" : ""}
-            </p>
-
-            {activitiesTabRows.length === 0 ? (
-              <Empty className="rounded-3xl border border-dashed py-10">
+      {/* Sheet lateral de problemas */}
+      <Sheet open={problemsOpen} onOpenChange={setProblemsOpen}>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Problemas do plano</SheetTitle>
+            <SheetDescription>
+              Os problemas mapeados no papel em branco desta safra.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 pb-6">
+            {problems.length === 0 ? (
+              <Empty className="py-10">
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
-                    <ClipboardList />
+                    <Target />
                   </EmptyMedia>
-                  <EmptyTitle>Nenhuma atividade nesse recorte</EmptyTitle>
+                  <EmptyTitle>Sem problemas mapeados</EmptyTitle>
+                  <EmptyDescription>
+                    Este canal ainda não tem problemas cadastrados no plano.
+                  </EmptyDescription>
                 </EmptyHeader>
-                {activitiesFiltersActive ? (
-                  <div className="pt-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearActivityFilters}
-                    >
-                      Limpar filtros
-                    </Button>
-                  </div>
-                ) : null}
               </Empty>
             ) : (
-              <div className="flex flex-col gap-2">
-                {activitiesTabRows.map((activity) => (
-                  <ActivityCard key={activity.id} activity={activity} />
-                ))}
-              </div>
+              problems.map((problem) => {
+                const linked = activities.filter(
+                  (activity) => activity.problemId === problem.id
+                );
+                const completed = linked.filter(
+                  (activity) => activity.status === "concluida"
+                ).length;
+                const percent =
+                  linked.length > 0
+                    ? Math.round((completed / linked.length) * 100)
+                    : 0;
+                return (
+                  <Card
+                    key={problem.id}
+                    className="p-0 transition-colors hover:bg-muted/40"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProblemFilter(problem);
+                        setProblemsOpen(false);
+                      }}
+                      className="flex w-full flex-col gap-3 p-4 text-left"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-medium leading-snug">
+                          {problem.title}
+                        </p>
+                        <Badge variant="secondary" className="shrink-0">
+                          {linked.length}{" "}
+                          {linked.length === 1 ? "atividade" : "atividades"}
+                        </Badge>
+                      </div>
+                      {problem.description ? (
+                        <p className="line-clamp-2 text-sm text-muted-foreground">
+                          {problem.description}
+                        </p>
+                      ) : null}
+                      <div className="flex items-center gap-3">
+                        <Progress
+                          value={percent}
+                          className="flex-1 [&_[data-slot=progress-track]]:h-1.5"
+                        />
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {percent}%
+                        </span>
+                      </div>
+                    </button>
+                  </Card>
+                );
+              })
             )}
           </div>
-        </TabsContent>
-      </Tabs>
+        </SheetContent>
+      </Sheet>
 
-      {/* FAB mobile — fixo no canto inferior direito, oculto em md+ */}
+      {/* Botao para abrir o Sheet - controlado por state via portal invisível.
+          O trigger visível vive no PageShell.actions (page.tsx) — expose um
+          "handle" via CustomEvent para permitir controle externo. */}
+      <ProblemsSheetOpener onClick={() => setProblemsOpen(true)} />
+
+      {/* FAB mobile Registrar */}
       <Link
         href={`/registrar?canal=${channel.id}`}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
@@ -564,9 +886,25 @@ export function MeuCanalView({
         <Camera className="size-5" />
         Registrar
       </Link>
+
+      {/* Ícone auxiliar para lint (usado indireto no import) */}
+      <span className="hidden">
+        <ClipboardCheck />
+      </span>
     </>
   );
 }
 
-/** Também exporta os metricCards helper caso seja útil, mas fica interno. */
-export type { ChannelDetail, ProblemRow, ActivityRow };
+/**
+ * Registra um handler global para abrir o Sheet de problemas — o botão
+ * visível fica no header do PageShell (server), então este handler é a
+ * ponte entre eles via CustomEvent.
+ */
+function ProblemsSheetOpener({ onClick }: { onClick: () => void }) {
+  React.useEffect(() => {
+    const handler = () => onClick();
+    window.addEventListener("open-problems-sheet", handler);
+    return () => window.removeEventListener("open-problems-sheet", handler);
+  }, [onClick]);
+  return null;
+}

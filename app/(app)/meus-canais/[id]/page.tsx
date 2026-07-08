@@ -26,6 +26,7 @@ import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelDetail, getPlanBoard } from "@/lib/db/channels";
 
 import { MeuCanalView } from "./meu-canal-view";
+import { ProblemsSheetButton } from "./problems-sheet-button";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,9 @@ export default async function MeuCanalPage({
           <Badge variant="outline" className="hidden md:flex">
             {harvestLabel(channel.plan?.harvest)}
           </Badge>
+          {board.problems.length > 0 ? (
+            <ProblemsSheetButton count={board.problems.length} />
+          ) : null}
           <Button
             nativeButton={false}
             render={<Link href={`/registrar?canal=${id}`} />}
