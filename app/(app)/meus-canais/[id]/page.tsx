@@ -4,6 +4,7 @@ import { Camera, Store } from "lucide-react";
 
 import { BackButton } from "@/components/app/back-button";
 import { PageShell } from "@/components/app/page-shell";
+import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +14,6 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Empty,
   EmptyContent,
@@ -24,10 +24,8 @@ import {
 } from "@/components/ui/empty";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelDetail, getPlanBoard } from "@/lib/db/channels";
-import { isLateActivity } from "@/lib/db/status";
-import { cn } from "@/lib/utils";
 
-import { ChannelActivities } from "./channel-activities";
+import { MeuCanalView } from "./meu-canal-view";
 
 export const dynamic = "force-dynamic";
 
@@ -67,40 +65,10 @@ function ChannelNotFound() {
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  hint,
-  tone = "default",
-}: {
-  label: string;
-  value: number;
-  hint?: string;
-  tone?: "default" | "alert" | "ok";
-}) {
-  return (
-    <Card className="gap-1 rounded-2xl px-4 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p
-        className={cn(
-          "text-2xl font-semibold tracking-tight tabular-nums",
-          tone === "alert" && "text-amber-600 dark:text-amber-400",
-          tone === "ok" && "text-[#4A7A10] dark:text-[#B5DC73]"
-        )}
-      >
-        {value}
-      </p>
-      {hint ? (
-        <p className="text-xs text-muted-foreground tabular-nums">{hint}</p>
-      ) : null}
-    </Card>
-  );
-}
-
 /**
- * Visão do canal para o campo: resumo enxuto, filtros mínimos e cards
- * de atividade com ação sempre à mão. Blocos e controles somem quando
- * não têm o que dizer.
+ * Visão do canal para o RTV — cabeçalho com back + safra + Registrar,
+ * filtro global de filial, métricas e tabs Visão geral / Problemas /
+ * Atividades. Sem ações de gestão (isso é do DSM/CX).
  */
 export default async function MeuCanalPage({
   params,
@@ -117,28 +85,16 @@ export default async function MeuCanalPage({
   if (!channel) return <ChannelNotFound />;
 
   const board = channel.plan
-    ? await getPlanBoard(channel.plan.id, { id: channel.id, name: channel.name })
+    ? await getPlanBoard(channel.plan.id, {
+        id: channel.id,
+        name: channel.name,
+      })
     : { problems: [], activities: [] };
-  const activities = board.activities;
-
-  // Bloco B — métricas do resumo.
-  const total = activities.length;
-  const completed = activities.filter(
-    (activity) => activity.status === "concluida"
-  ).length;
-  const late = activities.filter(isLateActivity).length;
-  const pending = activities.filter(
-    (activity) =>
-      activity.status === "planejada" || activity.status === "em_andamento"
-  ).length;
-  const completedPercent =
-    total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <>
     <PageShell
       title={channel.name}
-      description={`${harvestLabel(channel.plan?.harvest)} · ${channel.region}`}
+      description={`${harvestLabel(channel.plan?.harvest)} · ${channel.region} · ${channel.branches.length} ${channel.branches.length === 1 ? "filial" : "filiais"}`}
       breadcrumb={
         <div className="mb-1 flex items-center gap-2">
           <BackButton fallbackHref="/meus-canais" />
@@ -158,51 +114,27 @@ export default async function MeuCanalPage({
         </div>
       }
       actions={
-        <Button
-          nativeButton={false}
-          render={<Link href={`/registrar?canal=${id}`} />}
-          className="hidden md:flex"
-        >
-          <Camera className="size-4" />
-          Registrar
-        </Button>
+        <>
+          <Badge variant="outline" className="hidden md:flex">
+            {harvestLabel(channel.plan?.harvest)}
+          </Badge>
+          <Button
+            nativeButton={false}
+            render={<Link href={`/registrar?canal=${id}`} />}
+            className="hidden md:flex"
+          >
+            <Camera className="size-4" />
+            Registrar
+          </Button>
+        </>
       }
     >
-      {/* Bloco B — resumo em 4 métricas */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <MetricCard label="Total" value={total} />
-        <MetricCard
-          label="Feitas"
-          value={completed}
-          hint={`${completedPercent}%`}
-        />
-        <MetricCard label="Pendentes" value={pending} />
-        <MetricCard
-          label="Atrasadas"
-          value={late}
-          tone={late > 0 ? "alert" : "ok"}
-        />
-      </div>
-
-      {/* Blocos C + D — filtros e lista de atividades */}
-      <ChannelActivities
-        activities={activities}
-        branches={channel.branches.map((branch) => ({
-          id: branch.id,
-          name: branch.name,
-        }))}
+      <MeuCanalView
+        channel={channel}
+        problems={board.problems}
+        activities={board.activities}
         profileId={profile.id}
       />
     </PageShell>
-
-    {/* FAB mobile — fixo no canto inferior direito, oculto em md+ */}
-    <Link
-      href={`/registrar?canal=${id}`}
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
-    >
-      <Camera className="size-5" />
-      Registrar
-    </Link>
-    </>
   );
 }
