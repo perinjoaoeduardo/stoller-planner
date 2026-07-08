@@ -67,6 +67,7 @@ import {
   CATEGORY_LABELS,
   type ActivityCategory,
 } from "@/lib/config";
+import type { Role } from "@/lib/auth/nav";
 import type {
   ReportActivity,
   ReportPhoto,
@@ -255,7 +256,14 @@ function ActivitiesSection({
  * executivo, seções por problema, ações fora do plano e números.
  * Tudo recalcula quando o filtro de filial muda.
  */
-export function ReportView({ report }: { report: SeasonReport }) {
+export function ReportView({
+  report,
+  role = "DSM",
+}: {
+  report: SeasonReport;
+  role?: Role;
+}) {
+  const isField = role === "RTV";
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
     null
@@ -433,14 +441,22 @@ export function ReportView({ report }: { report: SeasonReport }) {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink render={<Link href="/canais" />}>
-                Canais
+              <BreadcrumbLink
+                render={
+                  <Link href={isField ? "/meus-canais" : "/canais"} />
+                }
+              >
+                {isField ? "Meus Canais" : "Canais"}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
               <BreadcrumbLink
-                render={<Link href={`/canais/${report.channel.id}`} />}
+                render={
+                  <Link
+                    href={`${isField ? "/meus-canais" : "/canais"}/${report.channel.id}`}
+                  />
+                }
               >
                 {report.channel.name}
               </BreadcrumbLink>
@@ -479,10 +495,12 @@ export function ReportView({ report }: { report: SeasonReport }) {
               <Link2 />
               Copiar link
             </Button>
-            <Button size="sm" onClick={() => window.print()}>
-              <FileDown />
-              Exportar PDF
-            </Button>
+            {!isField && (
+              <Button size="sm" onClick={() => window.print()}>
+                <FileDown />
+                Exportar PDF
+              </Button>
+            )}
           </div>
         </div>
       </header>

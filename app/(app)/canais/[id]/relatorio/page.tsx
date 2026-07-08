@@ -60,11 +60,6 @@ function ReportNotFound() {
   );
 }
 
-/**
- * Relatório de Safra do canal. Permissão: DSM do canal e CX; RTV/RDC
- * visualizam os canais do próprio escopo — exatamente o recorte de
- * getScopedChannelIds.
- */
 export default async function RelatorioPage({
   params,
 }: {
@@ -79,5 +74,5 @@ export default async function RelatorioPage({
   const report = await getSeasonReport(id);
   if (!report) return <ReportNotFound />;
 
-  return <ReportView report={report} />;
+  return <ReportView report={report} role={profile.role} />;
 }

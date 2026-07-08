@@ -4,6 +4,7 @@ import {
   ChartColumn,
   ClipboardCheck,
   ClipboardList,
+  FileText,
   Home,
   ListTodo,
   Map,
@@ -55,6 +56,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       icon: ListTodo,
     },
     { title: "Calendário", href: "/calendario", icon: CalendarDays },
+    { title: "Relatórios", href: "/relatorios", icon: FileText },
     {
       title: "+ Nova atividade",
       href: "#wizard",

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Store } from "lucide-react";
+import { FileText, Store } from "lucide-react";
 
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
@@ -117,6 +117,15 @@ export default async function MeuCanalPage({
           <Badge variant="outline" className="hidden md:flex">
             {harvestLabel(channel.plan?.harvest)}
           </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`/canais/${id}/relatorio`} />}
+          >
+            <FileText className="size-4" />
+            <span className="hidden md:inline">Relatório de safra</span>
+          </Button>
           {board.problems.length > 0 ? (
             <ProblemsSheetButton count={board.problems.length} />
           ) : null}
