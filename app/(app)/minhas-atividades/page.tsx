@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ClipboardPlus } from "lucide-react";
+
 import { PageShell } from "@/components/app/page-shell";
+import { Button } from "@/components/ui/button";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getScopedActivities } from "@/lib/db/channels";
 
@@ -12,9 +16,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * "Minhas Atividades" = visão pessoal do RTV/RDC: só atividades em que
- * ele é responsável (assignee), agrupadas por canal. Mobile-first,
- * lista vertical de cards — este perfil não precisa de tabela.
+ * "Minhas Atividades" — visão pessoal do RTV cross-canal: só atividades
+ * em que ele é assignee, com métricas, filtros ricos e agrupamento por
+ * canal quando faz sentido.
  */
 export default async function MinhasAtividadesPage() {
   const profile = await getCurrentProfile();
@@ -29,6 +33,17 @@ export default async function MinhasAtividadesPage() {
     <PageShell
       title="Minhas Atividades"
       description="Atividades atribuídas a você em todos os canais."
+      actions={
+        <Button
+          variant="outline"
+          size="sm"
+          nativeButton={false}
+          render={<Link href="/registrar?avulso=1" />}
+        >
+          <ClipboardPlus className="size-4" />
+          Registrar ação fora do plano
+        </Button>
+      }
     >
       <MyActivitiesList activities={mine} />
     </PageShell>
