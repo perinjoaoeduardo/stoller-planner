@@ -24,8 +24,8 @@ import {
 import { ptBR } from "date-fns/locale";
 
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
-import { ActivityCard } from "@/components/app/activity-card";
 import { PageShell } from "@/components/app/page-shell";
+import { RtvActivitiesTable } from "@/components/app/rtv-activities-table";
 import { StatusBadge } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -302,6 +302,7 @@ function RtvMetrics({
       hint: "abertas na safra",
       icon: ListTodo,
       tone: "default" as const,
+      href: "/minhas-atividades?status=abertas",
     },
     {
       label: "Concluídas",
@@ -309,6 +310,7 @@ function RtvMetrics({
       hint: `de ${totalCount} atividades`,
       icon: CheckCircle2,
       tone: "default" as const,
+      href: "/minhas-atividades?status=concluidas",
     },
     {
       label: "Precisam de atenção",
@@ -316,6 +318,7 @@ function RtvMetrics({
       hint: lateCount === 1 ? "atrasada" : "atrasadas",
       icon: AlertCircle,
       tone: lateCount > 0 ? ("alert" as const) : ("default" as const),
+      href: "/minhas-atividades?status=atrasadas",
     },
     {
       label: "Canais que atuo",
@@ -323,134 +326,42 @@ function RtvMetrics({
       hint: channelCount === 1 ? "distribuidor" : "distribuidores",
       icon: Store,
       tone: "default" as const,
+      href: "/meus-canais",
     },
   ];
 
   return (
     <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
       {cards.map((metric) => (
-        <Card key={metric.label} className="gap-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardDescription>{metric.label}</CardDescription>
-            <metric.icon
-              className={
-                metric.tone === "alert"
-                  ? "size-4 shrink-0 text-amber-600 dark:text-amber-400"
-                  : "size-4 shrink-0 text-muted-foreground"
-              }
-            />
-          </CardHeader>
-          <CardContent>
+        <Card
+          key={metric.label}
+          className="gap-2 p-0 transition-colors hover:bg-muted/40"
+        >
+          <Link href={metric.href} className="block p-6">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">{metric.label}</p>
+              <metric.icon
+                className={
+                  metric.tone === "alert"
+                    ? "size-4 shrink-0 text-amber-600 dark:text-amber-400"
+                    : "size-4 shrink-0 text-muted-foreground"
+                }
+              />
+            </div>
             <p
               className={
                 metric.tone === "alert"
-                  ? "text-3xl font-semibold tracking-tight tabular-nums text-amber-600 dark:text-amber-400"
-                  : "text-3xl font-semibold tracking-tight tabular-nums"
+                  ? "mt-3 text-3xl font-semibold tracking-tight tabular-nums text-amber-600 dark:text-amber-400"
+                  : "mt-3 text-3xl font-semibold tracking-tight tabular-nums"
               }
             >
               {metric.value}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>
-          </CardContent>
+          </Link>
         </Card>
       ))}
     </div>
-  );
-}
-
-function RegisterCta() {
-  return (
-    <Card className="border-primary/20 bg-primary/[0.04]">
-      <CardContent className="flex flex-col items-center gap-3 py-8">
-        <Button
-          size="lg"
-          className="h-14 w-full max-w-md text-base font-semibold"
-          nativeButton={false}
-          render={
-            <Link href="/registrar">
-              <Camera className="size-5" />
-              Registrar
-            </Link>
-          }
-        />
-        <p className="text-center text-sm text-muted-foreground">
-          Toque para registrar uma execução em um dos seus canais.
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-/** Cards de urgência: até 5 atividades minhas, atrasadas + próximo prazo. */
-function UrgentActivitiesCard({
-  activities,
-  profileId,
-  profileName,
-}: {
-  activities: FieldActivity[];
-  profileId: string;
-  profileName: string;
-}) {
-  const items = activities.slice(0, 5);
-  return (
-    <Card className="flex h-full flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ClipboardList className="size-4 text-muted-foreground" />
-          Próximas urgentes
-        </CardTitle>
-        <CardDescription>
-          As atividades com prazo mais próximo.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-3">
-        {items.length === 0 ? (
-          <Empty className="my-2 rounded-2xl border border-dashed py-8">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <CheckCircle2 />
-              </EmptyMedia>
-              <EmptyTitle>Nada urgente no momento.</EmptyTitle>
-              <EmptyDescription>
-                Você está em dia com o que estava planejado.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {items.map((activity) => (
-              <ActivityCard
-                key={activity.id}
-                showCanal
-                activity={{
-                  id: activity.id,
-                  title: activity.title,
-                  status: activity.status,
-                  category: activity.category,
-                  dueDate: activity.dueDate,
-                  completedAt: activity.completedAt,
-                  branchName: activity.branchName,
-                  channelName: activity.channelName,
-                  assignees: [{ id: profileId, name: profileName }],
-                }}
-              />
-            ))}
-          </div>
-        )}
-        <div className="mt-auto pt-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            nativeButton={false}
-            render={<Link href="/minhas-atividades" />}
-          >
-            Ver todas as minhas atividades
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -506,13 +417,22 @@ function ChannelsSummaryCard({ channels }: { channels: ChannelCard[] }) {
                       <span className="min-w-0 truncate font-medium">
                         {channel.name}
                       </span>
-                      <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-                        {channel.completedCount} de {channel.activityCount}{" "}
-                        feitas
-                        {channel.pendingCount > 0
-                          ? ` · ${channel.pendingCount} pendentes`
-                          : ""}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
+                      <span>
+                        {channel.completedCount}/{channel.activityCount} feitas
                       </span>
+                      {channel.pendingCount > 0 ? (
+                        <span>· {channel.pendingCount} pendentes</span>
+                      ) : null}
+                      {channel.lateCount > 0 ? (
+                        <span className="font-medium text-amber-600 dark:text-amber-400">
+                          · {channel.lateCount}{" "}
+                          {channel.lateCount === 1
+                            ? "atrasada"
+                            : "atrasadas"}
+                        </span>
+                      ) : null}
                     </div>
                     <Progress
                       value={channel.completedPercent}
@@ -673,11 +593,37 @@ async function FieldHome() {
     (execution) => differenceInDays(now, parseISO(execution.createdAt)) <= 7
   );
 
+  // Até 8 atividades para a tabela da home; ordenadas por urgência
+  // (o array `urgent` já vem ordenado atrasadas → prazo próximo).
+  const tableRows = urgent.slice(0, 8).map((activity) => ({
+    id: activity.id,
+    title: activity.title,
+    status: activity.status,
+    category: activity.category,
+    dueDate: activity.dueDate,
+    completedAt: activity.completedAt,
+    branchName: activity.branchName,
+    channelName: activity.channelName,
+  }));
+
   return (
     <PageShell
       title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
+      actions={
+        <Button
+          size="lg"
+          className="h-11 text-base font-semibold"
+          nativeButton={false}
+          render={
+            <Link href="/registrar">
+              <Camera className="size-5" />
+              Registrar
+            </Link>
+          }
+        />
+      }
     >
       <RtvMetrics
         openCount={open.length}
@@ -686,13 +632,27 @@ async function FieldHome() {
         lateCount={late.length}
         channelCount={channels.length}
       />
-      <RegisterCta />
-      <div className="grid gap-6 lg:grid-cols-2">
-        <UrgentActivitiesCard
-          activities={urgent}
-          profileId={profile.id}
-          profileName={profile.fullName}
-        />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="size-4 text-muted-foreground" />
+              Minhas atividades
+            </CardTitle>
+            <CardDescription>
+              As {tableRows.length} próximas abertas — atrasadas primeiro,
+              depois prazo mais próximo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RtvActivitiesTable
+              activities={tableRows}
+              totalOpen={urgent.length}
+              profileId={profile.id}
+              profileName={profile.fullName}
+            />
+          </CardContent>
+        </Card>
         <ChannelsSummaryCard channels={channels} />
       </div>
       {recentInWindow.length > 0 ? (

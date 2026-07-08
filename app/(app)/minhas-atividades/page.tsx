@@ -20,7 +20,19 @@ export const metadata: Metadata = {
  * em que ele é assignee, com métricas, filtros ricos e agrupamento por
  * canal quando faz sentido.
  */
-export default async function MinhasAtividadesPage() {
+export default async function MinhasAtividadesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
+  const initialStatus =
+    status === "abertas" ||
+    status === "concluidas" ||
+    status === "atrasadas" ||
+    status === "todas"
+      ? status
+      : "abertas";
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
   const activities = await getScopedActivities(channelIds);
@@ -45,7 +57,7 @@ export default async function MinhasAtividadesPage() {
         </Button>
       }
     >
-      <MyActivitiesList activities={mine} />
+      <MyActivitiesList activities={mine} initialStatus={initialStatus} />
     </PageShell>
   );
 }

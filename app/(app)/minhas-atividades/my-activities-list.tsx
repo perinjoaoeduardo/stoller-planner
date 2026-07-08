@@ -40,10 +40,11 @@ import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 import { cn } from "@/lib/utils";
 
-type StatusChip = "abertas" | "concluidas" | "todas";
+type StatusChip = "abertas" | "concluidas" | "atrasadas" | "todas";
 
 const CHIPS: { value: StatusChip; label: string }[] = [
   { value: "abertas", label: "Abertas" },
+  { value: "atrasadas", label: "Atrasadas" },
   { value: "concluidas", label: "Concluídas" },
   { value: "todas", label: "Todas" },
 ];
@@ -123,12 +124,14 @@ function MetricCard({
  */
 export function MyActivitiesList({
   activities,
+  initialStatus = "abertas",
 }: {
   activities: ActivityRow[];
+  initialStatus?: StatusChip;
 }) {
   const router = useRouter();
   const [refreshing, startRefresh] = React.useTransition();
-  const [chip, setChip] = React.useState<StatusChip>("abertas");
+  const [chip, setChip] = React.useState<StatusChip>(initialStatus);
   const [channelId, setChannelId] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
@@ -184,6 +187,8 @@ export function MyActivitiesList({
     let result = activities;
     if (chip === "abertas") {
       result = result.filter((activity) => OPEN.has(activity.status));
+    } else if (chip === "atrasadas") {
+      result = result.filter((activity) => activity.status === "atrasada");
     } else if (chip === "concluidas") {
       result = result.filter((activity) => activity.status === "concluida");
     }
