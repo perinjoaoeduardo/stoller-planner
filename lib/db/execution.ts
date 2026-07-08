@@ -255,6 +255,10 @@ export type RecentExecution = {
   createdAt: string;
   activityId: string;
   activityTitle: string;
+  channelName: string | null;
+  branchName: string | null;
+  /** Caminho no bucket public activity-photos da foto mais recente. */
+  photoPath: string | null;
 };
 
 /** Últimos registros de execução feitos pelo usuário (home do RTV). */
@@ -265,7 +269,15 @@ export async function getMyRecentExecutions(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("activity_events")
-    .select("id, description, created_at, activity:activities(id, title)")
+    .select(
+      `id, description, created_at,
+       activity:activities(
+         id, title,
+         branch:branches(name),
+         plan:plans(channel:channels(name)),
+         photos:activity_photos(storage_path, created_at)
+       )`
+    )
     .eq("profile_id", profileId)
     .eq("type", "execucao_registrada")
     .order("created_at", { ascending: false })
@@ -275,11 +287,20 @@ export async function getMyRecentExecutions(
 
   return data
     .filter((event) => event.activity)
-    .map((event) => ({
-      id: event.id,
-      description: event.description,
-      createdAt: event.created_at,
-      activityId: event.activity!.id,
-      activityTitle: event.activity!.title,
-    }));
+    .map((event) => {
+      const activity = event.activity!;
+      const photos = [...(activity.photos ?? [])].sort((a, b) =>
+        a.created_at < b.created_at ? 1 : -1
+      );
+      return {
+        id: event.id,
+        description: event.description,
+        createdAt: event.created_at,
+        activityId: activity.id,
+        activityTitle: activity.title,
+        channelName: activity.plan?.channel?.name ?? null,
+        branchName: activity.branch?.name ?? null,
+        photoPath: photos[0]?.storage_path ?? null,
+      };
+    });
 }
