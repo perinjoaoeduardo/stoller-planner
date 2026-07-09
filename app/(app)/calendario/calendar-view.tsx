@@ -22,6 +22,7 @@ import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { NewActivityButton } from "@/components/app/new-activity-button";
+import { SearchableSelect } from "@/components/app/searchable-select";
 import { StatusBadge } from "@/components/app/status-badge";
 import type { ActivityStatus } from "@/components/app/status-badge";
 import { Button } from "@/components/ui/button";
@@ -227,18 +228,13 @@ export function CalendarView({
 
         {/* Channel filter */}
         {channels.length > 1 && (
-          <select
-            value={channelFilter ?? ""}
-            onChange={(e) => setChannelFilter(e.target.value || null)}
-            className="h-9 rounded-lg border bg-background px-3 text-sm"
-          >
-            <option value="">Todos os canais</option>
-            {channels.map((ch) => (
-              <option key={ch.id} value={ch.id}>
-                {ch.name}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            options={channels.map((ch) => ({ value: ch.id, label: ch.name }))}
+            value={channelFilter}
+            onValueChange={setChannelFilter}
+            placeholder="Todos os canais"
+            className="h-9 min-w-48"
+          />
         )}
       </div>
 
