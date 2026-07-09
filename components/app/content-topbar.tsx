@@ -2,6 +2,7 @@
 
 import { GlobalSearch } from "@/components/app/global-search";
 import { useOpenSettings } from "@/components/app/settings-provider";
+import { ThemeToggle } from "@/components/app/theme-toggle";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import type { Role } from "@/lib/auth/nav";
 
@@ -32,6 +33,9 @@ export function ContentTopBar({
           fieldChannels={fieldChannels}
           onOpenSettings={() => openSettings?.()}
         />
+      </div>
+      <div className="ml-auto">
+        <ThemeToggle />
       </div>
     </div>
   );

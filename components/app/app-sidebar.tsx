@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { NavUser } from "@/components/app/nav-user";
 import type { SettingsUser } from "@/components/app/settings-dialog";
-import { ThemeToggle } from "@/components/app/theme-toggle";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
@@ -55,7 +54,6 @@ export function AppSidebar({
           >
             <BrandLogo variant="icon" className="text-sidebar-foreground" />
           </Link>
-          <ThemeToggle className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
           <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
         </div>
       </SidebarHeader>
