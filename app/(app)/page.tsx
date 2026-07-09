@@ -625,12 +625,7 @@ async function FieldHome() {
       title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
-      actions={
-        <NewActivityButton
-          size="lg"
-          className="h-14 gap-2 px-6 text-base font-semibold shadow-sm"
-        />
-      }
+      actions={<NewActivityButton size="lg" />}
     >
       <RtvMetrics
         openCount={open.length}
