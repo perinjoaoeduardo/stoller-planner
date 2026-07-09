@@ -79,7 +79,7 @@ export function ActivityDrawerProvider({
     <Ctx.Provider value={ctx}>
       {children}
       <Sheet open={open} onOpenChange={(o) => { if (!o) setOpen(false); }}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
           {loading ? (
             <DrawerSkeleton />
           ) : activity ? (
@@ -199,7 +199,7 @@ function DrawerBody({ activity }: { activity: DrawerActivity }) {
   return (
     <>
       <SheetHeader>
-        <SheetTitle className="pr-8 text-lg leading-snug">
+        <SheetTitle className="pr-8 text-xl font-semibold leading-snug">
           {activity.title}
         </SheetTitle>
         <SheetDescription className="flex flex-wrap items-center gap-2">
@@ -333,24 +333,24 @@ function DrawerBody({ activity }: { activity: DrawerActivity }) {
           <p className="text-xs font-medium text-muted-foreground">
             Linha do tempo
           </p>
-          <ol className="relative flex flex-col gap-3 before:absolute before:top-2 before:bottom-2 before:left-[9px] before:w-px before:bg-border">
+          <ol className="relative flex flex-col gap-4 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-px before:bg-border">
             {activity.events.map((event) => {
               const Icon = eventIcon(event.type, event.description);
               return (
-                <li key={event.id} className="relative flex gap-2.5">
-                  <span className="z-10 flex size-5 shrink-0 items-center justify-center rounded-full border bg-background">
-                    <Icon className="size-2.5 text-muted-foreground" />
+                <li key={event.id} className="relative flex gap-3">
+                  <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
+                    <Icon className="size-3 text-muted-foreground" />
                   </span>
                   <div className="min-w-0 space-y-0.5">
-                    <p className="text-xs font-medium">
+                    <p className="text-sm font-medium">
                       {EVENT_LABELS[event.type] ?? event.type}
                     </p>
                     {event.description && (
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-xs text-muted-foreground line-clamp-2">
                         {event.description}
                       </p>
                     )}
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {formatDistanceToNow(parseISO(event.createdAt), {
                         locale: ptBR,
                         addSuffix: true,
