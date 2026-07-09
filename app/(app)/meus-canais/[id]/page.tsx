@@ -4,7 +4,6 @@ import { FileText, Store } from "lucide-react";
 
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
-import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -114,9 +113,6 @@ export default async function MeuCanalPage({
       }
       actions={
         <>
-          <Badge variant="outline" className="hidden md:flex">
-            {harvestLabel(channel.plan?.harvest)}
-          </Badge>
           <Button
             variant="outline"
             size="sm"

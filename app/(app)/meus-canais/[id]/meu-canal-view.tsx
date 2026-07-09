@@ -867,7 +867,7 @@ export function MeuCanalView({
                       <div className="flex items-center gap-3">
                         <Progress
                           value={percent}
-                          className="flex-1 [&_[data-slot=progress-track]]:h-1.5"
+                          className="flex-1 [&_[data-slot=progress-track]]:h-2"
                         />
                         <span className="text-xs text-muted-foreground tabular-nums">
                           {percent}%

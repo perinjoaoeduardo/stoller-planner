@@ -64,7 +64,7 @@ function ChannelCardTile({ channel }: { channel: ChannelCard }) {
         className="flex flex-col gap-4 p-6"
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 truncate text-lg font-medium">{channel.name}</p>
+          <p className="min-w-0 truncate text-lg font-semibold">{channel.name}</p>
           <Badge variant="outline" className="shrink-0">
             {harvestLabel(channel.harvest)}
           </Badge>
@@ -81,7 +81,7 @@ function ChannelCardTile({ channel }: { channel: ChannelCard }) {
           />
         </div>
 
-        <Progress value={channel.completedPercent} className="h-1.5" />
+        <Progress value={channel.completedPercent} className="h-2" />
 
         <div className="flex items-center justify-between gap-2 text-sm">
           <span className="flex items-center gap-2">
