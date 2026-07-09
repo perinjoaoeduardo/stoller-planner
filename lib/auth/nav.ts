@@ -58,7 +58,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { title: "Calendário", href: "/calendario", icon: CalendarDays },
     { title: "Relatórios", href: "/relatorios", icon: FileText },
     {
-      title: "+ Nova atividade",
+      title: "Nova atividade",
       href: "#wizard",
       icon: Plus,
       highlight: true,

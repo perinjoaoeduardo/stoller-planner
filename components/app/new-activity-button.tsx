@@ -15,7 +15,7 @@ export function NewActivityButton({
   size = "default",
   variant = "default",
   className,
-  label = "+ Nova atividade",
+  label = "Nova atividade",
   icon,
 }: {
   mode?: WizardMode;
