@@ -394,8 +394,8 @@ export async function updateActivityProblem(input: {
     profileId: profile.id,
     type: "editada",
     description: input.problemId
-      ? `Problema vinculado por ${profile.fullName}: ${problemTitle}`
-      : `Vínculo com problema removido por ${profile.fullName}`,
+      ? `Meta vinculada por ${profile.fullName}: ${problemTitle}`
+      : `Vínculo com meta removido por ${profile.fullName}`,
   });
 
   revalidatePlanPages(activity.plan.channel_id, input.activityId);

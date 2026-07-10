@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   ImageMinus,
+  ImagePlus,
   Link2,
   MessageSquare,
   MoreHorizontal,
@@ -67,7 +68,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -88,8 +88,34 @@ import {
   getDrawerActivity,
   type DrawerActivity,
 } from "@/lib/actions/activity-drawer";
-import { changeActivityStatus, deleteActivity } from "@/lib/actions/plan";
+import {
+  changeActivityStatus,
+  deleteActivity,
+  registerActivityPhoto,
+} from "@/lib/actions/plan";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** Reduz a imagem no client (máx. 1600px, JPEG q0.8) antes do upload —
+ *  espelha o pipeline usado no PhotosCard da tela cheia. */
+async function compressImage(file: File): Promise<Blob> {
+  if (file.size < 400 * 1024) return file;
+  const bitmap = await createImageBitmap(file);
+  const maxDim = 1600;
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob ?? file), "image/jpeg", 0.8);
+  });
+}
 
 // ── Context ──────────────────────────────────────────────────────────
 
@@ -284,6 +310,21 @@ const EVENT_LABELS: Record<string, string> = {
   problema_vinculado: "Meta vinculada",
 };
 
+/** Ícone semântico do evento — usa createElement pra evitar o
+ *  `const Icon = ...` que o React Compiler flaga como componente
+ *  criado em render. */
+function EventIcon({
+  type,
+  description,
+  className,
+}: {
+  type: string;
+  description: string | null;
+  className?: string;
+}) {
+  return React.createElement(eventIcon(type, description), { className });
+}
+
 /** Ícone semântico por evento; conclusão ganha o check verde da vida. */
 function eventIcon(type: string, description: string | null): LucideIcon {
   if (type === "status_alterado" && description?.includes('para "Concluída"')) {
@@ -321,10 +362,6 @@ function statusContextLabel(activity: DrawerActivity): string | null {
   return `${STATUS_LABELS[activity.status]} desde ${formatDate(since)}`;
 }
 
-function scrollToRef(ref: React.RefObject<HTMLDivElement | null>) {
-  ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
 // ── Drawer body ──────────────────────────────────────────────────────
 
 function DrawerBody({
@@ -340,7 +377,6 @@ function DrawerBody({
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const [statusDialog, setStatusDialog] = React.useState(false);
-  const metaRef = React.useRef<HTMLDivElement>(null);
 
   const isOpen =
     activity.status === "planejada" ||
@@ -349,7 +385,6 @@ function DrawerBody({
 
   const canChangeStatus = activity.canRegister || activity.canEdit;
   const canLinkMeta = activity.canRegister || activity.canEdit;
-  const showMenu = canChangeStatus || canLinkMeta || activity.canEdit;
 
   const headerContext = [
     activity.channelName,
@@ -401,57 +436,58 @@ function DrawerBody({
       {/* Corpo com scroll */}
       <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
         {/* ══ AÇÃO PRIMÁRIA — destaque máximo ═══════════════════════ */}
-        {isOpen && activity.canRegister ? (
+        {(isOpen && activity.canRegister) || activity.canEdit ? (
           <div className="flex items-center gap-2">
-            <Button size="lg" className="flex-1" onClick={handleRegistrar}>
-              <Camera className="size-5" />
-              Registrar execução
-            </Button>
-            {showMenu ? (
-              <ActionMenu
-                canEdit={activity.canEdit}
-                canChangeStatus={canChangeStatus}
-                canLinkMeta={canLinkMeta}
-                onStatus={() => setStatusDialog(true)}
-                onMeta={() => scrollToRef(metaRef)}
-                onDelete={() => setConfirmDelete(true)}
-              />
+            {isOpen && activity.canRegister ? (
+              <Button size="lg" className="flex-1" onClick={handleRegistrar}>
+                <Camera className="size-5" />
+                Registrar execução
+              </Button>
             ) : null}
-          </div>
-        ) : showMenu ? (
-          <div className="flex items-center justify-end">
-            <ActionMenu
-              canEdit={activity.canEdit}
-              canChangeStatus={canChangeStatus}
-              canLinkMeta={canLinkMeta}
-              onStatus={() => setStatusDialog(true)}
-              onMeta={() => scrollToRef(metaRef)}
-              onDelete={() => setConfirmDelete(true)}
-            />
+            {/* Menu "..." só aparece pra DSM/CX (Excluir). Pra RTV, alterar
+                status vive clicando no contexto da Situação; vincular meta é
+                inline no bloco Sobre — não precisa de menu. */}
+            {activity.canEdit ? (
+              <ActionMenu onDelete={() => setConfirmDelete(true)} />
+            ) : null}
           </div>
         ) : null}
 
-        {/* ══ DETALHE — 2 colunas quando há largura ═════════════════ */}
+        {/* ══ DETALHE — grid balanceado sem sobrar buracos ═════════
+            Coluna A concentra o bloco alto (Sobre) + Situação compacta.
+            Coluna B tem Evidências (compactada quando vazia) + Timeline
+            (variável, mas ok — cai ao lado do "Sobre" alto). */}
         <div className="grid gap-4 @xl/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @xl/abody:items-start">
-          {/* Coluna A — Situação + Sobre */}
+          {/* Coluna A — Sobre (alto) + Situação (baixa) */}
           <div className="flex flex-col gap-4">
-            <SituacaoCard activity={activity} />
             <SobreCard
               activity={activity}
               onRefresh={onRefresh}
-              metaRef={metaRef}
               canLinkMeta={canLinkMeta}
+            />
+            <SituacaoCard
+              activity={activity}
+              canChangeStatus={canChangeStatus}
+              onOpenStatusDialog={() => setStatusDialog(true)}
             />
           </div>
 
           {/* Coluna B — Evidências + Linha do tempo */}
           <div className="flex flex-col gap-4">
-            <PhotosCard
-              activityId={activity.id}
-              photos={activity.photos}
-              canManage={activity.canRegister}
-              onChanged={onRefresh}
-            />
+            {activity.photos.length > 0 ? (
+              <PhotosCard
+                activityId={activity.id}
+                photos={activity.photos}
+                canManage={activity.canRegister}
+                onChanged={onRefresh}
+              />
+            ) : (
+              <PhotosEmptyCompact
+                activityId={activity.id}
+                canManage={activity.canRegister}
+                onChanged={onRefresh}
+              />
+            )}
             <TimelineCard activity={activity} />
           </div>
         </div>
@@ -611,23 +647,9 @@ function StatusChangeDialog({
   );
 }
 
-// ── Menu de ações secundárias ────────────────────────────────────────
+// ── Menu de ações secundárias (só DSM/CX — Excluir) ──────────────────
 
-function ActionMenu({
-  canEdit,
-  canChangeStatus,
-  canLinkMeta,
-  onStatus,
-  onMeta,
-  onDelete,
-}: {
-  canEdit: boolean;
-  canChangeStatus: boolean;
-  canLinkMeta: boolean;
-  onStatus: () => void;
-  onMeta: () => void;
-  onDelete: () => void;
-}) {
+function ActionMenu({ onDelete }: { onDelete: () => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -638,67 +660,84 @@ function ActionMenu({
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {canChangeStatus ? (
-          <DropdownMenuItem onClick={onStatus}>
-            <RefreshCw />
-            Alterar status
-          </DropdownMenuItem>
-        ) : null}
-        {canLinkMeta ? (
-          <DropdownMenuItem onClick={onMeta}>
-            <Link2 />
-            Vincular meta
-          </DropdownMenuItem>
-        ) : null}
-        {canEdit ? (
-          <>
-            {canChangeStatus || canLinkMeta ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuItem variant="destructive" onClick={onDelete}>
-              <Trash2 />
-              Excluir atividade
-            </DropdownMenuItem>
-          </>
-        ) : null}
+        <DropdownMenuItem variant="destructive" onClick={onDelete}>
+          <Trash2 />
+          Excluir atividade
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
-// ── Bloco "Situação" (informativo — status + prazo, sem formulário) ──
+// ── Bloco "Situação" (informativo — contexto + prazo, sem badge) ─────
+// StatusBadge já vive no header (FIX 3, elimina redundância). O contexto
+// textual do status vira o "eixo" do bloco. Se o role pode alterar, todo
+// o card é clicável e abre o dialog de mudança manual (FIX 8b).
 
-function SituacaoCard({ activity }: { activity: DrawerActivity }) {
+function SituacaoCard({
+  activity,
+  canChangeStatus,
+  onOpenStatusDialog,
+}: {
+  activity: DrawerActivity;
+  canChangeStatus: boolean;
+  onOpenStatusDialog: () => void;
+}) {
   const contextLabel = statusContextLabel(activity);
+
   return (
-    <Card>
+    <Card
+      className={
+        canChangeStatus
+          ? "group/situacao cursor-pointer transition-colors hover:bg-muted/40"
+          : undefined
+      }
+      onClick={canChangeStatus ? onOpenStatusDialog : undefined}
+      role={canChangeStatus ? "button" : undefined}
+      tabIndex={canChangeStatus ? 0 : undefined}
+      onKeyDown={
+        canChangeStatus
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onOpenStatusDialog();
+              }
+            }
+          : undefined
+      }
+    >
       <CardHeader>
-        <CardTitle>Situação</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
-          <StatusBadge
-            status={activity.status}
-            className="w-fit px-3 py-1 text-sm"
-          />
-          {contextLabel ? (
-            <p
-              className={cn(
-                "text-sm",
-                activity.status === "atrasada"
-                  ? "font-medium text-red-600 dark:text-red-400"
-                  : "text-muted-foreground"
-              )}
-            >
-              {contextLabel}
-            </p>
+        <CardTitle className="flex items-center justify-between gap-2">
+          <span>Situação</span>
+          {canChangeStatus ? (
+            <Pencil
+              aria-hidden
+              className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/situacao:opacity-100"
+            />
           ) : null}
-        </div>
-        <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        {contextLabel ? (
+          <p
+            className={cn(
+              "text-sm",
+              activity.status === "atrasada"
+                ? "font-medium text-red-600 dark:text-red-400"
+                : "text-muted-foreground"
+            )}
+          >
+            {contextLabel}
+          </p>
+        ) : null}
+        {/* Prazo — texto puro com label acima, sem simular input (FIX 4) */}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs uppercase tracking-wide text-muted-foreground">
             Prazo
           </span>
           <span
             className={cn(
-              "text-sm font-semibold tabular-nums",
+              "text-base font-medium tabular-nums",
               activity.overdue && "text-red-600 dark:text-red-400"
             )}
           >
@@ -716,17 +755,113 @@ function SituacaoCard({ activity }: { activity: DrawerActivity }) {
   );
 }
 
+// ── Evidências vazio compacto (só título + botão inline) ─────────────
+
+function PhotosEmptyCompact({
+  activityId,
+  canManage,
+  onChanged,
+}: {
+  activityId: string;
+  canManage: boolean;
+  onChanged: () => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+
+  async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!ALLOWED_TYPES.has(file.type)) {
+      toast.error("Formato não suportado. Envie JPG, PNG ou WEBP.");
+      return;
+    }
+    if (file.size > MAX_UPLOAD_SIZE) {
+      toast.error("A foto pode ter no máximo 5MB.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const blob = await compressImage(file);
+      const extension =
+        blob.type === "image/jpeg" ? "jpg" : file.name.split(".").pop() ?? "jpg";
+      const path = `${activityId}/${Date.now()}.${extension}`;
+      const supabase = createSupabaseClient();
+      const { error } = await supabase.storage
+        .from("activity-photos")
+        .upload(path, blob, { contentType: blob.type, upsert: false });
+      if (error) {
+        toast.error("Falha ao enviar a foto. Tente novamente.");
+        return;
+      }
+      const result = await registerActivityPhoto({ activityId, storagePath: path });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      onChanged();
+      toast.success("Foto adicionada às evidências.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-0">
+        <CardTitle>Evidências</CardTitle>
+        {canManage ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={uploading}
+              onClick={() => inputRef.current?.click()}
+            >
+              {uploading ? (
+                <>
+                  <Spinner />
+                  Enviando…
+                </>
+              ) : (
+                <>
+                  <ImagePlus className="size-3.5" />
+                  Adicionar foto
+                </>
+              )}
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleUpload}
+            />
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">Nenhuma foto ainda</span>
+        )}
+      </CardHeader>
+      <CardContent className="pt-2 pb-4">
+        <p className="text-xs text-muted-foreground">
+          Nenhuma foto ainda.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Bloco "Sobre" (subgrupos: o que / onde-o quê / vínculos) ─────────
 
 function SobreCard({
   activity,
   onRefresh,
-  metaRef,
   canLinkMeta,
 }: {
   activity: DrawerActivity;
   onRefresh: () => void;
-  metaRef: React.RefObject<HTMLDivElement | null>;
   canLinkMeta: boolean;
 }) {
   const executionEvent = activity.events.find(
@@ -764,10 +899,7 @@ function SobreCard({
         </div>
 
         {/* Subgrupo 3 — vínculos (a que/a quem se conecta) */}
-        <div
-          ref={metaRef}
-          className="grid grid-cols-1 gap-4 border-t pt-4 @[440px]/sobre:grid-cols-2"
-        >
+        <div className="grid grid-cols-1 gap-4 border-t pt-4 @[440px]/sobre:grid-cols-2">
           <div className="min-w-0 space-y-1">
             <FieldLabel>Meta vinculada</FieldLabel>
             <div className="text-sm font-medium">
@@ -858,6 +990,73 @@ function Field({
 
 // ── Bloco "Linha do tempo" (mais recentes no topo) ────────────────────
 
+function TimelineItem({
+  event,
+}: {
+  event: DrawerActivity["events"][number];
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  // Renomeia string legada "Problema vinculado/removido" pra "Meta …"
+  const description = event.description
+    ?.replace(/Problema vinculado/g, "Meta vinculada")
+    .replace(/Vínculo com problema removido/g, "Vínculo com meta removido")
+    .replace(/Problema desvinculado/g, "Meta desvinculada");
+  const long = description && description.length > 140;
+
+  return (
+    <li className="relative flex gap-3">
+      <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
+        <EventIcon
+          type={event.type}
+          description={event.description}
+          className="size-3 text-muted-foreground"
+        />
+      </span>
+      <div className="min-w-0 space-y-0.5">
+        <p className="text-sm font-medium">
+          {EVENT_LABELS[event.type] ?? event.type}
+        </p>
+        {description ? (
+          <>
+            <p
+              className={cn(
+                "text-xs text-muted-foreground",
+                !expanded && "line-clamp-3"
+              )}
+            >
+              {description}
+            </p>
+            {long ? (
+              <button
+                type="button"
+                onClick={() => setExpanded((v) => !v)}
+                className="text-xs font-medium text-foreground hover:underline"
+              >
+                {expanded ? "ver menos" : "ver mais"}
+              </button>
+            ) : null}
+          </>
+        ) : null}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <p className="w-fit text-xs text-muted-foreground" />
+            }
+          >
+            {formatDistanceToNow(parseISO(event.createdAt), {
+              locale: ptBR,
+              addSuffix: true,
+            })}
+          </TooltipTrigger>
+          <TooltipContent>
+            {formatDate(event.createdAt, true)}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </li>
+  );
+}
+
 function TimelineCard({ activity }: { activity: DrawerActivity }) {
   const hasCreationEvent = activity.events.some(
     (event) => event.type === "criada"
@@ -873,41 +1072,9 @@ function TimelineCard({ activity }: { activity: DrawerActivity }) {
       </CardHeader>
       <CardContent>
         <ol className="relative flex flex-col gap-5 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
-          {events.map((event) => {
-            const Icon = eventIcon(event.type, event.description);
-            return (
-              <li key={event.id} className="relative flex gap-3">
-                <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                  <Icon className="size-3 text-muted-foreground" />
-                </span>
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-sm font-medium">
-                    {EVENT_LABELS[event.type] ?? event.type}
-                  </p>
-                  {event.description ? (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {event.description}
-                    </p>
-                  ) : null}
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <p className="w-fit text-xs text-muted-foreground" />
-                      }
-                    >
-                      {formatDistanceToNow(parseISO(event.createdAt), {
-                        locale: ptBR,
-                        addSuffix: true,
-                      })}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {formatDate(event.createdAt, true)}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </li>
-            );
-          })}
+          {events.map((event) => (
+            <TimelineItem key={event.id} event={event} />
+          ))}
           {!hasCreationEvent ? (
             <li className="relative flex gap-3">
               <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
