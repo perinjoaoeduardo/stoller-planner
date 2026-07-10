@@ -1059,23 +1059,26 @@ function SobreCard({
   );
 
   return (
-    <Card className={cn(PANEL_CARD, "@container/sobre")}>
-      <CardHeader className={PANEL_CARD_HEADER}>
+    <Card className="@container/sobre gap-0 rounded-xl border-border/60 py-6 shadow-xs [--card-spacing:--spacing(6)]">
+      <CardHeader className="pb-0">
         <CardTitle>Sobre</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col">
-        {/* Subgrupo 1 — Descrição (o que é pra fazer, peso maior) */}
+      <CardContent className="mt-6 flex flex-col gap-5">
+        {/* Descrição (o que é pra fazer, peso maior) */}
         {activity.description ? (
-          <p className="mb-6 text-sm leading-relaxed">{activity.description}</p>
+          <p className="text-sm leading-relaxed">{activity.description}</p>
         ) : null}
 
-        {/* Subgrupo 2 — Contexto (onde e o quê) */}
-        <div className="mb-6 grid grid-cols-1 gap-4 @[440px]/sobre:grid-cols-2">
-          <Field label="Local">
-            {activity.branchName
-              ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
-              : "Canal geral"}
-          </Field>
+        {/* Contexto (onde e o quê) */}
+        <div className="grid grid-cols-1 gap-5 @[440px]/sobre:grid-cols-2">
+          <div className="min-w-0">
+            <FieldLabel>Local</FieldLabel>
+            <dd className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
+              {activity.branchName
+                ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
+                : "Canal geral"}
+            </dd>
+          </div>
           <Field label="Tipo de ação">
             {activity.category ? (
               <CategoryBadge category={activity.category} />
@@ -1085,12 +1088,11 @@ function SobreCard({
           </Field>
         </div>
 
-        {/* Subgrupo 3 — Vínculos (a quem/a que se conecta): fundo cinza
-            sutil pra agrupar visualmente essa "família" de campos */}
-        <div className="grid grid-cols-1 gap-4 rounded-md bg-muted/30 p-3 dark:bg-muted/20 @[440px]/sobre:grid-cols-2">
+        {/* Vínculos (a quem/a que se conecta) */}
+        <div className="grid grid-cols-1 gap-5 @[440px]/sobre:grid-cols-2">
           <div className="min-w-0">
             <FieldLabel>Meta vinculada</FieldLabel>
-            <div className="text-sm font-medium">
+            <div className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
               <ProblemEditor
                 activityId={activity.id}
                 problemId={activity.problemId}
@@ -1107,7 +1109,7 @@ function SobreCard({
           <div className="min-w-0">
             <FieldLabel>Responsáveis</FieldLabel>
             {activity.assignees.length > 0 ? (
-              <div className="flex items-center gap-2">
+              <div className="mt-1.5 flex items-center gap-2">
                 <AvatarGroup>
                   {activity.assignees.slice(0, 4).map((a) => (
                     <Avatar key={a.id} size="sm">
@@ -1117,12 +1119,12 @@ function SobreCard({
                     </Avatar>
                   ))}
                 </AvatarGroup>
-                <span className="text-sm font-medium leading-snug">
+                <span className="text-sm leading-snug">
                   {activity.assignees.map((a) => a.name).join(", ")}
                 </span>
               </div>
             ) : (
-              <span className="text-sm text-muted-foreground">
+              <span className="mt-1.5 block text-sm text-muted-foreground">
                 Sem responsável
               </span>
             )}
@@ -1130,9 +1132,9 @@ function SobreCard({
         </div>
 
         {executionEvent ? (
-          <div className="mt-6">
+          <div>
             <FieldLabel>Descrição da execução</FieldLabel>
-            <p className="text-sm leading-relaxed">
+            <p className="mt-1.5 text-sm leading-relaxed">
               {executionEvent.description}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -1149,11 +1151,11 @@ function SobreCard({
   );
 }
 
+/* Labels de campo do Sobre: padrão shadcn moderno — sem uppercase, sem
+   muted; a hierarquia vem do peso (medium) contra o valor (normal). */
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <dt className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-      {children}
-    </dt>
+    <dt className="text-sm font-medium text-foreground">{children}</dt>
   );
 }
 
@@ -1169,7 +1171,7 @@ function Field({
   return (
     <div className="min-w-0">
       <FieldLabel>{label}</FieldLabel>
-      <dd className={cn("text-sm font-medium tabular-nums", className)}>
+      <dd className={cn("mt-1.5 text-sm tabular-nums", className)}>
         {children}
       </dd>
     </div>
