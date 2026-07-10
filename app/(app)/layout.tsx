@@ -5,11 +5,12 @@ import { SettingsProvider } from "@/components/app/settings-provider";
 import { WizardProvider } from "@/components/app/wizard-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
-import { createClient } from "@/lib/supabase/server";
+import { getChannelCards } from "@/lib/db/channels";
 
 /**
- * Canais do RTV para o "Ir para [canal]" do command palette —
- * poucos por usuário, então buscamos os nomes direto no layout.
+ * Canais do RTV para o command palette — nome + atrasadas por canal,
+ * pra ordenar o "Ir para [canal]" (críticos primeiro) e alimentar a
+ * sugestão de "Atividades atrasadas (N)" no estado vazio da busca.
  */
 async function getFieldChannels(
   profile: Awaited<ReturnType<typeof getCurrentProfile>>
@@ -17,13 +18,12 @@ async function getFieldChannels(
   if (profile.role !== "RTV") return [];
   const channelIds = await getScopedChannelIds(profile);
   if (channelIds.length === 0) return [];
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("channels")
-    .select("id, name")
-    .in("id", channelIds)
-    .order("name");
-  return data ?? [];
+  const cards = await getChannelCards(channelIds);
+  return cards.map((card) => ({
+    id: card.id,
+    name: card.name,
+    lateCount: card.lateCount,
+  }));
 }
 
 /**

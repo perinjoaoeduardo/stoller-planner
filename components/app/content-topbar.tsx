@@ -18,7 +18,7 @@ export function ContentTopBar({
   fieldChannels = [],
 }: {
   role: Role;
-  fieldChannels?: { id: string; name: string }[];
+  fieldChannels?: { id: string; name: string; lateCount?: number }[];
 }) {
   const openSettings = useOpenSettings();
   const { state, isMobile } = useSidebar();
