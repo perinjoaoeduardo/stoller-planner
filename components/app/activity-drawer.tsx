@@ -32,11 +32,7 @@ import {
   type ActivityStatus,
 } from "@/components/app/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarGroup,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1065,34 +1061,35 @@ function SobreCard({
         <CardTitle>Sobre</CardTitle>
         <CardDescription>Detalhes e contexto da atividade</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        {/* Descrição — texto puro, mt-4 abaixo do subtitulo */}
+      <CardContent className="mt-4 flex flex-col gap-3">
+        {/* Descrição */}
         {activity.description ? (
-          <p className="mt-4 text-sm leading-relaxed">
-            {activity.description}
-          </p>
+          <SobreTile label="Descrição">
+            <p className="text-sm leading-relaxed">{activity.description}</p>
+          </SobreTile>
         ) : null}
 
-        {/* Local — texto puro */}
-        <Field label="Local">
-          {activity.branchName
-            ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
-            : "Canal geral"}
-        </Field>
+        {/* Local */}
+        <SobreTile label="Local">
+          <p className="text-sm">
+            {activity.branchName
+              ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
+              : "Canal geral"}
+          </p>
+        </SobreTile>
 
-        {/* Tipo de ação — chip */}
-        <Field label="Tipo de ação">
+        {/* Tipo de ação */}
+        <SobreTile label="Tipo de ação">
           {activity.category ? (
             <CategoryBadge category={activity.category} />
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-sm text-muted-foreground">—</span>
           )}
-        </Field>
+        </SobreTile>
 
-        {/* Meta vinculada — único campo com container cinza (vínculo selecionável) */}
-        <div className="min-w-0">
-          <FieldLabel>Meta vinculada</FieldLabel>
-          <div className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
+        {/* Meta vinculada — edição inline real (ProblemEditor) */}
+        <SobreTile label="Meta vinculada">
+          <div className="text-sm">
             <ProblemEditor
               activityId={activity.id}
               problemId={activity.problemId}
@@ -1104,37 +1101,33 @@ function SobreCard({
               onChanged={onRefresh}
             />
           </div>
-        </div>
+        </SobreTile>
 
-        {/* Responsáveis — chip avatar */}
-        <div className="min-w-0">
-          <FieldLabel>Responsáveis</FieldLabel>
+        {/* Responsáveis — um por linha, avatar + nome */}
+        <SobreTile label="Responsáveis">
           {activity.assignees.length > 0 ? (
-            <div className="mt-1.5 flex items-center gap-2">
-              <AvatarGroup>
-                {activity.assignees.slice(0, 4).map((a) => (
-                  <Avatar key={a.id} size="sm">
+            <div className="flex flex-col gap-2">
+              {activity.assignees.map((a) => (
+                <div key={a.id} className="flex items-center gap-2.5">
+                  <Avatar size="sm">
                     <AvatarFallback className="text-[10px]">
                       {getInitials(a.name)}
                     </AvatarFallback>
                   </Avatar>
-                ))}
-              </AvatarGroup>
-              <span className="text-sm leading-snug">
-                {activity.assignees.map((a) => a.name).join(", ")}
-              </span>
+                  <span className="text-sm">{a.name}</span>
+                </div>
+              ))}
             </div>
           ) : (
-            <span className="mt-1.5 block text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               Sem responsável
             </span>
           )}
-        </div>
+        </SobreTile>
 
         {executionEvent ? (
-          <div>
-            <FieldLabel>Descrição da execução</FieldLabel>
-            <p className="mt-1.5 text-sm leading-relaxed">
+          <SobreTile label="Descrição da execução">
+            <p className="text-sm leading-relaxed">
               {executionEvent.description}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -1144,36 +1137,32 @@ function SobreCard({
                 addSuffix: true,
               })}
             </p>
-          </div>
+          </SobreTile>
         ) : null}
       </CardContent>
     </Card>
   );
 }
 
-/* Labels de campo do Sobre: padrão shadcn moderno — sem uppercase, sem
-   muted; a hierarquia vem do peso (medium) contra o valor (normal). */
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <dt className="text-sm font-medium text-foreground">{children}</dt>
-  );
-}
-
-function Field({
+/**
+ * Tile de campo do Sobre (mock do usuário, look shadcn/create): bloco
+ * cinza sutil com label uppercase pequena dentro e valor abaixo. O
+ * lápis de edição só aparece quando existe edição real — hoje a Meta
+ * traz o dele embutido no ProblemEditor.
+ */
+function SobreTile({
   label,
-  className,
   children,
 }: {
   label: string;
-  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0">
-      <FieldLabel>{label}</FieldLabel>
-      <dd className={cn("mt-1.5 text-sm tabular-nums", className)}>
-        {children}
-      </dd>
+    <div className="rounded-lg bg-muted/40 p-4 dark:bg-muted/30">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <div className="mt-2 min-w-0">{children}</div>
     </div>
   );
 }
