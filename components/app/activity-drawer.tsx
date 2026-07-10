@@ -1065,34 +1065,31 @@ function SobreCard({
         <CardTitle>Sobre</CardTitle>
         <CardDescription>Detalhes e contexto da atividade</CardDescription>
       </CardHeader>
-      <CardContent className="mt-6 flex flex-col gap-5">
-        {/* Descrição — bloco cinza em destaque, sem label (a posição explica) */}
+      <CardContent className="flex flex-col gap-5">
+        {/* Descrição — texto puro, mt-4 abaixo do subtitulo */}
         {activity.description ? (
-          <p className="rounded-md bg-muted/30 p-3 text-sm leading-relaxed">
+          <p className="mt-4 text-sm leading-relaxed">
             {activity.description}
           </p>
         ) : null}
 
-        {/* Grupo contexto — Local | Tipo de ação */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="min-w-0">
-            <FieldLabel>Local</FieldLabel>
-            <dd className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
-              {activity.branchName
-                ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
-                : "Canal geral"}
-            </dd>
-          </div>
-          <Field label="Tipo de ação">
-            {activity.category ? (
-              <CategoryBadge category={activity.category} />
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </Field>
-        </div>
+        {/* Local — texto puro */}
+        <Field label="Local">
+          {activity.branchName
+            ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
+            : "Canal geral"}
+        </Field>
 
-        {/* Meta vinculada — full width */}
+        {/* Tipo de ação — chip */}
+        <Field label="Tipo de ação">
+          {activity.category ? (
+            <CategoryBadge category={activity.category} />
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </Field>
+
+        {/* Meta vinculada — único campo com container cinza (vínculo selecionável) */}
         <div className="min-w-0">
           <FieldLabel>Meta vinculada</FieldLabel>
           <div className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
@@ -1109,7 +1106,7 @@ function SobreCard({
           </div>
         </div>
 
-        {/* Responsáveis — full width */}
+        {/* Responsáveis — chip avatar */}
         <div className="min-w-0">
           <FieldLabel>Responsáveis</FieldLabel>
           {activity.assignees.length > 0 ? (
