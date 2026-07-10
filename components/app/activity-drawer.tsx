@@ -51,6 +51,7 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -1059,18 +1060,21 @@ function SobreCard({
   );
 
   return (
-    <Card className="@container/sobre gap-0 rounded-xl border-border/60 py-6 shadow-xs [--card-spacing:--spacing(6)]">
+    <Card className="gap-0 rounded-xl border-border/60 py-6 shadow-xs [--card-spacing:--spacing(6)]">
       <CardHeader className="pb-0">
         <CardTitle>Sobre</CardTitle>
+        <CardDescription>Detalhes e contexto da atividade</CardDescription>
       </CardHeader>
       <CardContent className="mt-6 flex flex-col gap-5">
-        {/* Descrição (o que é pra fazer, peso maior) */}
+        {/* Descrição — bloco cinza em destaque, sem label (a posição explica) */}
         {activity.description ? (
-          <p className="text-sm leading-relaxed">{activity.description}</p>
+          <p className="rounded-md bg-muted/30 p-3 text-sm leading-relaxed">
+            {activity.description}
+          </p>
         ) : null}
 
-        {/* Contexto (onde e o quê) */}
-        <div className="grid grid-cols-1 gap-5 @[440px]/sobre:grid-cols-2">
+        {/* Grupo contexto — Local | Tipo de ação */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="min-w-0">
             <FieldLabel>Local</FieldLabel>
             <dd className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
@@ -1088,47 +1092,46 @@ function SobreCard({
           </Field>
         </div>
 
-        {/* Vínculos (a quem/a que se conecta) */}
-        <div className="grid grid-cols-1 gap-5 @[440px]/sobre:grid-cols-2">
-          <div className="min-w-0">
-            <FieldLabel>Meta vinculada</FieldLabel>
-            <div className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
-              <ProblemEditor
-                activityId={activity.id}
-                problemId={activity.problemId}
-                problemTitle={activity.problemTitle}
-                problems={activity.planProblems}
-                canEdit={canLinkMeta}
-                showPendency={activity.needsProblemLink}
-                channelHref={activity.channelHref}
-                onChanged={onRefresh}
-              />
-            </div>
+        {/* Meta vinculada — full width */}
+        <div className="min-w-0">
+          <FieldLabel>Meta vinculada</FieldLabel>
+          <div className="mt-1.5 rounded-md bg-muted/40 px-3 py-2 text-sm">
+            <ProblemEditor
+              activityId={activity.id}
+              problemId={activity.problemId}
+              problemTitle={activity.problemTitle}
+              problems={activity.planProblems}
+              canEdit={canLinkMeta}
+              showPendency={activity.needsProblemLink}
+              channelHref={activity.channelHref}
+              onChanged={onRefresh}
+            />
           </div>
+        </div>
 
-          <div className="min-w-0">
-            <FieldLabel>Responsáveis</FieldLabel>
-            {activity.assignees.length > 0 ? (
-              <div className="mt-1.5 flex items-center gap-2">
-                <AvatarGroup>
-                  {activity.assignees.slice(0, 4).map((a) => (
-                    <Avatar key={a.id} size="sm">
-                      <AvatarFallback className="text-[10px]">
-                        {getInitials(a.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                </AvatarGroup>
-                <span className="text-sm leading-snug">
-                  {activity.assignees.map((a) => a.name).join(", ")}
-                </span>
-              </div>
-            ) : (
-              <span className="mt-1.5 block text-sm text-muted-foreground">
-                Sem responsável
+        {/* Responsáveis — full width */}
+        <div className="min-w-0">
+          <FieldLabel>Responsáveis</FieldLabel>
+          {activity.assignees.length > 0 ? (
+            <div className="mt-1.5 flex items-center gap-2">
+              <AvatarGroup>
+                {activity.assignees.slice(0, 4).map((a) => (
+                  <Avatar key={a.id} size="sm">
+                    <AvatarFallback className="text-[10px]">
+                      {getInitials(a.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </AvatarGroup>
+              <span className="text-sm leading-snug">
+                {activity.assignees.map((a) => a.name).join(", ")}
               </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <span className="mt-1.5 block text-sm text-muted-foreground">
+              Sem responsável
+            </span>
+          )}
         </div>
 
         {executionEvent ? (
