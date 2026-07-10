@@ -57,7 +57,11 @@
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
+  /* --muted vive a serviço da hierarquia de 3 camadas: o SidebarInset
+     usa bg-muted 100% pra dar o cinza-canvas #F5F5F5 do light, e os
+     bg-muted/20-40 espalhados pelo app (subgrupos, empty states) herdam
+     desse mesmo tom só que atenuado. */
+  --muted: oklch(0.961 0.001 286.375);
   --muted-foreground: oklch(0.552 0.016 285.938);
   --accent: oklch(0.967 0.001 286.375);
   --accent-foreground: oklch(0.21 0.006 285.885);

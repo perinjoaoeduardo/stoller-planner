@@ -71,7 +71,7 @@ export default async function AppLayout({
             levemente mais denso que a Camada 2. Garante que cards SEMPRE contrastem
             com o canvas ao redor.
         */}
-        <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-muted/40 shadow-sm ring-1 ring-foreground/5 md:my-6 md:mr-6 md:ml-0 dark:bg-muted/40 dark:ring-white/10">
+        <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-muted md:my-6 md:mr-6 md:ml-0 dark:bg-muted/40">
           <div className="shrink-0 border-b px-2 py-3 md:px-3">
             <ContentTopBar role={profile.role} fieldChannels={fieldChannels} />
           </div>
