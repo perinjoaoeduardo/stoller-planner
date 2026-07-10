@@ -1,6 +1,11 @@
 "use server";
 
-import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
+import {
+  canEditPlan,
+  canRegisterExecution,
+  getCurrentProfile,
+  getScopedChannelIds,
+} from "@/lib/auth/scope";
 import { getActivityDetail, getPlanProblems } from "@/lib/db/channels";
 import { isLateActivity } from "@/lib/db/status";
 
@@ -12,7 +17,16 @@ export async function getDrawerActivity(activityId: string) {
   const channelIds = await getScopedChannelIds(profile);
   if (!channelIds.includes(activity.channelId)) return null;
 
-  const planProblems = await getPlanProblems(activity.planId);
+  const [planProblems, canEdit, canRegister] = await Promise.all([
+    getPlanProblems(activity.planId),
+    canEditPlan(profile, activity.channelId),
+    canRegisterExecution(profile, {
+      id: activity.id,
+      responsible_id: activity.responsibleId,
+      branch_id: activity.branchId,
+      channel_id: activity.channelId,
+    }),
+  ]);
 
   const overdue =
     isLateActivity(activity) && activity.status !== "concluida";
@@ -22,11 +36,19 @@ export async function getDrawerActivity(activityId: string) {
     activity.problemId === null &&
     planProblems.length > 0;
 
+  // RTV navega pelos "Meus Canais"; DSM/CX pelo cockpit denso.
+  const isField = profile.role === "RTV";
+  const channelHref = `${isField ? "/meus-canais" : "/canais"}/${activity.channelId}`;
+
   return {
     ...activity,
     overdue,
     needsProblemLink,
     planProblems,
+    role: profile.role,
+    canEdit,
+    canRegister,
+    channelHref,
   };
 }
 

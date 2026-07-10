@@ -31,12 +31,15 @@ export function StatusCard({
   status,
   contextLabel,
   canChange,
+  onChanged,
 }: {
   activityId: string;
   status: ActivityStatus;
   /** "Em andamento desde 06 jul" / "Concluída em 15 mar". */
   contextLabel: string | null;
   canChange: boolean;
+  /** Chamado após mudança bem-sucedida (ex.: refresh do painel flutuante). */
+  onChanged?: () => void;
 }) {
   const [selected, setSelected] = React.useState<ActivityStatus>(status);
   const [pending, startTransition] = React.useTransition();
@@ -52,6 +55,7 @@ export function StatusCard({
         toast.error(result.error);
         return;
       }
+      onChanged?.();
       if (next === "concluida") {
         toast.success("Atividade concluída. Bom trabalho!");
       } else if (status === "concluida") {

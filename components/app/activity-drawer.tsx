@@ -10,28 +10,64 @@ import {
   ClipboardCheck,
   ExternalLink,
   ImageMinus,
+  Link2,
+  MessageSquare,
+  MoreHorizontal,
   Pencil,
   Plus,
   RefreshCw,
   RotateCcw,
+  Trash2,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import { StatusCard } from "@/app/(app)/atividades/[id]/status-card";
+import { PhotosCard } from "@/app/(app)/atividades/[id]/photos-card";
+import { ProblemEditor } from "@/app/(app)/atividades/[id]/problem-editor";
 import { CategoryBadge } from "@/components/app/category-badge";
-import { NewActivityButton } from "@/components/app/new-activity-button";
 import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import {
   Avatar,
   AvatarFallback,
   AvatarGroup,
 } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   getDrawerActivity,
   type DrawerActivity,
 } from "@/lib/actions/activity-drawer";
+import { deleteActivity } from "@/lib/actions/plan";
 import { cn } from "@/lib/utils";
 
 // ── Context ──────────────────────────────────────────────────────────
@@ -58,15 +94,31 @@ export function ActivityDrawerProvider({
   const [open, setOpen] = React.useState(false);
   const [activity, setActivity] = React.useState<DrawerActivity | null>(null);
   const [loading, setLoading] = React.useState(false);
+  const currentId = React.useRef<string | null>(null);
 
   const openActivity = React.useCallback((id: string) => {
+    currentId.current = id;
     setLoading(true);
     setOpen(true);
     getDrawerActivity(id).then((data) => {
-      setActivity(data);
-      setLoading(false);
+      if (currentId.current === id) {
+        setActivity(data);
+        setLoading(false);
+      }
     });
   }, []);
+
+  // Recarrega a atividade atual sem piscar o skeleton — usado após uma
+  // mutação inline (status, meta, foto) refletir no painel na hora.
+  const refresh = React.useCallback(() => {
+    const id = currentId.current;
+    if (!id) return;
+    getDrawerActivity(id).then((data) => {
+      if (currentId.current === id) setActivity(data);
+    });
+  }, []);
+
+  const close = React.useCallback(() => setOpen(false), []);
 
   const ctx = React.useMemo(() => ({ openActivity }), [openActivity]);
 
@@ -101,7 +153,11 @@ export function ActivityDrawerProvider({
             {loading ? (
               <DrawerSkeleton />
             ) : activity ? (
-              <DrawerBody activity={activity} />
+              <DrawerBody
+                activity={activity}
+                onRefresh={refresh}
+                onClose={close}
+              />
             ) : (
               <div className="flex flex-col gap-1.5 p-6 pr-14">
                 <PanelPrimitive.Title className="text-xl font-semibold">
@@ -148,12 +204,9 @@ function DrawerSkeleton() {
       </div>
       {/* Corpo skeleton */}
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-1.5">
-            <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-full animate-pulse rounded bg-muted" />
-          </div>
-        ))}
+        <div className="h-9 w-48 animate-pulse rounded-lg bg-muted" />
+        <div className="h-40 w-full animate-pulse rounded-xl bg-muted" />
+        <div className="h-52 w-full animate-pulse rounded-xl bg-muted" />
       </div>
     </>
   );
@@ -188,11 +241,16 @@ const EVENT_LABELS: Record<string, string> = {
   foto_removida: "Foto removida",
   execucao_registrada: "Execução registrada",
   reaberta: "Atividade reaberta",
+  problema_vinculado: "Meta vinculada",
 };
 
+/** Ícone semântico por evento; conclusão ganha o check verde da vida. */
 function eventIcon(type: string, description: string | null): LucideIcon {
   if (type === "status_alterado" && description?.includes('para "Concluída"')) {
     return CheckCircle2;
+  }
+  if (type === "execucao_registrada" && description) {
+    return MessageSquare;
   }
   const icons: Record<string, LucideIcon> = {
     criada: Plus,
@@ -202,6 +260,7 @@ function eventIcon(type: string, description: string | null): LucideIcon {
     foto_removida: ImageMinus,
     execucao_registrada: ClipboardCheck,
     reaberta: RotateCcw,
+    problema_vinculado: Link2,
   };
   return icons[type] ?? RefreshCw;
 }
@@ -224,20 +283,24 @@ function statusContextLabel(activity: DrawerActivity): string | null {
 
 // ── Drawer body ──────────────────────────────────────────────────────
 
-function DrawerBody({ activity }: { activity: DrawerActivity }) {
+function DrawerBody({
+  activity,
+  onRefresh,
+  onClose,
+}: {
+  activity: DrawerActivity;
+  onRefresh: () => void;
+  onClose: () => void;
+}) {
+  const { openWizard } = useWizardProvider();
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+
   const isOpen =
     activity.status === "planejada" ||
     activity.status === "em_andamento" ||
     activity.status === "atrasada";
 
-  const executionEvent = activity.events.find(
-    (event) =>
-      event.type === "execucao_registrada" &&
-      event.description &&
-      event.description.trim().length > 0
-  );
-
-  const contextLabel = statusContextLabel(activity);
   const headerContext = [
     activity.channelName,
     activity.branchName ?? "Canal geral",
@@ -245,9 +308,31 @@ function DrawerBody({ activity }: { activity: DrawerActivity }) {
     .filter(Boolean)
     .join(" · ");
 
+  function handleRegistrar() {
+    onClose();
+    openWizard({
+      mode: "registrar",
+      activityId: activity.id,
+      channelId: activity.channelId,
+    });
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const result = await deleteActivity({ activityId: activity.id });
+    setDeleting(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    toast.success("Atividade excluída.");
+    setConfirmDelete(false);
+    onClose();
+  }
+
   return (
     <>
-      {/* Header fixo — bloco de RECONHECIMENTO */}
+      {/* ══ RECONHECIMENTO — header fixo ═════════════════════════════ */}
       <div className="shrink-0 border-b p-6 pr-14">
         <PanelPrimitive.Title className="text-xl font-semibold leading-snug line-clamp-2">
           {activity.title}
@@ -263,175 +348,334 @@ function DrawerBody({ activity }: { activity: DrawerActivity }) {
         </PanelPrimitive.Description>
       </div>
 
-      {/* Corpo com scroll — blocos de DETALHE */}
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
-        {contextLabel && (
-          <p className="text-xs text-muted-foreground">{contextLabel}</p>
-        )}
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {isOpen && (
-            <NewActivityButton
-              mode="registrar"
-              label="Registrar"
-              size="sm"
-            />
-          )}
+      {/* Corpo com scroll */}
+      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-6">
+        {/* ══ AÇÃO — faixa de ações ═════════════════════════════════ */}
+        <div className="flex flex-wrap items-center gap-2">
+          {isOpen && activity.canRegister ? (
+            <Button onClick={handleRegistrar}>
+              <Camera className="size-4" />
+              Registrar execução
+            </Button>
+          ) : null}
           <Button
             variant="outline"
-            size="sm"
             nativeButton={false}
             render={<a href={`/atividades/${activity.id}`} />}
           >
-            <ExternalLink className="size-3.5" />
+            <ExternalLink className="size-4" />
             Abrir página
           </Button>
+          {activity.canEdit ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="ml-auto"
+                    aria-label="Mais ações"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 />
+                  Excluir atividade
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
 
-        <Separator />
-
-        {/* Description */}
-        {activity.description && (
-          <p className="text-sm leading-relaxed">{activity.description}</p>
-        )}
-
-        {/* Details grid */}
-        <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-          <DetailRow label="Canal" value={activity.channelName} />
-          <DetailRow
-            label="Local"
-            value={
-              activity.branchName
-                ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
-                : "Canal geral"
-            }
-          />
-          <DetailRow
-            label="Meta vinculada"
-            value={activity.problemTitle ?? "Sem meta"}
-          />
-          <DetailRow
-            label="Prazo"
-            value={activity.dueDate ? formatDate(activity.dueDate) : "Sem prazo"}
-            className={activity.overdue ? "text-red-600 dark:text-red-400 font-medium" : ""}
-          />
-          <DetailRow
-            label="Criada em"
-            value={formatDate(activity.createdAt, true)}
-          />
-          {activity.completedAt && (
-            <DetailRow
-              label="Concluída em"
-              value={formatDate(activity.completedAt, true)}
+        {/* ══ DETALHE — blocos em 2 colunas quando há largura ═══════ */}
+        <div className="grid gap-4 @lg/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @lg/abody:items-start">
+          {/* Coluna principal (Sobre + Evidências) — abarca 2 linhas */}
+          <div className="order-2 flex flex-col gap-4 @lg/abody:order-none @lg/abody:col-start-1 @lg/abody:row-span-2">
+            <AboutCard activity={activity} onRefresh={onRefresh} />
+            <PhotosCard
+              activityId={activity.id}
+              photos={activity.photos}
+              canManage={activity.canRegister}
+              onChanged={onRefresh}
             />
-          )}
-        </dl>
-
-        {/* Assignees */}
-        {activity.assignees.length > 0 && (
-          <div className="space-y-1.5">
-            <p className="text-xs text-muted-foreground">Responsáveis</p>
-            <div className="flex items-center gap-2">
-              <AvatarGroup>
-                {activity.assignees.slice(0, 4).map((a) => (
-                  <Avatar key={a.id} size="sm">
-                    <AvatarFallback className="text-[10px]">
-                      {getInitials(a.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-              </AvatarGroup>
-              <span className="text-sm">
-                {activity.assignees.map((a) => a.name).join(", ")}
-              </span>
-            </div>
           </div>
-        )}
 
-        {/* Execution description */}
-        {executionEvent && (
-          <>
-            <Separator />
-            <div className="space-y-1.5">
-              <p className="text-xs font-medium text-muted-foreground">
-                Descrição da execução
-              </p>
-              <p className="text-sm leading-relaxed">
-                {executionEvent.description}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Registrada{" "}
-                {formatDistanceToNow(parseISO(executionEvent.createdAt), {
-                  locale: ptBR,
-                  addSuffix: true,
-                })}
-              </p>
-            </div>
-          </>
-        )}
-
-        {/* Photos count */}
-        {activity.photos.length > 0 && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Camera className="size-4" />
-            {activity.photos.length}{" "}
-            {activity.photos.length === 1 ? "foto" : "fotos"}
+          {/* Status — primeiro no mobile, coluna lateral topo no desktop */}
+          <div className="order-1 @lg/abody:order-none @lg/abody:col-start-2 @lg/abody:row-start-1">
+            <StatusCard
+              activityId={activity.id}
+              status={activity.status}
+              contextLabel={statusContextLabel(activity)}
+              canChange={activity.canRegister || activity.canEdit}
+              onChanged={onRefresh}
+            />
           </div>
-        )}
 
-        {/* Timeline */}
-        <Separator />
-        <div className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground">
-            Linha do tempo
-          </p>
-          <ol className="relative flex flex-col gap-4 before:absolute before:top-3 before:bottom-3 before:left-[11px] before:w-px before:bg-border">
-            {activity.events.map((event) => {
-              const Icon = eventIcon(event.type, event.description);
-              return (
-                <li key={event.id} className="relative flex gap-3">
-                  <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                    <Icon className="size-3 text-muted-foreground" />
-                  </span>
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="text-sm font-medium">
-                      {EVENT_LABELS[event.type] ?? event.type}
-                    </p>
-                    {event.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {event.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(parseISO(event.createdAt), {
-                        locale: ptBR,
-                        addSuffix: true,
-                      })}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+          {/* Linha do tempo — coluna lateral, abaixo do Status */}
+          <div className="order-3 @lg/abody:order-none @lg/abody:col-start-2 @lg/abody:row-start-2">
+            <TimelineCard activity={activity} />
+          </div>
         </div>
       </div>
+
+      {/* Confirmação de exclusão (DSM/CX) */}
+      <AlertDialog
+        open={confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A atividade e suas evidências serão removidas do plano. Essa
+              ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+              disabled={deleting}
+            >
+              {deleting ? "Excluindo..." : "Excluir atividade"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
 
-function DetailRow({
+// ── Bloco "Sobre" ────────────────────────────────────────────────────
+
+function AboutCard({
+  activity,
+  onRefresh,
+}: {
+  activity: DrawerActivity;
+  onRefresh: () => void;
+}) {
+  const executionEvent = activity.events.find(
+    (event) =>
+      event.type === "execucao_registrada" &&
+      event.description &&
+      event.description.trim().length > 0
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sobre</CardTitle>
+        <CardDescription>
+          Contexto da atividade dentro do plano.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {activity.description ? (
+          <p className="text-sm leading-relaxed">{activity.description}</p>
+        ) : null}
+
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+          <Field label="Local">
+            {activity.branchName
+              ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
+              : "Canal geral"}
+          </Field>
+          <Field label="Tipo de ação">
+            {activity.category ? (
+              <CategoryBadge category={activity.category} />
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </Field>
+
+          <div className="col-span-2 space-y-1">
+            <FieldLabel>Meta vinculada</FieldLabel>
+            <div className="text-sm font-medium">
+              <ProblemEditor
+                activityId={activity.id}
+                problemId={activity.problemId}
+                problemTitle={activity.problemTitle}
+                problems={activity.planProblems}
+                canEdit={activity.canEdit || activity.canRegister}
+                showPendency={activity.needsProblemLink}
+                channelHref={activity.channelHref}
+                onChanged={onRefresh}
+              />
+            </div>
+          </div>
+
+          <div className="col-span-2 space-y-1">
+            <FieldLabel>Responsáveis</FieldLabel>
+            {activity.assignees.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <AvatarGroup>
+                  {activity.assignees.slice(0, 4).map((a) => (
+                    <Avatar key={a.id} size="sm">
+                      <AvatarFallback className="text-[10px]">
+                        {getInitials(a.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                </AvatarGroup>
+                <span className="text-sm font-medium leading-snug">
+                  {activity.assignees.map((a) => a.name).join(", ")}
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                Sem responsável
+              </span>
+            )}
+          </div>
+
+          <Field
+            label="Prazo"
+            className={
+              activity.overdue
+                ? "font-medium text-red-600 dark:text-red-400"
+                : undefined
+            }
+          >
+            {activity.dueDate ? (
+              formatDate(activity.dueDate)
+            ) : (
+              <span className="text-muted-foreground">Sem prazo</span>
+            )}
+          </Field>
+          <Field label="Criada em">{formatDate(activity.createdAt, true)}</Field>
+          {activity.completedAt ? (
+            <Field label="Concluída em">
+              {formatDate(activity.completedAt, true)}
+            </Field>
+          ) : null}
+        </dl>
+
+        {executionEvent ? (
+          <div className="space-y-1.5 border-t pt-4">
+            <FieldLabel>Descrição da execução</FieldLabel>
+            <p className="text-sm leading-relaxed">
+              {executionEvent.description}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Registrada{" "}
+              {formatDistanceToNow(parseISO(executionEvent.createdAt), {
+                locale: ptBR,
+                addSuffix: true,
+              })}
+            </p>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+      {children}
+    </dt>
+  );
+}
+
+function Field({
   label,
-  value,
   className,
+  children,
 }: {
   label: string;
-  value: string;
   className?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 space-y-0.5">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={cn("text-sm tabular-nums", className)}>{value}</dd>
+    <div className="min-w-0 space-y-1">
+      <FieldLabel>{label}</FieldLabel>
+      <dd className={cn("text-sm font-medium tabular-nums", className)}>
+        {children}
+      </dd>
     </div>
+  );
+}
+
+// ── Bloco "Linha do tempo" ───────────────────────────────────────────
+
+function TimelineCard({ activity }: { activity: DrawerActivity }) {
+  const hasCreationEvent = activity.events.some(
+    (event) => event.type === "criada"
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Linha do tempo</CardTitle>
+        <CardDescription>Tudo que aconteceu aqui.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ol className="relative flex flex-col gap-5 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
+          {activity.events.map((event) => {
+            const Icon = eventIcon(event.type, event.description);
+            return (
+              <li key={event.id} className="relative flex gap-3">
+                <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
+                  <Icon className="size-3 text-muted-foreground" />
+                </span>
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-sm font-medium">
+                    {EVENT_LABELS[event.type] ?? event.type}
+                  </p>
+                  {event.description ? (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {event.description}
+                    </p>
+                  ) : null}
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <p className="w-fit text-xs text-muted-foreground" />
+                      }
+                    >
+                      {formatDistanceToNow(parseISO(event.createdAt), {
+                        locale: ptBR,
+                        addSuffix: true,
+                      })}
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {formatDate(event.createdAt, true)}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </li>
+            );
+          })}
+          {!hasCreationEvent ? (
+            <li className="relative flex gap-3">
+              <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
+                <Plus className="size-3 text-muted-foreground" />
+              </span>
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Atividade criada</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(parseISO(activity.createdAt), {
+                    locale: ptBR,
+                    addSuffix: true,
+                  })}
+                </p>
+              </div>
+            </li>
+          ) : null}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }

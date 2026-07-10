@@ -34,6 +34,7 @@ export function ProblemEditor({
   canEdit,
   showPendency,
   channelHref,
+  onChanged,
 }: {
   activityId: string;
   problemId: string | null;
@@ -42,6 +43,8 @@ export function ProblemEditor({
   canEdit: boolean;
   showPendency: boolean;
   channelHref: string;
+  /** Chamado após vincular/desvincular (ex.: refresh do painel flutuante). */
+  onChanged?: () => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [saving, setSaving] = React.useState<string | "none" | null>(null);
@@ -57,6 +60,7 @@ export function ProblemEditor({
       toast.error(result.error);
       return;
     }
+    onChanged?.();
     toast.success(
       nextProblemId
         ? "Meta vinculada à atividade."

@@ -132,10 +132,13 @@ export function PhotosCard({
   activityId,
   photos,
   canManage,
+  onChanged,
 }: {
   activityId: string;
   photos: ActivityPhotoRow[];
   canManage: boolean;
+  /** Chamado após adicionar/remover foto (ex.: refresh do painel flutuante). */
+  onChanged?: () => void;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
@@ -182,6 +185,7 @@ export function PhotosCard({
         return;
       }
 
+      onChanged?.();
       toast.success("Foto adicionada às evidências.");
     } finally {
       setUploading(false);
@@ -195,6 +199,7 @@ export function PhotosCard({
       toast.error(result.error);
       return;
     }
+    onChanged?.();
     toast.success("Foto removida.");
     setDeleting(null);
     setPreview(null);
