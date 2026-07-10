@@ -333,7 +333,7 @@ function DrawerBody({
   return (
     <>
       {/* ══ RECONHECIMENTO — header fixo ═════════════════════════════ */}
-      <div className="shrink-0 border-b p-6 pr-14">
+      <div className="shrink-0 border-b p-4 pr-14 sm:p-6 sm:pr-14">
         <PanelPrimitive.Title className="text-xl font-semibold leading-snug line-clamp-2">
           {activity.title}
         </PanelPrimitive.Title>
@@ -349,7 +349,7 @@ function DrawerBody({
       </div>
 
       {/* Corpo com scroll */}
-      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
         {/* ══ AÇÃO — faixa de ações ═════════════════════════════════ */}
         <div className="flex flex-wrap items-center gap-2">
           {isOpen && activity.canRegister ? (
@@ -485,7 +485,7 @@ function AboutCard({
           <p className="text-sm leading-relaxed">{activity.description}</p>
         ) : null}
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-4">
           <Field label="Local">
             {activity.branchName
               ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
@@ -499,7 +499,7 @@ function AboutCard({
             )}
           </Field>
 
-          <div className="col-span-2 space-y-1">
+          <div className="space-y-1">
             <FieldLabel>Meta vinculada</FieldLabel>
             <div className="text-sm font-medium">
               <ProblemEditor
@@ -515,7 +515,7 @@ function AboutCard({
             </div>
           </div>
 
-          <div className="col-span-2 space-y-1">
+          <div className="space-y-1">
             <FieldLabel>Responsáveis</FieldLabel>
             {activity.assignees.length > 0 ? (
               <div className="flex items-center gap-2">
