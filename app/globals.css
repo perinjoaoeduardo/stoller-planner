@@ -72,14 +72,17 @@
   --chart-5: oklch(0.78 0.17 140);
   --radius: 0.625rem;
   /* Sidebar sempre escura (padrão shadcn/create) — mesmo tom nos dois
-     temas; a distinção vem da elevação e do arredondado. */
-  --sidebar: oklch(0.21 0.006 285.885);
+     temas. Fundo #2B2B35 pra ficar um pouco mais suave que preto puro
+     e destacar dos separadores/hover.  Accent = hover ficando +Δ0.06L
+     acima do fundo pra manter contraste sutil (o texto permanece #FFF,
+     WCAG AAA). Border sutil (8% branco) só nos separadores estruturais. */
+  --sidebar: oklch(0.245 0.011 285);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.6 0.13 240);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent: oklch(0.305 0.011 285);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.6 0.13 240);
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
@@ -109,13 +112,13 @@
   --chart-3: oklch(0.5 0.14 248);
   --chart-4: oklch(0.44 0.14 248);
   --chart-5: oklch(0.78 0.17 140);
-  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar: oklch(0.245 0.011 285);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.6 0.13 240);
   --sidebar-primary-foreground: oklch(0.15 0.01 248);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent: oklch(0.305 0.011 285);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.6 0.13 240);
 }
 

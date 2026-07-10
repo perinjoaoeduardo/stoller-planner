@@ -21,6 +21,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import type { NavItem } from "@/lib/auth/nav";
 
 /**
  * Sidebar flutuante escura (padrão shadcn/create): marca + toggle no
@@ -37,9 +38,39 @@ export function AppSidebar({
   const navItems = NAV_BY_ROLE[role];
   const { openWizard } = useWizardProvider();
 
+  // Ações (ex.: Nova atividade) vivem num subgrupo separado; o resto é
+  // navegação. Estrutura idêntica pra DSM/CX se um dia ganharem ações.
+  const actionItems = navItems.filter((item) => item.action);
+  const navigationItems = navItems.filter((item) => !item.action);
+
+  function renderMenuItem(item: NavItem) {
+    return (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          tooltip={item.title}
+          isActive={!item.action && pathname === item.href}
+          render={
+            item.action === "wizard" ? (
+              <button type="button" onClick={() => openWizard()}>
+                <item.icon />
+                <span>{item.title}</span>
+              </button>
+            ) : (
+              <Link href={item.href}>
+                <item.icon />
+                <span>{item.title}</span>
+              </Link>
+            )
+          }
+        />
+      </SidebarMenuItem>
+    );
+  }
+
   return (
     <Sidebar collapsible="icon" variant="floating" {...props}>
-      <SidebarHeader>
+      {/* Header — separador sutil abaixo pra descolar do primeiro grupo */}
+      <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center justify-between gap-2 px-1 py-1">
           <Link
             href="/"
@@ -61,41 +92,20 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    tooltip={item.title}
-                    isActive={!item.action && pathname === item.href}
-                    className={
-                      item.highlight
-                        ? "bg-primary/15 font-medium text-white hover:bg-primary/25 hover:text-white data-[active=true]:bg-primary/25 data-[active=true]:text-white"
-                        : undefined
-                    }
-                    render={
-                      item.action === "wizard" ? (
-                        <button
-                          type="button"
-                          onClick={() => openWizard()}
-                        >
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </button>
-                      ) : (
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      )
-                    }
-                  />
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <SidebarMenu>{navigationItems.map(renderMenuItem)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {actionItems.length > 0 ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Ações</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>{actionItems.map(renderMenuItem)}</SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
       </SidebarContent>
-      <SidebarFooter>
+      {/* Footer — separador sutil acima pra descolar do último grupo */}
+      <SidebarFooter className="border-t border-sidebar-border">
         <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>

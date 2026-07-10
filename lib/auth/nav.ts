@@ -20,8 +20,6 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
-  /** Item de destaque (CTA principal do perfil, ex.: Registrar do RTV). */
-  highlight?: boolean;
   /** Abre o wizard em vez de navegar. */
   action?: "wizard";
 };
@@ -61,7 +59,6 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       title: "Nova atividade",
       href: "#wizard",
       icon: Plus,
-      highlight: true,
       action: "wizard",
     },
   ],
