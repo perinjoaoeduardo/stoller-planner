@@ -201,7 +201,7 @@ export function ActivityDrawerProvider({
           <PanelPrimitive.Popup
             data-slot="activity-panel"
             className={cn(
-              "fixed z-50 flex flex-col overflow-hidden bg-card text-sm text-card-foreground shadow-2xl",
+              "fixed z-50 flex flex-col overflow-hidden bg-card text-sm text-card-foreground shadow-2xl outline-none",
               "transition-[transform,opacity] duration-300 ease-out",
               // Mobile — drawer de baixo (top/right/bottom/left em longhand
               // pra não brigar em cascata com os overrides do md: abaixo)
