@@ -8,7 +8,6 @@ import {
   Camera,
   CheckCircle2,
   ClipboardCheck,
-  ExternalLink,
   ImageMinus,
   Link2,
   MessageSquare,
@@ -48,7 +47,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -56,8 +54,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -137,19 +137,38 @@ export function ActivityDrawerProvider({
             data-slot="activity-panel-overlay"
             className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-sm"
           />
-          {/* Painel flutuante — desliza da direita, flutua com margem */}
+          {/*
+            Painel flutuante:
+            - Mobile (<768px): drawer de baixo, ~92vh, cantos superiores
+              arredondados, handle no topo, desliza em Y.
+            - Tablet (768-1023px): flutua à direita, ~70vw, desliza em X.
+            - Desktop (≥1024px): flutua à direita, 50vw fixo (min 640,
+              max 860), desliza em X.
+          */}
           <PanelPrimitive.Popup
             data-slot="activity-panel"
             className={cn(
               "fixed z-50 flex flex-col overflow-hidden bg-card text-sm text-card-foreground shadow-2xl",
               "transition-[transform,opacity] duration-300 ease-out",
-              "data-ending-style:translate-x-[calc(100%+1.5rem)] data-starting-style:translate-x-[calc(100%+1.5rem)]",
-              // Mobile: tela cheia, sem margem nem borda
-              "inset-0 rounded-none border-0",
-              // Desktop: flutua com 16px de margem, 45% da largura
-              "sm:inset-y-4 sm:right-4 sm:left-auto sm:w-[45vw] sm:min-w-[520px] sm:max-w-[720px] sm:rounded-2xl sm:border"
+              // Mobile — drawer de baixo (top/right/bottom/left em longhand
+              // pra não brigar em cascata com os overrides do md: abaixo)
+              "top-[8vh] right-0 bottom-0 left-0 w-full rounded-t-2xl rounded-b-none border-t",
+              "data-starting-style:translate-y-full data-ending-style:translate-y-full",
+              // Tablet/desktop — flutua à direita
+              "md:top-4 md:right-4 md:bottom-4 md:left-auto md:w-[70vw] md:rounded-2xl md:border",
+              "md:data-starting-style:translate-y-0 md:data-ending-style:translate-y-0",
+              "md:data-starting-style:translate-x-[calc(100%+1.5rem)] md:data-ending-style:translate-x-[calc(100%+1.5rem)]",
+              "lg:w-[50vw] lg:min-w-[640px] lg:max-w-[860px]"
             )}
           >
+            {/* Handle do drawer mobile */}
+            <div
+              aria-hidden
+              className="absolute inset-x-0 top-2 flex justify-center md:hidden"
+            >
+              <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+            </div>
+
             {loading ? (
               <DrawerSkeleton />
             ) : activity ? (
@@ -159,7 +178,7 @@ export function ActivityDrawerProvider({
                 onClose={close}
               />
             ) : (
-              <div className="flex flex-col gap-1.5 p-6 pr-14">
+              <div className="flex flex-col gap-1.5 p-6 pt-7 pr-14">
                 <PanelPrimitive.Title className="text-xl font-semibold">
                   Atividade não encontrada
                 </PanelPrimitive.Title>
@@ -194,7 +213,7 @@ function DrawerSkeleton() {
   return (
     <>
       {/* Header skeleton (fixo) */}
-      <div className="shrink-0 border-b p-6 pr-14">
+      <div className="shrink-0 border-b p-4 pt-7 pr-14 md:p-6 md:pr-14">
         <PanelPrimitive.Title className="sr-only">
           Carregando atividade
         </PanelPrimitive.Title>
@@ -203,8 +222,8 @@ function DrawerSkeleton() {
         <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
       </div>
       {/* Corpo skeleton */}
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-        <div className="h-9 w-48 animate-pulse rounded-lg bg-muted" />
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
+        <div className="h-11 w-56 animate-pulse rounded-lg bg-muted" />
         <div className="h-40 w-full animate-pulse rounded-xl bg-muted" />
         <div className="h-52 w-full animate-pulse rounded-xl bg-muted" />
       </div>
@@ -281,6 +300,10 @@ function statusContextLabel(activity: DrawerActivity): string | null {
   return `${STATUS_LABELS[activity.status]} desde ${formatDate(since)}`;
 }
 
+function scrollToRef(ref: React.RefObject<HTMLDivElement | null>) {
+  ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // ── Drawer body ──────────────────────────────────────────────────────
 
 function DrawerBody({
@@ -295,11 +318,17 @@ function DrawerBody({
   const { openWizard } = useWizardProvider();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
+  const statusRef = React.useRef<HTMLDivElement>(null);
+  const metaRef = React.useRef<HTMLDivElement>(null);
 
   const isOpen =
     activity.status === "planejada" ||
     activity.status === "em_andamento" ||
     activity.status === "atrasada";
+
+  const canChangeStatus = activity.canRegister || activity.canEdit;
+  const canLinkMeta = activity.canRegister || activity.canEdit;
+  const showMenu = canChangeStatus || canLinkMeta || activity.canEdit;
 
   const headerContext = [
     activity.channelName,
@@ -333,7 +362,7 @@ function DrawerBody({
   return (
     <>
       {/* ══ RECONHECIMENTO — header fixo ═════════════════════════════ */}
-      <div className="shrink-0 border-b p-4 pr-14 sm:p-6 sm:pr-14">
+      <div className="shrink-0 border-b p-4 pt-7 pr-14 md:p-6 md:pr-14">
         <PanelPrimitive.Title className="text-xl font-semibold leading-snug line-clamp-2">
           {activity.title}
         </PanelPrimitive.Title>
@@ -349,79 +378,77 @@ function DrawerBody({
       </div>
 
       {/* Corpo com scroll */}
-      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
-        {/* ══ AÇÃO — faixa de ações ═════════════════════════════════ */}
-        <div className="flex flex-wrap items-center gap-2">
-          {isOpen && activity.canRegister ? (
-            <Button onClick={handleRegistrar}>
-              <Camera className="size-4" />
+      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
+        {/* ══ AÇÃO PRIMÁRIA — destaque máximo ═══════════════════════ */}
+        {isOpen && activity.canRegister ? (
+          <div className="flex items-center gap-2">
+            <Button size="lg" className="flex-1" onClick={handleRegistrar}>
+              <Camera className="size-5" />
               Registrar execução
             </Button>
-          ) : null}
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<a href={`/atividades/${activity.id}`} />}
-          >
-            <ExternalLink className="size-4" />
-            Abrir página
-          </Button>
-          {activity.canEdit ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="ml-auto"
-                    aria-label="Mais ações"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                }
+            {showMenu ? (
+              <ActionMenu
+                canEdit={activity.canEdit}
+                canChangeStatus={canChangeStatus}
+                canLinkMeta={canLinkMeta}
+                onStatus={() => scrollToRef(statusRef)}
+                onMeta={() => scrollToRef(metaRef)}
+                onDelete={() => setConfirmDelete(true)}
               />
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 />
-                  Excluir atividade
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : showMenu ? (
+          <div className="flex items-center justify-end">
+            <ActionMenu
+              canEdit={activity.canEdit}
+              canChangeStatus={canChangeStatus}
+              canLinkMeta={canLinkMeta}
+              onStatus={() => scrollToRef(statusRef)}
+              onMeta={() => scrollToRef(metaRef)}
+              onDelete={() => setConfirmDelete(true)}
+            />
+          </div>
+        ) : null}
 
-        {/* ══ DETALHE — blocos em 2 colunas quando há largura ═══════ */}
-        <div className="grid gap-4 @lg/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @lg/abody:items-start">
-          {/* Coluna principal (Sobre + Evidências) — abarca 2 linhas */}
-          <div className="order-2 flex flex-col gap-4 @lg/abody:order-none @lg/abody:col-start-1 @lg/abody:row-span-2">
-            <AboutCard activity={activity} onRefresh={onRefresh} />
+        {/* ══ DETALHE — 2 colunas quando há largura ═════════════════ */}
+        <div className="grid gap-4 @xl/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @xl/abody:items-start">
+          {/* Coluna A — Situação + Sobre */}
+          <div className="flex flex-col gap-4">
+            <div ref={statusRef}>
+              <SituacaoCard
+                activity={activity}
+                canChange={canChangeStatus}
+                onRefresh={onRefresh}
+              />
+            </div>
+            <SobreCard
+              activity={activity}
+              onRefresh={onRefresh}
+              metaRef={metaRef}
+              canLinkMeta={canLinkMeta}
+            />
+          </div>
+
+          {/* Coluna B — Evidências + Linha do tempo */}
+          <div className="flex flex-col gap-4">
             <PhotosCard
               activityId={activity.id}
               photos={activity.photos}
               canManage={activity.canRegister}
               onChanged={onRefresh}
             />
-          </div>
-
-          {/* Status — primeiro no mobile, coluna lateral topo no desktop */}
-          <div className="order-1 @lg/abody:order-none @lg/abody:col-start-2 @lg/abody:row-start-1">
-            <StatusCard
-              activityId={activity.id}
-              status={activity.status}
-              contextLabel={statusContextLabel(activity)}
-              canChange={activity.canRegister || activity.canEdit}
-              onChanged={onRefresh}
-            />
-          </div>
-
-          {/* Linha do tempo — coluna lateral, abaixo do Status */}
-          <div className="order-3 @lg/abody:order-none @lg/abody:col-start-2 @lg/abody:row-start-2">
             <TimelineCard activity={activity} />
           </div>
         </div>
+
+        {/* ══ RODAPÉ discreto — datas de referência ═════════════════ */}
+        <Separator />
+        <p className="text-xs text-muted-foreground tabular-nums">
+          Criada em {formatDate(activity.createdAt, true)}
+          {activity.completedAt
+            ? ` · Concluída em ${formatDate(activity.completedAt, true)}`
+            : ""}
+        </p>
       </div>
 
       {/* Confirmação de exclusão (DSM/CX) */}
@@ -456,14 +483,115 @@ function DrawerBody({
   );
 }
 
-// ── Bloco "Sobre" ────────────────────────────────────────────────────
+// ── Menu de ações secundárias ────────────────────────────────────────
 
-function AboutCard({
+function ActionMenu({
+  canEdit,
+  canChangeStatus,
+  canLinkMeta,
+  onStatus,
+  onMeta,
+  onDelete,
+}: {
+  canEdit: boolean;
+  canChangeStatus: boolean;
+  canLinkMeta: boolean;
+  onStatus: () => void;
+  onMeta: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="icon" aria-label="Mais ações" />
+        }
+      >
+        <MoreHorizontal className="size-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {canChangeStatus ? (
+          <DropdownMenuItem onClick={onStatus}>
+            <RefreshCw />
+            Mudar status
+          </DropdownMenuItem>
+        ) : null}
+        {canLinkMeta ? (
+          <DropdownMenuItem onClick={onMeta}>
+            <Link2 />
+            Vincular meta
+          </DropdownMenuItem>
+        ) : null}
+        {canEdit ? (
+          <>
+            {canChangeStatus || canLinkMeta ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              <Trash2 />
+              Excluir atividade
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ── Bloco "Situação" (StatusCard + prazo em destaque) ────────────────
+
+function SituacaoCard({
   activity,
+  canChange,
   onRefresh,
 }: {
   activity: DrawerActivity;
+  canChange: boolean;
   onRefresh: () => void;
+}) {
+  return (
+    <StatusCard
+      title="Situação"
+      activityId={activity.id}
+      status={activity.status}
+      contextLabel={statusContextLabel(activity)}
+      canChange={canChange}
+      onChanged={onRefresh}
+      extra={
+        <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Prazo
+          </span>
+          <span
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              activity.overdue && "text-red-600 dark:text-red-400"
+            )}
+          >
+            {activity.dueDate ? (
+              formatDate(activity.dueDate)
+            ) : (
+              <span className="font-normal text-muted-foreground">
+                Sem prazo
+              </span>
+            )}
+          </span>
+        </div>
+      }
+    />
+  );
+}
+
+// ── Bloco "Sobre" (subgrupos: o que / onde-o quê / vínculos) ─────────
+
+function SobreCard({
+  activity,
+  onRefresh,
+  metaRef,
+  canLinkMeta,
+}: {
+  activity: DrawerActivity;
+  onRefresh: () => void;
+  metaRef: React.RefObject<HTMLDivElement | null>;
+  canLinkMeta: boolean;
 }) {
   const executionEvent = activity.events.find(
     (event) =>
@@ -473,19 +601,18 @@ function AboutCard({
   );
 
   return (
-    <Card>
+    <Card className="@container/sobre">
       <CardHeader>
         <CardTitle>Sobre</CardTitle>
-        <CardDescription>
-          Contexto da atividade dentro do plano.
-        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {/* Subgrupo 1 — o que é (peso maior) */}
         {activity.description ? (
           <p className="text-sm leading-relaxed">{activity.description}</p>
         ) : null}
 
-        <dl className="grid grid-cols-1 gap-x-4 gap-y-4">
+        {/* Subgrupo 2 — onde e o quê */}
+        <div className="grid grid-cols-1 gap-4 @[440px]/sobre:grid-cols-2">
           <Field label="Local">
             {activity.branchName
               ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
@@ -498,8 +625,14 @@ function AboutCard({
               <span className="text-muted-foreground">—</span>
             )}
           </Field>
+        </div>
 
-          <div className="space-y-1">
+        {/* Subgrupo 3 — vínculos (a que/a quem se conecta) */}
+        <div
+          ref={metaRef}
+          className="grid grid-cols-1 gap-4 border-t pt-4 @[440px]/sobre:grid-cols-2"
+        >
+          <div className="min-w-0 space-y-1">
             <FieldLabel>Meta vinculada</FieldLabel>
             <div className="text-sm font-medium">
               <ProblemEditor
@@ -507,7 +640,7 @@ function AboutCard({
                 problemId={activity.problemId}
                 problemTitle={activity.problemTitle}
                 problems={activity.planProblems}
-                canEdit={activity.canEdit || activity.canRegister}
+                canEdit={canLinkMeta}
                 showPendency={activity.needsProblemLink}
                 channelHref={activity.channelHref}
                 onChanged={onRefresh}
@@ -515,7 +648,7 @@ function AboutCard({
             </div>
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <FieldLabel>Responsáveis</FieldLabel>
             {activity.assignees.length > 0 ? (
               <div className="flex items-center gap-2">
@@ -538,28 +671,7 @@ function AboutCard({
               </span>
             )}
           </div>
-
-          <Field
-            label="Prazo"
-            className={
-              activity.overdue
-                ? "font-medium text-red-600 dark:text-red-400"
-                : undefined
-            }
-          >
-            {activity.dueDate ? (
-              formatDate(activity.dueDate)
-            ) : (
-              <span className="text-muted-foreground">Sem prazo</span>
-            )}
-          </Field>
-          <Field label="Criada em">{formatDate(activity.createdAt, true)}</Field>
-          {activity.completedAt ? (
-            <Field label="Concluída em">
-              {formatDate(activity.completedAt, true)}
-            </Field>
-          ) : null}
-        </dl>
+        </div>
 
         {executionEvent ? (
           <div className="space-y-1.5 border-t pt-4">
@@ -608,22 +720,24 @@ function Field({
   );
 }
 
-// ── Bloco "Linha do tempo" ───────────────────────────────────────────
+// ── Bloco "Linha do tempo" (mais recentes no topo) ────────────────────
 
 function TimelineCard({ activity }: { activity: DrawerActivity }) {
   const hasCreationEvent = activity.events.some(
     (event) => event.type === "criada"
   );
+  // Mais recentes primeiro — a fallback de criação (se faltar o evento)
+  // é a mais antiga, então continua por último.
+  const events = [...activity.events].reverse();
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Linha do tempo</CardTitle>
-        <CardDescription>Tudo que aconteceu aqui.</CardDescription>
       </CardHeader>
       <CardContent>
         <ol className="relative flex flex-col gap-5 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
-          {activity.events.map((event) => {
+          {events.map((event) => {
             const Icon = eventIcon(event.type, event.description);
             return (
               <li key={event.id} className="relative flex gap-3">

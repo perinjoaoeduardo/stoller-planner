@@ -20,11 +20,16 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { changeActivityStatus } from "@/lib/actions/plan";
+import { cn } from "@/lib/utils";
 
 /**
  * Card "Status" do detalhe, enxuto: badge grande + contexto ("Em
  * andamento desde 06 jul"), Select e confirmação. Concluir seta
  * completed_at no servidor; reabrir limpa — regras existentes.
+ *
+ * `title` e `extra` existem pro painel flutuante, que reaproveita este
+ * card como bloco "Situação" (título trocado, prazo injetado acima do
+ * seletor) sem duplicar a lógica de mudança de status.
  */
 export function StatusCard({
   activityId,
@@ -32,6 +37,8 @@ export function StatusCard({
   contextLabel,
   canChange,
   onChanged,
+  title = "Status",
+  extra,
 }: {
   activityId: string;
   status: ActivityStatus;
@@ -40,9 +47,21 @@ export function StatusCard({
   canChange: boolean;
   /** Chamado após mudança bem-sucedida (ex.: refresh do painel flutuante). */
   onChanged?: () => void;
+  title?: string;
+  /** Conteúdo extra entre o contexto e o seletor (ex.: prazo em destaque). */
+  extra?: React.ReactNode;
 }) {
   const [selected, setSelected] = React.useState<ActivityStatus>(status);
   const [pending, startTransition] = React.useTransition();
+
+  // Mantém o Select em sincronia se o status mudar por fora (refresh do
+  // painel após outra edição inline) — ajuste durante o render, sem
+  // efeito, pra não disparar uma renderização em cascata.
+  const [trackedStatus, setTrackedStatus] = React.useState(status);
+  if (status !== trackedStatus) {
+    setTrackedStatus(status);
+    setSelected(status);
+  }
 
   function handleConfirm() {
     const next = selected;
@@ -69,15 +88,25 @@ export function StatusCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Status</CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <StatusBadge status={status} className="w-fit px-3 py-1 text-sm" />
           {contextLabel ? (
-            <p className="text-sm text-muted-foreground">{contextLabel}</p>
+            <p
+              className={cn(
+                "text-sm",
+                status === "atrasada"
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : "text-muted-foreground"
+              )}
+            >
+              {contextLabel}
+            </p>
           ) : null}
         </div>
+        {extra}
         {canChange ? (
           <div className="flex flex-col gap-2">
             <Select
