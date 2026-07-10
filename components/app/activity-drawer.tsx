@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Dialog as PanelPrimitive } from "@base-ui/react/dialog";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -13,6 +14,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  XIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,13 +28,6 @@ import {
 } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   getDrawerActivity,
   type DrawerActivity,
@@ -78,22 +73,61 @@ export function ActivityDrawerProvider({
   return (
     <Ctx.Provider value={ctx}>
       {children}
-      <Sheet open={open} onOpenChange={(o) => { if (!o) setOpen(false); }}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
-          {loading ? (
-            <DrawerSkeleton />
-          ) : activity ? (
-            <DrawerBody activity={activity} />
-          ) : (
-            <SheetHeader>
-              <SheetTitle>Atividade não encontrada</SheetTitle>
-              <SheetDescription>
-                Esta atividade não existe ou está fora do seu escopo.
-              </SheetDescription>
-            </SheetHeader>
-          )}
-        </SheetContent>
-      </Sheet>
+      <PanelPrimitive.Root
+        open={open}
+        onOpenChange={(o) => {
+          if (!o) setOpen(false);
+        }}
+      >
+        <PanelPrimitive.Portal>
+          {/* Overlay com blur — mesmo tom do command palette (Ctrl K) */}
+          <PanelPrimitive.Backdrop
+            data-slot="activity-panel-overlay"
+            className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-sm"
+          />
+          {/* Painel flutuante — desliza da direita, flutua com margem */}
+          <PanelPrimitive.Popup
+            data-slot="activity-panel"
+            className={cn(
+              "fixed z-50 flex flex-col overflow-hidden bg-card text-sm text-card-foreground shadow-2xl",
+              "transition-[transform,opacity] duration-300 ease-out",
+              "data-ending-style:translate-x-[calc(100%+1.5rem)] data-starting-style:translate-x-[calc(100%+1.5rem)]",
+              // Mobile: tela cheia, sem margem nem borda
+              "inset-0 rounded-none border-0",
+              // Desktop: flutua com 16px de margem, 45% da largura
+              "sm:inset-y-4 sm:right-4 sm:left-auto sm:w-[45vw] sm:min-w-[520px] sm:max-w-[720px] sm:rounded-2xl sm:border"
+            )}
+          >
+            {loading ? (
+              <DrawerSkeleton />
+            ) : activity ? (
+              <DrawerBody activity={activity} />
+            ) : (
+              <div className="flex flex-col gap-1.5 p-6 pr-14">
+                <PanelPrimitive.Title className="text-xl font-semibold">
+                  Atividade não encontrada
+                </PanelPrimitive.Title>
+                <PanelPrimitive.Description className="text-sm text-muted-foreground">
+                  Esta atividade não existe ou está fora do seu escopo.
+                </PanelPrimitive.Description>
+              </div>
+            )}
+            {/* Botão de fechar (canto superior direito) */}
+            <PanelPrimitive.Close
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute right-4 top-4 rounded-full bg-secondary"
+                />
+              }
+            >
+              <XIcon />
+              <span className="sr-only">Fechar</span>
+            </PanelPrimitive.Close>
+          </PanelPrimitive.Popup>
+        </PanelPrimitive.Portal>
+      </PanelPrimitive.Root>
     </Ctx.Provider>
   );
 }
@@ -102,17 +136,26 @@ export function ActivityDrawerProvider({
 
 function DrawerSkeleton() {
   return (
-    <div className="flex flex-col gap-4 p-6">
-      <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-      <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-      <div className="h-px w-full bg-border" />
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex flex-col gap-1.5">
-          <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-full animate-pulse rounded bg-muted" />
-        </div>
-      ))}
-    </div>
+    <>
+      {/* Header skeleton (fixo) */}
+      <div className="shrink-0 border-b p-6 pr-14">
+        <PanelPrimitive.Title className="sr-only">
+          Carregando atividade
+        </PanelPrimitive.Title>
+        <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
+        <div className="mt-2 h-5 w-40 animate-pulse rounded bg-muted" />
+        <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
+      </div>
+      {/* Corpo skeleton */}
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-1.5">
+            <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+            <div className="h-4 w-full animate-pulse rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -195,27 +238,36 @@ function DrawerBody({ activity }: { activity: DrawerActivity }) {
   );
 
   const contextLabel = statusContextLabel(activity);
+  const headerContext = [
+    activity.channelName,
+    activity.branchName ?? "Canal geral",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
-      <SheetHeader>
-        <SheetTitle className="pr-8 text-xl font-semibold leading-snug">
+      {/* Header fixo — bloco de RECONHECIMENTO */}
+      <div className="shrink-0 border-b p-6 pr-14">
+        <PanelPrimitive.Title className="text-xl font-semibold leading-snug line-clamp-2">
           {activity.title}
-        </SheetTitle>
-        <SheetDescription className="flex flex-wrap items-center gap-2">
+        </PanelPrimitive.Title>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <StatusBadge status={activity.status} className="px-2.5 py-0.5" />
           {activity.category && (
             <CategoryBadge category={activity.category} />
           )}
-          {contextLabel && (
-            <span className="text-xs text-muted-foreground">
-              {contextLabel}
-            </span>
-          )}
-        </SheetDescription>
-      </SheetHeader>
+        </div>
+        <PanelPrimitive.Description className="mt-1.5 text-sm text-muted-foreground">
+          {headerContext}
+        </PanelPrimitive.Description>
+      </div>
 
-      <div className="flex flex-col gap-5 px-6 pb-6">
+      {/* Corpo com scroll — blocos de DETALHE */}
+      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
+        {contextLabel && (
+          <p className="text-xs text-muted-foreground">{contextLabel}</p>
+        )}
         {/* Actions */}
         <div className="flex items-center gap-2">
           {isOpen && (
