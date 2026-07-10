@@ -99,6 +99,12 @@ import { cn } from "@/lib/utils";
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+// Ritmo compartilhado entre os cards do painel (FIX 11): padding de 20px
+// (p-5) e cabeçalho com respiro fixo antes do conteúdo. Aplicar em todos
+// os blocos — Situação, Sobre, Evidências, Linha do tempo.
+const PANEL_CARD = "[--card-spacing:--spacing(5)]";
+const PANEL_CARD_HEADER = "pb-4";
+
 /** Reduz a imagem no client (máx. 1600px, JPEG q0.8) antes do upload —
  *  espelha o pipeline usado no PhotosCard da tela cheia. */
 async function compressImage(file: File): Promise<Blob> {
@@ -687,11 +693,11 @@ function SituacaoCard({
 
   return (
     <Card
-      className={
-        canChangeStatus
-          ? "group/situacao cursor-pointer transition-colors hover:bg-muted/40"
-          : undefined
-      }
+      className={cn(
+        PANEL_CARD,
+        canChangeStatus &&
+          "group/situacao cursor-pointer transition-colors hover:bg-muted/40"
+      )}
       onClick={canChangeStatus ? onOpenStatusDialog : undefined}
       role={canChangeStatus ? "button" : undefined}
       tabIndex={canChangeStatus ? 0 : undefined}
@@ -706,7 +712,7 @@ function SituacaoCard({
           : undefined
       }
     >
-      <CardHeader>
+      <CardHeader className={PANEL_CARD_HEADER}>
         <CardTitle className="flex items-center justify-between gap-2">
           <span>Situação</span>
           {canChangeStatus ? (
@@ -717,7 +723,7 @@ function SituacaoCard({
           ) : null}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="flex flex-col gap-4">
         {contextLabel ? (
           <p
             className={cn(
@@ -731,13 +737,11 @@ function SituacaoCard({
           </p>
         ) : null}
         {/* Prazo — texto puro com label acima, sem simular input (FIX 4) */}
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            Prazo
-          </span>
+        <div>
+          <FieldLabel>Prazo</FieldLabel>
           <span
             className={cn(
-              "text-base font-medium tabular-nums",
+              "text-sm font-medium tabular-nums",
               activity.overdue && "text-red-600 dark:text-red-400"
             )}
           >
@@ -809,8 +813,13 @@ function PhotosEmptyCompact({
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 pb-0">
+    <Card className={PANEL_CARD}>
+      <CardHeader
+        className={cn(
+          PANEL_CARD_HEADER,
+          "flex flex-row items-center justify-between gap-2"
+        )}
+      >
         <CardTitle>Evidências</CardTitle>
         {canManage ? (
           <>
@@ -840,14 +849,10 @@ function PhotosEmptyCompact({
               onChange={handleUpload}
             />
           </>
-        ) : (
-          <span className="text-xs text-muted-foreground">Nenhuma foto ainda</span>
-        )}
+        ) : null}
       </CardHeader>
-      <CardContent className="pt-2 pb-4">
-        <p className="text-xs text-muted-foreground">
-          Nenhuma foto ainda.
-        </p>
+      <CardContent>
+        <p className="text-xs text-muted-foreground">Nenhuma foto ainda.</p>
       </CardContent>
     </Card>
   );
@@ -872,18 +877,18 @@ function SobreCard({
   );
 
   return (
-    <Card className="@container/sobre">
-      <CardHeader>
+    <Card className={cn(PANEL_CARD, "@container/sobre")}>
+      <CardHeader className={PANEL_CARD_HEADER}>
         <CardTitle>Sobre</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {/* Subgrupo 1 — o que é (peso maior) */}
+      <CardContent className="flex flex-col">
+        {/* Subgrupo 1 — Descrição (o que é pra fazer, peso maior) */}
         {activity.description ? (
-          <p className="text-sm leading-relaxed">{activity.description}</p>
+          <p className="mb-6 text-sm leading-relaxed">{activity.description}</p>
         ) : null}
 
-        {/* Subgrupo 2 — onde e o quê */}
-        <div className="grid grid-cols-1 gap-4 @[440px]/sobre:grid-cols-2">
+        {/* Subgrupo 2 — Contexto (onde e o quê) */}
+        <div className="mb-6 grid grid-cols-1 gap-4 @[440px]/sobre:grid-cols-2">
           <Field label="Local">
             {activity.branchName
               ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
@@ -898,9 +903,9 @@ function SobreCard({
           </Field>
         </div>
 
-        {/* Subgrupo 3 — vínculos (a que/a quem se conecta) */}
-        <div className="grid grid-cols-1 gap-4 border-t pt-4 @[440px]/sobre:grid-cols-2">
-          <div className="min-w-0 space-y-1">
+        {/* Subgrupo 3 — Vínculos (a quem/a que se conecta) */}
+        <div className="grid grid-cols-1 gap-4 @[440px]/sobre:grid-cols-2">
+          <div className="min-w-0">
             <FieldLabel>Meta vinculada</FieldLabel>
             <div className="text-sm font-medium">
               <ProblemEditor
@@ -916,7 +921,7 @@ function SobreCard({
             </div>
           </div>
 
-          <div className="min-w-0 space-y-1">
+          <div className="min-w-0">
             <FieldLabel>Responsáveis</FieldLabel>
             {activity.assignees.length > 0 ? (
               <div className="flex items-center gap-2">
@@ -942,12 +947,12 @@ function SobreCard({
         </div>
 
         {executionEvent ? (
-          <div className="space-y-1.5 border-t pt-4">
+          <div className="mt-6">
             <FieldLabel>Descrição da execução</FieldLabel>
             <p className="text-sm leading-relaxed">
               {executionEvent.description}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Registrada{" "}
               {formatDistanceToNow(parseISO(executionEvent.createdAt), {
                 locale: ptBR,
@@ -963,7 +968,7 @@ function SobreCard({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+    <dt className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
       {children}
     </dt>
   );
@@ -979,7 +984,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 space-y-1">
+    <div className="min-w-0">
       <FieldLabel>{label}</FieldLabel>
       <dd className={cn("text-sm font-medium tabular-nums", className)}>
         {children}
@@ -1066,12 +1071,12 @@ function TimelineCard({ activity }: { activity: DrawerActivity }) {
   const events = [...activity.events].reverse();
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className={PANEL_CARD}>
+      <CardHeader className={PANEL_CARD_HEADER}>
         <CardTitle>Linha do tempo</CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="relative flex flex-col gap-5 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
+        <ol className="relative flex flex-col gap-4 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
           {events.map((event) => (
             <TimelineItem key={event.id} event={event} />
           ))}
