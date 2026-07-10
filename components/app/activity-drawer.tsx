@@ -231,28 +231,27 @@ export function ActivityDrawerProvider({
                 onClose={close}
               />
             ) : (
-              <div className="flex flex-col gap-1.5 p-6 pt-7 pr-14">
+              <div className="relative flex flex-col gap-1.5 p-6 pt-7 pr-14">
                 <PanelPrimitive.Title className="text-xl font-semibold">
                   Atividade não encontrada
                 </PanelPrimitive.Title>
                 <PanelPrimitive.Description className="text-sm text-muted-foreground">
                   Esta atividade não existe ou está fora do seu escopo.
                 </PanelPrimitive.Description>
+                <PanelPrimitive.Close
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="absolute right-4 top-4 rounded-full bg-secondary"
+                    />
+                  }
+                >
+                  <XIcon />
+                  <span className="sr-only">Fechar</span>
+                </PanelPrimitive.Close>
               </div>
             )}
-            {/* Botão de fechar (canto superior direito) */}
-            <PanelPrimitive.Close
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="absolute right-4 top-4 rounded-full bg-secondary"
-                />
-              }
-            >
-              <XIcon />
-              <span className="sr-only">Fechar</span>
-            </PanelPrimitive.Close>
           </PanelPrimitive.Popup>
         </PanelPrimitive.Portal>
       </PanelPrimitive.Root>
@@ -265,20 +264,35 @@ export function ActivityDrawerProvider({
 function DrawerSkeleton() {
   return (
     <>
-      {/* Header skeleton (fixo) */}
-      <div className="shrink-0 border-b p-4 pt-7 pr-14 md:p-6 md:pr-14">
-        <PanelPrimitive.Title className="sr-only">
-          Carregando atividade
-        </PanelPrimitive.Title>
-        <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="mt-2 h-5 w-40 animate-pulse rounded bg-muted" />
-        <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-muted" />
+      {/* Header skeleton (container cinza, mesmo layout do body) */}
+      <div className="shrink-0 p-4 pt-8 md:p-4 md:pt-6">
+        <div className="relative rounded-xl bg-muted/30 p-5 dark:bg-muted/20">
+          <PanelPrimitive.Title className="sr-only">
+            Carregando atividade
+          </PanelPrimitive.Title>
+          <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
+          <div className="mt-2 h-5 w-40 animate-pulse rounded bg-muted" />
+          <div className="mt-3 h-4 w-1/2 animate-pulse rounded bg-muted" />
+          <div className="mt-3 h-10 w-full animate-pulse rounded-lg bg-muted/60" />
+          <PanelPrimitive.Close
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-3 top-3 rounded-full bg-secondary"
+              />
+            }
+          >
+            <XIcon />
+            <span className="sr-only">Fechar</span>
+          </PanelPrimitive.Close>
+        </div>
       </div>
       {/* Corpo skeleton */}
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 md:px-4 md:pb-4">
         <div className="h-11 w-56 animate-pulse rounded-lg bg-muted" />
-        <div className="h-40 w-full animate-pulse rounded-xl bg-muted" />
-        <div className="h-52 w-full animate-pulse rounded-xl bg-muted" />
+        <div className="h-40 w-full animate-pulse rounded-lg bg-muted" />
+        <div className="h-52 w-full animate-pulse rounded-lg bg-muted" />
       </div>
     </>
   );
@@ -392,13 +406,6 @@ function DrawerBody({
   const canChangeStatus = activity.canRegister || activity.canEdit;
   const canLinkMeta = activity.canRegister || activity.canEdit;
 
-  const headerContext = [
-    activity.channelName,
-    activity.branchName ?? "Canal geral",
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   function handleRegistrar() {
     onClose();
     openWizard({
@@ -423,60 +430,40 @@ function DrawerBody({
 
   return (
     <>
-      {/* ══ RECONHECIMENTO — header fixo ═════════════════════════════ */}
-      <div className="shrink-0 border-b p-4 pt-7 pr-14 md:p-6 md:pr-14">
-        <PanelPrimitive.Title className="text-xl font-semibold leading-snug line-clamp-2">
-          {activity.title}
-        </PanelPrimitive.Title>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <StatusBadge status={activity.status} className="px-2.5 py-0.5" />
-          {activity.category && (
-            <CategoryBadge category={activity.category} />
-          )}
-        </div>
-        <PanelPrimitive.Description className="mt-1.5 text-sm text-muted-foreground">
-          {headerContext}
-        </PanelPrimitive.Description>
+      {/* ══ HEADER — container cinza único agrupando identidade + status ═ */}
+      <div className="shrink-0 p-4 pt-8 md:p-4 md:pt-6">
+        <HeaderContainer
+          activity={activity}
+          canChangeStatus={canChangeStatus}
+          onOpenStatusDialog={() => setStatusDialog(true)}
+        />
       </div>
 
       {/* Corpo com scroll */}
-      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
-        {/* ══ AÇÃO PRIMÁRIA — destaque máximo ═══════════════════════ */}
+      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 md:px-4 md:pb-4">
+        {/* ══ AÇÃO PRIMÁRIA — Registrar alinhado à esquerda, não full ═══ */}
         {(isOpen && activity.canRegister) || activity.canEdit ? (
           <div className="flex items-center gap-2">
             {isOpen && activity.canRegister ? (
-              <Button size="lg" className="flex-1" onClick={handleRegistrar}>
+              <Button size="lg" onClick={handleRegistrar}>
                 <Camera className="size-5" />
                 Registrar execução
               </Button>
             ) : null}
-            {/* Menu "..." só aparece pra DSM/CX (Excluir). Pra RTV, alterar
-                status vive clicando no contexto da Situação; vincular meta é
-                inline no bloco Sobre — não precisa de menu. */}
             {activity.canEdit ? (
               <ActionMenu onDelete={() => setConfirmDelete(true)} />
             ) : null}
           </div>
         ) : null}
 
-        {/* ══ DETALHE — grid balanceado sem sobrar buracos ═════════
-            Coluna A concentra o bloco alto (Sobre) + Situação compacta.
-            Coluna B tem Evidências (compactada quando vazia) + Timeline
-            (variável, mas ok — cai ao lado do "Sobre" alto). */}
+        {/* ══ DETALHE — 2 colunas quando há largura ══════════════════ */}
         <div className="grid gap-4 @xl/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @xl/abody:items-start">
-          {/* Coluna A — Sobre (alto) + Situação (baixa) */}
-          <div className="flex flex-col gap-4">
-            <SobreCard
-              activity={activity}
-              onRefresh={onRefresh}
-              canLinkMeta={canLinkMeta}
-            />
-            <SituacaoCard
-              activity={activity}
-              canChangeStatus={canChangeStatus}
-              onOpenStatusDialog={() => setStatusDialog(true)}
-            />
-          </div>
+          {/* Coluna A — Sobre */}
+          <SobreCard
+            activity={activity}
+            onRefresh={onRefresh}
+            canLinkMeta={canLinkMeta}
+          />
 
           {/* Coluna B — Evidências + Linha do tempo */}
           <div className="flex flex-col gap-4">
@@ -675,12 +662,12 @@ function ActionMenu({ onDelete }: { onDelete: () => void }) {
   );
 }
 
-// ── Bloco "Situação" (informativo — contexto + prazo, sem badge) ─────
-// StatusBadge já vive no header (FIX 3, elimina redundância). O contexto
-// textual do status vira o "eixo" do bloco. Se o role pode alterar, todo
-// o card é clicável e abre o dialog de mudança manual (FIX 8b).
+// ── Header container (identidade + status/prazo integrados) ──────────
+// O container cinza é o topo do painel: título, badges, canal/filial e
+// uma faixa interna com contexto do status + prazo. A faixa é clicável
+// pra abrir o dialog de alterar status quando o role pode mudar.
 
-function SituacaoCard({
+function HeaderContainer({
   activity,
   canChangeStatus,
   onOpenStatusDialog,
@@ -690,55 +677,79 @@ function SituacaoCard({
   onOpenStatusDialog: () => void;
 }) {
   const contextLabel = statusContextLabel(activity);
+  const headerContext =
+    activity.branchName ?? "Canal geral";
 
   return (
-    <Card
-      className={cn(
-        PANEL_CARD,
-        canChangeStatus &&
-          "group/situacao cursor-pointer transition-colors hover:bg-muted/40"
-      )}
-      onClick={canChangeStatus ? onOpenStatusDialog : undefined}
-      role={canChangeStatus ? "button" : undefined}
-      tabIndex={canChangeStatus ? 0 : undefined}
-      onKeyDown={
-        canChangeStatus
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onOpenStatusDialog();
+    <div className="relative rounded-xl bg-muted/30 p-5 dark:bg-muted/20">
+      {/* Linha 1 — Identidade */}
+      <PanelPrimitive.Title className="pr-9 text-xl font-semibold leading-snug line-clamp-2">
+        {activity.title}
+      </PanelPrimitive.Title>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <StatusBadge status={activity.status} className="px-2.5 py-0.5" />
+        {activity.category && (
+          <CategoryBadge category={activity.category} />
+        )}
+      </div>
+
+      {/* Linha 2 — Contexto: canal em destaque, filial secundária */}
+      <PanelPrimitive.Description className="mt-3 text-sm">
+        <span className="font-medium text-foreground">
+          {activity.channelName}
+        </span>
+        <span className="text-muted-foreground"> · {headerContext}</span>
+      </PanelPrimitive.Description>
+
+      {/* Linha 3 — Status + Prazo integrados (clicável quando pode alterar) */}
+      <div
+        className={cn(
+          "mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3 dark:bg-muted/40",
+          canChangeStatus &&
+            "group/status cursor-pointer transition-colors hover:bg-muted/70 dark:hover:bg-muted/60"
+        )}
+        onClick={canChangeStatus ? onOpenStatusDialog : undefined}
+        role={canChangeStatus ? "button" : undefined}
+        tabIndex={canChangeStatus ? 0 : undefined}
+        onKeyDown={
+          canChangeStatus
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onOpenStatusDialog();
+                }
               }
-            }
-          : undefined
-      }
-    >
-      <CardHeader className={PANEL_CARD_HEADER}>
-        <CardTitle className="flex items-center justify-between gap-2">
-          <span>Situação</span>
+            : undefined
+        }
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {contextLabel ? (
+            <p
+              className={cn(
+                "text-sm",
+                activity.status === "atrasada"
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : "text-muted-foreground"
+              )}
+            >
+              {contextLabel}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {STATUS_LABELS[activity.status]}
+            </p>
+          )}
           {canChangeStatus ? (
             <Pencil
               aria-hidden
-              className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/situacao:opacity-100"
+              className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/status:opacity-100"
             />
           ) : null}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {contextLabel ? (
-          <p
-            className={cn(
-              "text-sm",
-              activity.status === "atrasada"
-                ? "font-medium text-red-600 dark:text-red-400"
-                : "text-muted-foreground"
-            )}
-          >
-            {contextLabel}
-          </p>
-        ) : null}
-        {/* Prazo — texto puro com label acima, sem simular input (FIX 4) */}
-        <div>
-          <FieldLabel>Prazo</FieldLabel>
+        </div>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Prazo
+          </span>
           <span
             className={cn(
               "text-sm font-medium tabular-nums",
@@ -754,8 +765,22 @@ function SituacaoCard({
             )}
           </span>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Botão X — canto superior direito do container cinza */}
+      <PanelPrimitive.Close
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="absolute right-3 top-3 rounded-full bg-secondary"
+          />
+        }
+      >
+        <XIcon />
+        <span className="sr-only">Fechar</span>
+      </PanelPrimitive.Close>
+    </div>
   );
 }
 
