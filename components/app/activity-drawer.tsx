@@ -22,11 +22,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { StatusCard } from "@/app/(app)/atividades/[id]/status-card";
 import { PhotosCard } from "@/app/(app)/atividades/[id]/photos-card";
 import { ProblemEditor } from "@/app/(app)/atividades/[id]/problem-editor";
 import { CategoryBadge } from "@/components/app/category-badge";
-import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
+import {
+  ACTIVITY_STATUSES,
+  STATUS_LABELS,
+  StatusBadge,
+  type ActivityStatus,
+} from "@/components/app/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import {
   Avatar,
@@ -51,13 +55,30 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
   TooltipContent,
@@ -67,7 +88,7 @@ import {
   getDrawerActivity,
   type DrawerActivity,
 } from "@/lib/actions/activity-drawer";
-import { deleteActivity } from "@/lib/actions/plan";
+import { changeActivityStatus, deleteActivity } from "@/lib/actions/plan";
 import { cn } from "@/lib/utils";
 
 // ── Context ──────────────────────────────────────────────────────────
@@ -318,7 +339,7 @@ function DrawerBody({
   const { openWizard } = useWizardProvider();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
-  const statusRef = React.useRef<HTMLDivElement>(null);
+  const [statusDialog, setStatusDialog] = React.useState(false);
   const metaRef = React.useRef<HTMLDivElement>(null);
 
   const isOpen =
@@ -391,7 +412,7 @@ function DrawerBody({
                 canEdit={activity.canEdit}
                 canChangeStatus={canChangeStatus}
                 canLinkMeta={canLinkMeta}
-                onStatus={() => scrollToRef(statusRef)}
+                onStatus={() => setStatusDialog(true)}
                 onMeta={() => scrollToRef(metaRef)}
                 onDelete={() => setConfirmDelete(true)}
               />
@@ -403,7 +424,7 @@ function DrawerBody({
               canEdit={activity.canEdit}
               canChangeStatus={canChangeStatus}
               canLinkMeta={canLinkMeta}
-              onStatus={() => scrollToRef(statusRef)}
+              onStatus={() => setStatusDialog(true)}
               onMeta={() => scrollToRef(metaRef)}
               onDelete={() => setConfirmDelete(true)}
             />
@@ -414,13 +435,7 @@ function DrawerBody({
         <div className="grid gap-4 @xl/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @xl/abody:items-start">
           {/* Coluna A — Situação + Sobre */}
           <div className="flex flex-col gap-4">
-            <div ref={statusRef}>
-              <SituacaoCard
-                activity={activity}
-                canChange={canChangeStatus}
-                onRefresh={onRefresh}
-              />
-            </div>
+            <SituacaoCard activity={activity} />
             <SobreCard
               activity={activity}
               onRefresh={onRefresh}
@@ -450,6 +465,15 @@ function DrawerBody({
             : ""}
         </p>
       </div>
+
+      {/* Alterar status manualmente (via menu "...", ação secundária) */}
+      <StatusChangeDialog
+        open={statusDialog}
+        onOpenChange={setStatusDialog}
+        activityId={activity.id}
+        currentStatus={activity.status}
+        onChanged={onRefresh}
+      />
 
       {/* Confirmação de exclusão (DSM/CX) */}
       <AlertDialog
@@ -483,6 +507,110 @@ function DrawerBody({
   );
 }
 
+// ── Dialog "Alterar status" (ação secundária, fora do caminho) ────────
+
+function StatusChangeDialog({
+  open,
+  onOpenChange,
+  activityId,
+  currentStatus,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  activityId: string;
+  currentStatus: ActivityStatus;
+  onChanged: () => void;
+}) {
+  const [selected, setSelected] = React.useState<ActivityStatus>(currentStatus);
+  const [pending, startTransition] = React.useTransition();
+
+  // Sincroniza o Select com a atividade atual sempre que o dialog abre —
+  // como estamos dentro de um dialog controlado, é seguro fazer no render
+  // guardando a versão anterior de `open`.
+  const [wasOpen, setWasOpen] = React.useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setSelected(currentStatus);
+  }
+
+  function handleConfirm() {
+    const next = selected;
+    startTransition(async () => {
+      const result = await changeActivityStatus({ activityId, status: next });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      onChanged();
+      onOpenChange(false);
+      if (next === "concluida") {
+        toast.success("Atividade concluída.");
+      } else if (currentStatus === "concluida") {
+        toast.success("Atividade reaberta.");
+      } else {
+        toast.success(`Status alterado para "${STATUS_LABELS[next]}".`);
+      }
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Alterar status</DialogTitle>
+          <DialogDescription>
+            Mudança manual — só quando &ldquo;Registrar execução&rdquo; não é o caminho.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-2">
+          <Select
+            value={selected}
+            onValueChange={(value) => setSelected(value as ActivityStatus)}
+            items={ACTIVITY_STATUSES.map((item) => ({
+              value: item,
+              label: STATUS_LABELS[item],
+            }))}
+          >
+            <SelectTrigger className="w-full" aria-label="Novo status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ACTIVITY_STATUSES.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {STATUS_LABELS[item]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <DialogClose
+            render={
+              <Button variant="outline" disabled={pending}>
+                Cancelar
+              </Button>
+            }
+          />
+          <Button
+            onClick={handleConfirm}
+            disabled={pending || selected === currentStatus}
+          >
+            {pending ? (
+              <>
+                <Spinner />
+                Salvando...
+              </>
+            ) : (
+              "Confirmar mudança"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Menu de ações secundárias ────────────────────────────────────────
 
 function ActionMenu({
@@ -513,7 +641,7 @@ function ActionMenu({
         {canChangeStatus ? (
           <DropdownMenuItem onClick={onStatus}>
             <RefreshCw />
-            Mudar status
+            Alterar status
           </DropdownMenuItem>
         ) : null}
         {canLinkMeta ? (
@@ -536,26 +664,34 @@ function ActionMenu({
   );
 }
 
-// ── Bloco "Situação" (StatusCard + prazo em destaque) ────────────────
+// ── Bloco "Situação" (informativo — status + prazo, sem formulário) ──
 
-function SituacaoCard({
-  activity,
-  canChange,
-  onRefresh,
-}: {
-  activity: DrawerActivity;
-  canChange: boolean;
-  onRefresh: () => void;
-}) {
+function SituacaoCard({ activity }: { activity: DrawerActivity }) {
+  const contextLabel = statusContextLabel(activity);
   return (
-    <StatusCard
-      title="Situação"
-      activityId={activity.id}
-      status={activity.status}
-      contextLabel={statusContextLabel(activity)}
-      canChange={canChange}
-      onChanged={onRefresh}
-      extra={
+    <Card>
+      <CardHeader>
+        <CardTitle>Situação</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <StatusBadge
+            status={activity.status}
+            className="w-fit px-3 py-1 text-sm"
+          />
+          {contextLabel ? (
+            <p
+              className={cn(
+                "text-sm",
+                activity.status === "atrasada"
+                  ? "font-medium text-red-600 dark:text-red-400"
+                  : "text-muted-foreground"
+              )}
+            >
+              {contextLabel}
+            </p>
+          ) : null}
+        </div>
         <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Prazo
@@ -575,8 +711,8 @@ function SituacaoCard({
             )}
           </span>
         </div>
-      }
-    />
+      </CardContent>
+    </Card>
   );
 }
 
