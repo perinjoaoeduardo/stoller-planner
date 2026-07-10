@@ -56,14 +56,22 @@ export default async function AppLayout({
       <ActivityDrawerProvider>
       <SidebarProvider
         style={{ "--sidebar-width": "19rem" } as React.CSSProperties}
-        className="h-svh overflow-hidden bg-muted dark:bg-black"
+        className="h-svh overflow-hidden bg-background"
       >
         <AppSidebar
           role={profile.role}
           user={user}
           className="p-4 md:p-6"
         />
-        <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-background shadow-sm ring-1 ring-foreground/5 md:my-6 md:mr-6 md:ml-0 dark:bg-card dark:ring-white/10">
+        {/*
+          Hierarquia global de 3 camadas:
+          - Camada 1 (SidebarProvider): bg-background — branco puro / preto quase.
+          - Camada 2 (SidebarInset): bg-muted/40 — cinza sutil pra dar contraste.
+          - Camada 3 (Cards internos): bg-card via componente Card — branco / dark
+            levemente mais denso que a Camada 2. Garante que cards SEMPRE contrastem
+            com o canvas ao redor.
+        */}
+        <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-muted/40 shadow-sm ring-1 ring-foreground/5 md:my-6 md:mr-6 md:ml-0 dark:bg-muted/40 dark:ring-white/10">
           <div className="shrink-0 border-b px-2 py-3 md:px-3">
             <ContentTopBar role={profile.role} fieldChannels={fieldChannels} />
           </div>

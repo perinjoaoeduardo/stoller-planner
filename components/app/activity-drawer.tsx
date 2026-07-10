@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { PhotosCard } from "@/app/(app)/atividades/[id]/photos-card";
 import { ProblemEditor } from "@/app/(app)/atividades/[id]/problem-editor";
 import { CategoryBadge } from "@/components/app/category-badge";
 import {
@@ -77,7 +76,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
@@ -91,6 +89,7 @@ import {
 import {
   changeActivityStatus,
   deleteActivity,
+  deleteActivityPhoto,
   registerActivityPhoto,
 } from "@/lib/actions/plan";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
@@ -467,32 +466,27 @@ function DrawerBody({
 
           {/* Coluna B — Evidências + Linha do tempo */}
           <div className="flex flex-col gap-4">
-            {activity.photos.length > 0 ? (
-              <PhotosCard
-                activityId={activity.id}
-                photos={activity.photos}
-                canManage={activity.canRegister}
-                onChanged={onRefresh}
-              />
-            ) : (
-              <PhotosEmptyCompact
-                activityId={activity.id}
-                canManage={activity.canRegister}
-                onChanged={onRefresh}
-              />
-            )}
+            <EvidencesBlock
+              activityId={activity.id}
+              photos={activity.photos}
+              canManage={activity.canRegister}
+              onChanged={onRefresh}
+            />
             <TimelineCard activity={activity} />
           </div>
         </div>
 
         {/* ══ RODAPÉ discreto — datas de referência ═════════════════ */}
-        <Separator />
-        <p className="text-xs text-muted-foreground tabular-nums">
-          Criada em {formatDate(activity.createdAt, true)}
-          {activity.completedAt
-            ? ` · Concluída em ${formatDate(activity.completedAt, true)}`
-            : ""}
-        </p>
+        <div className="mt-2 border-t border-border/50 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
+            <span>Criada em {formatDate(activity.createdAt, true)}</span>
+            {activity.completedAt ? (
+              <span>
+                Concluída em {formatDate(activity.completedAt, true)}
+              </span>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       {/* Alterar status manualmente (via menu "...", ação secundária) */}
@@ -784,19 +778,29 @@ function HeaderContainer({
   );
 }
 
-// ── Evidências vazio compacto (só título + botão inline) ─────────────
+// ── Bloco Evidências (unificado — vazio ou com grid) ─────────────────
+// Substitui o PhotosCard da tela cheia dentro do painel. Faz upload
+// local com o mesmo pipeline (compressImage → storage → server action).
+// Lightbox em Dialog, exclusão em AlertDialog. Botão nunca vaza do card.
 
-function PhotosEmptyCompact({
+function EvidencesBlock({
   activityId,
+  photos,
   canManage,
   onChanged,
 }: {
   activityId: string;
+  photos: DrawerActivity["photos"];
   canManage: boolean;
   onChanged: () => void;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [preview, setPreview] = React.useState<DrawerActivity["photos"][number] | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState<
+    DrawerActivity["photos"][number] | null
+  >(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -837,35 +841,58 @@ function PhotosEmptyCompact({
     }
   }
 
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    const result = await deleteActivityPhoto({ photoId: confirmDelete.id });
+    setDeleting(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    onChanged();
+    toast.success("Foto removida.");
+    setConfirmDelete(null);
+    setPreview(null);
+  }
+
+  const isEmpty = photos.length === 0;
+  const addButtonLabel = uploading ? "Enviando…" : "Adicionar foto";
+
   return (
-    <Card className={PANEL_CARD}>
-      <CardHeader
-        className={cn(
-          PANEL_CARD_HEADER,
-          "flex flex-row items-center justify-between gap-2"
-        )}
-      >
-        <CardTitle>Evidências</CardTitle>
-        {canManage ? (
-          <>
+    <>
+      <Card className={PANEL_CARD}>
+        <CardHeader
+          className={cn(
+            PANEL_CARD_HEADER,
+            "flex flex-row items-start justify-between gap-2"
+          )}
+        >
+          <div className="min-w-0">
+            <CardTitle>Evidências</CardTitle>
+            {isEmpty ? (
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Fotos da execução
+              </p>
+            ) : null}
+          </div>
+          {canManage && !isEmpty ? (
             <Button
               variant="outline"
               size="sm"
               disabled={uploading}
               onClick={() => inputRef.current?.click()}
+              className="shrink-0"
             >
-              {uploading ? (
-                <>
-                  <Spinner />
-                  Enviando…
-                </>
-              ) : (
-                <>
-                  <ImagePlus className="size-3.5" />
-                  Adicionar foto
-                </>
-              )}
+              {uploading ? <Spinner /> : <ImagePlus className="size-3.5" />}
+              <span className="hidden @[380px]/abody:inline">
+                {addButtonLabel}
+              </span>
             </Button>
+          ) : null}
+        </CardHeader>
+        <CardContent>
+          {canManage ? (
             <input
               ref={inputRef}
               type="file"
@@ -873,14 +900,144 @@ function PhotosEmptyCompact({
               className="hidden"
               onChange={handleUpload}
             />
-          </>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        <p className="text-xs text-muted-foreground">Nenhuma foto ainda.</p>
-      </CardContent>
-    </Card>
+          ) : null}
+
+          {isEmpty ? (
+            // Vazio: bloco compacto centralizado com respiro (≈180px)
+            <div className="flex min-h-[7rem] flex-col items-center justify-center gap-2 rounded-md bg-muted/20 py-6 text-center dark:bg-muted/30">
+              <Camera className="size-6 text-muted-foreground/70" />
+              <p className="text-sm text-muted-foreground">Nenhuma foto ainda</p>
+              {canManage ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => inputRef.current?.click()}
+                  className="mt-1"
+                >
+                  {uploading ? (
+                    <>
+                      <Spinner />
+                      Enviando…
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="size-3.5" />
+                      Adicionar foto
+                    </>
+                  )}
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            // Com fotos: grid 3 col
+            <div className="grid grid-cols-3 gap-3">
+              {photos.slice(0, 6).map((photo) => (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => setPreview(photo)}
+                  className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
+                  aria-label={photo.caption ?? "Ampliar evidência"}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={photoPublicUrl(photo.storagePath)}
+                    alt={photo.caption ?? "Evidência da atividade"}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                </button>
+              ))}
+              {photos.length > 6 ? (
+                <button
+                  type="button"
+                  onClick={() => setPreview(photos[6])}
+                  className="flex aspect-square items-center justify-center rounded-md border bg-muted/40 text-xs font-medium text-muted-foreground hover:bg-muted/70"
+                >
+                  +{photos.length - 6}
+                </button>
+              ) : null}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Lightbox */}
+      <Dialog
+        open={!!preview}
+        onOpenChange={(o) => !o && setPreview(null)}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Evidência</DialogTitle>
+            <DialogDescription>
+              {preview?.caption ??
+                (preview
+                  ? `Adicionada em ${format(
+                      parseISO(preview.createdAt),
+                      "dd 'de' MMMM 'de' yyyy",
+                      { locale: ptBR }
+                    )}`
+                  : "")}
+            </DialogDescription>
+          </DialogHeader>
+          {preview ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={photoPublicUrl(preview.storagePath)}
+              alt={preview.caption ?? "Evidência da atividade"}
+              className="max-h-[70dvh] w-full rounded-md object-contain"
+            />
+          ) : null}
+          {canManage && preview ? (
+            <DialogFooter>
+              <Button
+                variant="destructive"
+                onClick={() => setConfirmDelete(preview)}
+              >
+                <Trash2 />
+                Excluir foto
+              </Button>
+            </DialogFooter>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(o) => !o && setConfirmDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir foto?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A foto será removida das evidências. Essa ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+              disabled={deleting}
+            >
+              {deleting ? "Excluindo…" : "Excluir foto"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
+}
+
+/** URL pública do bucket activity-photos (o bucket é público). */
+function photoPublicUrl(storagePath: string): string {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
 }
 
 // ── Bloco "Sobre" (subgrupos: o que / onde-o quê / vínculos) ─────────
@@ -928,8 +1085,9 @@ function SobreCard({
           </Field>
         </div>
 
-        {/* Subgrupo 3 — Vínculos (a quem/a que se conecta) */}
-        <div className="grid grid-cols-1 gap-4 @[440px]/sobre:grid-cols-2">
+        {/* Subgrupo 3 — Vínculos (a quem/a que se conecta): fundo cinza
+            sutil pra agrupar visualmente essa "família" de campos */}
+        <div className="grid grid-cols-1 gap-4 rounded-md bg-muted/30 p-3 dark:bg-muted/20 @[440px]/sobre:grid-cols-2">
           <div className="min-w-0">
             <FieldLabel>Meta vinculada</FieldLabel>
             <div className="text-sm font-medium">
