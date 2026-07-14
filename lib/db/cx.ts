@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { differenceInCalendarDays, parseISO, startOfWeek } from "date-fns";
 
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import type { Role } from "@/lib/auth/nav";
 import { DARK_CHANNEL_DAYS } from "@/lib/config";
 import { computeHealth, type ChannelHealth } from "@/lib/plan-utils";

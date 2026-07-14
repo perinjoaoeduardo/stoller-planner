@@ -21,10 +21,12 @@ import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
+import { CategoryIconBox } from "@/components/shared/icon-box";
+import { categoryIcon } from "@/lib/category-icons";
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { SearchableSelect } from "@/components/app/searchable-select";
-import { StatusBadge } from "@/components/app/status-badge";
-import type { ActivityStatus } from "@/components/app/status-badge";
+import { StatusBadge, STATUS_LABELS } from "@/components/shared/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -39,31 +41,91 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ActivityRow } from "@/lib/db/channels";
+import { formatRelativeDue } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
 
-// ── Status pill colors ─────────────────────────────────────────────────
+// ── Pills: sistema de status do app (FIX 2) — sem azul ────────────────
 
 const PILL_COLORS: Record<ActivityStatus, string> = {
-  planejada:
-    "bg-[#0063A7]/15 text-[#0063A7] dark:bg-[#0063A7]/25 dark:text-[#5AABEF]",
-  em_andamento:
-    "bg-[#0063A7]/15 text-[#0063A7] dark:bg-[#0063A7]/25 dark:text-[#5AABEF]",
+  planejada: "bg-muted text-foreground",
+  em_andamento: "bg-muted text-foreground",
   concluida:
-    "bg-[#96CB40]/15 text-[#4A7A10] dark:bg-[#96CB40]/25 dark:text-[#B5DC73]",
+    "bg-success-bg text-success-fg",
   atrasada:
-    "bg-amber-500/15 text-amber-700 dark:bg-amber-500/25 dark:text-amber-400",
-  nao_feita:
-    "bg-red-500/15 text-red-700 dark:bg-red-500/25 dark:text-red-400",
+    "bg-warning-bg text-warning-fg",
+  nao_feita: "bg-muted text-muted-foreground",
 };
 
 const DOT_COLORS: Record<ActivityStatus, string> = {
-  planejada: "bg-[#0063A7]",
-  em_andamento: "bg-[#0063A7]",
-  concluida: "bg-[#96CB40]",
-  atrasada: "bg-amber-500",
-  nao_feita: "bg-red-500",
+  planejada: "bg-foreground/50",
+  em_andamento: "bg-foreground",
+  concluida: "bg-success",
+  atrasada: "bg-warning",
+  nao_feita: "bg-muted-foreground/40",
 };
+
+/** "Planejada, vence em 6 dias" — corpo do tooltip da pill. */
+function statusSentence(activity: ActivityRow): string {
+  const status = STATUS_LABELS[activity.status];
+  return activity.dueDate
+    ? `${status}, ${formatRelativeDue(activity.dueDate)}`
+    : status;
+}
+
+/** Pill de evento: ícone da categoria + título truncado + tooltip. */
+function EventPill({
+  activity,
+  onClick,
+  highlighted,
+  className,
+}: {
+  activity: ActivityRow;
+  onClick: (e: React.MouseEvent) => void;
+  highlighted?: boolean;
+  className?: string;
+}) {
+  const Icon = categoryIcon(activity.category);
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+              "flex w-full cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-xs font-medium transition-opacity hover:opacity-80",
+              PILL_COLORS[activity.status],
+              highlighted && "animate-pulse",
+              className
+            )}
+          />
+        }
+      >
+        {activity.status === "em_andamento" && (
+          <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
+        )}
+        <Icon className="size-3 shrink-0" />
+        <span
+          className={cn(
+            "truncate",
+            activity.status === "nao_feita" && "line-through"
+          )}
+        >
+          {activity.title}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        {activity.title}. {statusSentence(activity)}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 // ── Weekday headers (Mon-Sun, Brazilian standard) ──────────────────────
 
@@ -109,6 +171,24 @@ export function CalendarView({
   const [channelFilter, setChannelFilter] = React.useState<string | null>(null);
   const [viewMode, setViewMode] = React.useState<ViewMode>("month");
   const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  // Highlight sutil na pill recém-criada pelo wizard (FIX 6).
+  const [highlightId, setHighlightId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function onCreated(e: Event) {
+      const id = (e as CustomEvent<{ id?: string }>).detail?.id;
+      if (!id) return;
+      setHighlightId(id);
+      clearTimeout(timer);
+      timer = setTimeout(() => setHighlightId(null), 2500);
+    }
+    window.addEventListener("stoller:activity-created", onCreated);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("stoller:activity-created", onCreated);
+    };
+  }, []);
 
   const filtered = React.useMemo(() => {
     let result = activities.filter((a) => a.dueDate !== null);
@@ -198,15 +278,16 @@ export function CalendarView({
     <div className="flex flex-col gap-4">
       {/* Filters row */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* View toggle */}
-        <div className="flex rounded-lg border p-0.5">
+        {/* View toggle — segmented neutro (FIX 1) */}
+        <div className="flex rounded-lg bg-muted p-1">
           <button
             type="button"
             onClick={() => switchView("month")}
+            aria-pressed={viewMode === "month"}
             className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               viewMode === "month"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -215,10 +296,11 @@ export function CalendarView({
           <button
             type="button"
             onClick={() => switchView("week")}
+            aria-pressed={viewMode === "week"}
             className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               viewMode === "week"
-                ? "bg-primary text-primary-foreground"
+                ? "bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -233,7 +315,7 @@ export function CalendarView({
             value={channelFilter}
             onValueChange={setChannelFilter}
             placeholder="Todos os canais"
-            className="h-9 min-w-48"
+            className="h-9 min-w-48 border-input bg-card"
           />
         )}
       </div>
@@ -263,18 +345,24 @@ export function CalendarView({
             days={days}
             currentMonth={currentMonth}
             activityMap={activityMap}
+            channelFilter={channelFilter}
+            highlightId={highlightId}
           />
         ) : (
           <MobileList
             days={days}
             currentMonth={currentMonth}
             activityMap={activityMap}
+            channelFilter={channelFilter}
           />
         )
-      ) : isDesktop ? (
-        <WeekGrid days={weekDays} activityMap={activityMap} />
       ) : (
-        <MobileWeekList days={weekDays} activityMap={activityMap} />
+        <WeekAgenda
+          days={weekDays}
+          activityMap={activityMap}
+          channelFilter={channelFilter}
+          highlightId={highlightId}
+        />
       )}
     </div>
   );
@@ -285,9 +373,11 @@ export function CalendarView({
 function DayActivitiesList({
   day,
   activities,
+  channelFilter,
 }: {
   day: Date;
   activities: ActivityRow[];
+  channelFilter: string | null;
 }) {
   const dateStr = format(day, "yyyy-MM-dd");
   const { openActivity } = useActivityDrawer();
@@ -299,17 +389,15 @@ function DayActivitiesList({
           Nenhuma atividade neste dia.
         </p>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1">
           {activities.map((activity) => (
             <button
               key={activity.id}
               type="button"
               onClick={() => openActivity(activity.id)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:opacity-80",
-                PILL_COLORS[activity.status]
-              )}
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted"
             >
+              <CategoryIconBox category={activity.category} size="sm" />
               <span className="min-w-0 flex-1 truncate font-medium">
                 {activity.title}
               </span>
@@ -324,38 +412,43 @@ function DayActivitiesList({
       <NewActivityButton
         mode="agendar"
         date={dateStr}
+        channelId={channelFilter ?? undefined}
         label="Agendar nesta data"
         variant="outline"
         size="sm"
-        className="w-full"
+        className="w-full hover:bg-muted"
         icon={<Plus className="mr-1.5 size-3.5" />}
       />
     </div>
   );
 }
 
-// ── Desktop grid (month) ──────────────────────────────────────────────
+// ── Desktop grid (month) — FIX 3 ──────────────────────────────────────
 
 function DesktopGrid({
   days,
   currentMonth,
   activityMap,
+  channelFilter,
+  highlightId,
 }: {
   days: Date[];
   currentMonth: Date;
   activityMap: Map<string, ActivityRow[]>;
+  channelFilter: string | null;
+  highlightId: string | null;
 }) {
   const MAX_PILLS = 3;
   const { openActivity } = useActivityDrawer();
 
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       {/* Header */}
-      <div className="grid grid-cols-7 border-b bg-muted/30">
+      <div className="grid grid-cols-7 border-b border-border">
         {WEEKDAYS_SHORT.map((d) => (
           <div
             key={d}
-            className="px-2 py-2 text-center text-xs font-medium uppercase text-muted-foreground"
+            className="px-2 py-2 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground"
           >
             {d}
           </div>
@@ -368,7 +461,6 @@ function DesktopGrid({
           const key = format(day, "yyyy-MM-dd");
           const dayActivities = activityMap.get(key) ?? [];
           const inMonth = isSameMonth(day, currentMonth);
-          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
           const todayCell = isToday(day);
           const overflow = dayActivities.length - MAX_PILLS;
 
@@ -379,10 +471,9 @@ function DesktopGrid({
                 render={
                   <div
                     className={cn(
-                      "relative flex h-28 cursor-pointer flex-col border-b border-r p-1.5 transition-colors hover:bg-accent/50",
-                      !inMonth && "opacity-40",
-                      isWeekend && "bg-muted/20",
-                      todayCell && "bg-primary/5"
+                      "relative flex min-h-[110px] cursor-pointer flex-col gap-1 border-b border-r border-hover-surface p-2 transition-colors hover:bg-subtle",
+                      !inMonth && "bg-subtle",
+                      todayCell && "bg-muted"
                     )}
                   />
                 }
@@ -390,45 +481,48 @@ function DesktopGrid({
                 {/* Day number */}
                 <span
                   className={cn(
-                    "mb-1 flex size-7 shrink-0 items-center justify-center rounded-full text-sm",
-                    todayCell && "bg-[#0063A7] font-semibold text-white"
+                    "flex size-6 shrink-0 items-center justify-center rounded-full text-sm",
+                    todayCell
+                      ? "bg-primary font-semibold text-primary-foreground"
+                      : inMonth
+                        ? "text-foreground"
+                        : "text-muted-foreground/50"
                   )}
                 >
                   {format(day, "d")}
                 </span>
 
                 {/* Activity pills */}
-                <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
+                <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                   {dayActivities.slice(0, MAX_PILLS).map((activity) => (
-                    <button
+                    <EventPill
                       key={activity.id}
-                      type="button"
+                      activity={activity}
+                      highlighted={highlightId === activity.id}
                       onClick={(e) => {
                         e.stopPropagation();
                         openActivity(activity.id);
                       }}
-                      className={cn(
-                        "flex h-5 w-full items-center rounded px-1.5 text-left text-xs font-medium transition-opacity hover:opacity-80",
-                        PILL_COLORS[activity.status]
-                      )}
-                    >
-                      <span className="truncate">{activity.title}</span>
-                    </button>
+                    />
                   ))}
                   {overflow > 0 && (
-                    <span className="px-1.5 text-xs text-muted-foreground">
+                    <span className="px-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground">
                       +{overflow} mais
                     </span>
                   )}
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <PopoverHeader>
-                  <PopoverTitle>
+              <PopoverContent className="max-w-xs rounded-xl border-border p-4 shadow-lg">
+                <PopoverHeader className="p-0 pb-3">
+                  <PopoverTitle className="text-sm font-semibold text-foreground">
                     {format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                   </PopoverTitle>
                 </PopoverHeader>
-                <DayActivitiesList day={day} activities={dayActivities} />
+                <DayActivitiesList
+                  day={day}
+                  activities={dayActivities}
+                  channelFilter={channelFilter}
+                />
               </PopoverContent>
             </Popover>
           );
@@ -438,105 +532,102 @@ function DesktopGrid({
   );
 }
 
-// ── Week grid (desktop) ───────────────────────────────────────────────
+// ── Visão semanal como agenda (FIX 5) ─────────────────────────────────
 
-function WeekGrid({
+function WeekAgenda({
   days,
   activityMap,
+  channelFilter,
+  highlightId,
 }: {
   days: Date[];
   activityMap: Map<string, ActivityRow[]>;
+  channelFilter: string | null;
+  highlightId: string | null;
 }) {
   const { openActivity } = useActivityDrawer();
 
   return (
-    <div className="overflow-hidden rounded-xl border">
-      <div className="grid grid-cols-7">
-        {days.map((day) => {
-          const key = format(day, "yyyy-MM-dd");
-          const dayActivities = activityMap.get(key) ?? [];
-          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-          const todayCell = isToday(day);
-          const dayLabel = format(day, "EEE", { locale: ptBR });
-          const capitalDay =
-            dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+    <div className="flex flex-col gap-3">
+      {days.map((day) => {
+        const key = format(day, "yyyy-MM-dd");
+        const dayActivities = activityMap.get(key) ?? [];
+        const todayCell = isToday(day);
+        const weekday = format(day, "EEEE", { locale: ptBR });
+        const capitalDay = weekday.charAt(0).toUpperCase() + weekday.slice(1);
 
-          return (
-            <div
-              key={key}
-              className={cn(
-                "flex min-h-[28rem] flex-col border-r last:border-r-0",
-                isWeekend && "bg-muted/20",
-                todayCell && "bg-primary/5"
-              )}
-            >
-              {/* Day header */}
-              <div className="flex flex-col items-center gap-0.5 border-b bg-muted/30 py-2">
-                <span className="text-xs font-medium uppercase text-muted-foreground">
-                  {capitalDay}
-                </span>
-                <span
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-full text-sm font-medium",
-                    todayCell && "bg-[#0063A7] text-white"
-                  )}
-                >
-                  {format(day, "d")}
-                </span>
-              </div>
+        return (
+          <div
+            key={key}
+            className={cn(
+              "rounded-xl border border-border p-4",
+              todayCell && "bg-subtle"
+            )}
+          >
+            {/* Header do dia — affordance única de agendar */}
+            <div className="flex items-center gap-2">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                {capitalDay},{" "}
+                {todayCell ? (
+                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                    {format(day, "d")}
+                  </span>
+                ) : (
+                  format(day, "d")
+                )}{" "}
+                {format(day, "MMM", { locale: ptBR })}
+              </p>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {dayActivities.length > 0
+                  ? `${dayActivities.length} ${dayActivities.length === 1 ? "atividade" : "atividades"}`
+                  : null}
+              </span>
+              <NewActivityButton
+                mode="agendar"
+                date={key}
+                channelId={channelFilter ?? undefined}
+                label="Agendar"
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-xs text-muted-foreground hover:text-foreground"
+                icon={<Plus className="size-4" />}
+              />
+            </div>
 
-              {/* Activities column */}
-              <div className="flex flex-1 flex-col gap-1 p-1.5">
+            {dayActivities.length > 0 ? (
+              <div className="mt-3 flex flex-col gap-1">
                 {dayActivities.map((activity) => (
                   <button
                     key={activity.id}
                     type="button"
                     onClick={() => openActivity(activity.id)}
                     className={cn(
-                      "flex flex-col gap-0.5 rounded-lg px-2 py-1.5 text-left text-xs transition-opacity hover:opacity-80",
-                      PILL_COLORS[activity.status]
+                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted",
+                      highlightId === activity.id && "animate-pulse"
                     )}
                   >
-                    <span className="font-medium leading-tight">
+                    <CategoryIconBox category={activity.category} size="sm" />
+                    <span className="min-w-0 flex-1 truncate font-medium">
                       {activity.title}
                     </span>
-                    <span className="text-[10px] opacity-70">
+                    <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                       {activity.channelName}
                     </span>
+                    <StatusBadge
+                      status={activity.status}
+                      className="shrink-0 text-[10px]"
+                    />
                   </button>
                 ))}
-                {dayActivities.length === 0 && (
-                  <div className="flex flex-1 items-center justify-center">
-                    <NewActivityButton
-                      mode="agendar"
-                      date={key}
-                      label=""
-                      variant="ghost"
-                      size="icon-sm"
-                      icon={
-                        <Plus className="size-4 text-muted-foreground/50" />
-                      }
-                    />
-                  </div>
-                )}
               </div>
-
-              {/* Add button at bottom */}
-              <div className="border-t p-1.5">
-                <NewActivityButton
-                  mode="agendar"
-                  date={key}
-                  label="Agendar"
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs text-muted-foreground"
-                  icon={<Plus className="mr-1 size-3" />}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            ) : (
+              <p className="mt-2 text-sm italic text-muted-foreground">
+                Sem atividades
+              </p>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -547,10 +638,12 @@ function MobileList({
   days,
   currentMonth,
   activityMap,
+  channelFilter,
 }: {
   days: Date[];
   currentMonth: Date;
   activityMap: Map<string, ActivityRow[]>;
+  channelFilter: string | null;
 }) {
   const { openActivity } = useActivityDrawer();
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
@@ -563,12 +656,12 @@ function MobileList({
   return (
     <div className="flex flex-col gap-3">
       {/* Compact month overview (dots) */}
-      <div className="overflow-hidden rounded-xl border">
-        <div className="grid grid-cols-7 bg-muted/30">
+      <div className="overflow-hidden rounded-xl border border-border">
+        <div className="grid grid-cols-7 border-b border-border">
           {WEEKDAYS_SHORT.map((d) => (
             <div
               key={d}
-              className="px-1 py-1.5 text-center text-[10px] font-medium uppercase text-muted-foreground"
+              className="px-1 py-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
             >
               {d.slice(0, 1)}
             </div>
@@ -587,15 +680,17 @@ function MobileList({
                 type="button"
                 onClick={() => setSelectedDay(day)}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 border-b border-r py-1 transition-colors",
-                  !inMonth && "opacity-30",
-                  selectedDay && isSameDay(day, selectedDay) && "bg-accent"
+                  "flex flex-col items-center gap-0.5 border-b border-r border-hover-surface py-1 transition-colors",
+                  !inMonth && "bg-subtle opacity-50",
+                  selectedDay &&
+                    isSameDay(day, selectedDay) &&
+                    "bg-muted"
                 )}
               >
                 <span
                   className={cn(
                     "flex size-6 items-center justify-center rounded-full text-xs",
-                    todayCell && "bg-[#0063A7] font-semibold text-white"
+                    todayCell && "bg-primary font-semibold text-primary-foreground"
                   )}
                 >
                   {format(day, "d")}
@@ -642,6 +737,7 @@ function MobileList({
               <DayActivitiesList
                 day={selectedDay}
                 activities={selectedActivities}
+                channelFilter={channelFilter}
               />
             )}
           </div>
@@ -678,12 +774,7 @@ function MobileList({
 
               return (
                 <div key={key} className="flex flex-col gap-1.5">
-                  <p
-                    className={cn(
-                      "text-sm font-medium",
-                      todayCell && "text-[#0063A7]"
-                    )}
-                  >
+                  <p className="text-sm font-medium text-foreground">
                     {capitalLabel}
                     {todayCell && (
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -697,11 +788,9 @@ function MobileList({
                         key={activity.id}
                         type="button"
                         onClick={() => openActivity(activity.id)}
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-                          PILL_COLORS[activity.status]
-                        )}
+                        className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg border border-border px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
                       >
+                        <CategoryIconBox category={activity.category} size="sm" />
                         <span className="min-w-0 flex-1 truncate font-medium">
                           {activity.title}
                         </span>
@@ -718,91 +807,6 @@ function MobileList({
           </div>
         );
       })()}
-    </div>
-  );
-}
-
-// ── Mobile week list ──────────────────────────────────────────────────
-
-function MobileWeekList({
-  days,
-  activityMap,
-}: {
-  days: Date[];
-  activityMap: Map<string, ActivityRow[]>;
-}) {
-  const { openActivity } = useActivityDrawer();
-
-  return (
-    <div className="flex flex-col gap-3">
-      {days.map((day) => {
-        const key = format(day, "yyyy-MM-dd");
-        const dayActivities = activityMap.get(key) ?? [];
-        const todayCell = isToday(day);
-        const label = format(day, "EEEE dd", { locale: ptBR });
-        const capitalLabel = label.charAt(0).toUpperCase() + label.slice(1);
-
-        return (
-          <div
-            key={key}
-            className={cn(
-              "flex flex-col gap-2 rounded-xl border p-3",
-              todayCell && "border-[#0063A7]/30 bg-primary/5"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <p
-                className={cn(
-                  "text-sm font-medium",
-                  todayCell && "text-[#0063A7]"
-                )}
-              >
-                {capitalLabel}
-                {todayCell && (
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
-                    Hoje
-                  </span>
-                )}
-              </p>
-              <NewActivityButton
-                mode="agendar"
-                date={key}
-                label=""
-                variant="ghost"
-                size="icon-sm"
-                icon={<Plus className="size-4 text-muted-foreground" />}
-              />
-            </div>
-            {dayActivities.length > 0 ? (
-              <div className="flex flex-col gap-1">
-                {dayActivities.map((activity) => (
-                  <button
-                    key={activity.id}
-                    type="button"
-                    onClick={() => openActivity(activity.id)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors hover:opacity-80",
-                      PILL_COLORS[activity.status]
-                    )}
-                  >
-                    <span className="min-w-0 flex-1 truncate font-medium">
-                      {activity.title}
-                    </span>
-                    <StatusBadge
-                      status={activity.status}
-                      className="shrink-0 text-[10px]"
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Nenhuma atividade.
-              </p>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }

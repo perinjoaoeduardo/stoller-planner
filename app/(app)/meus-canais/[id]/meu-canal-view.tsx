@@ -3,22 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   CalendarClock,
-  Camera,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
   CircleCheckBig,
-  ClipboardCheck,
   ClipboardList,
-  Eye,
-  MoreHorizontal,
   Plus,
   Search,
   Target,
@@ -26,19 +17,18 @@ import {
 } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
-import { CategoryBadge } from "@/components/app/category-badge";
 import { SearchableSelect } from "@/components/app/searchable-select";
+import {
+  ActivityTable,
+  type ActivityTableColumn,
+} from "@/components/shared/activity-table";
+import { DeadlineText } from "@/components/shared/deadline-text";
+import { StatCard } from "@/components/shared/stat-card";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import {
   StatusBadge,
   type ActivityStatus,
-} from "@/components/app/status-badge";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarGroup,
-  AvatarGroupCount,
-} from "@/components/ui/avatar";
+} from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,12 +38,6 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -61,7 +45,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   Sheet,
@@ -71,14 +54,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import type {
   ActivityRow,
   ChannelDetail,
@@ -86,7 +61,6 @@ import type {
 } from "@/lib/db/channels";
 import { isLateActivity, todayISO } from "@/lib/db/status";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
-import { cn } from "@/lib/utils";
 
 const PENDING = new Set<ActivityStatus>([
   "planejada",
@@ -101,85 +75,19 @@ type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 20;
 
+const CANAL_COLUMNS: ActivityTableColumn[] = [
+  "atividade",
+  "meta",
+  "responsaveis",
+  "prazo",
+  "status",
+  "acao",
+];
+
 function addDaysISO(days: number) {
   const date = new Date();
   date.setDate(date.getDate() + days);
   return date.toISOString().slice(0, 10);
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function KpiCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  active,
-  tone = "default",
-  onClick,
-  disabled,
-}: {
-  label: string;
-  value: number | string;
-  hint?: string;
-  icon: typeof CircleAlert;
-  active: boolean;
-  tone?: "default" | "alert";
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Card
-      className={cn(
-        "cursor-pointer p-0 gap-2 transition-colors",
-        active
-          ? "border-[#0063A7] bg-[#0063A7]/5 dark:bg-[#0063A7]/10"
-          : "hover:bg-muted/30",
-        disabled && "cursor-not-allowed opacity-60"
-      )}
-    >
-      <button
-        type="button"
-        onClick={disabled ? undefined : onClick}
-        aria-pressed={active}
-        disabled={disabled}
-        className="w-full p-6 text-left"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <Icon
-            className={cn(
-              "size-4 shrink-0",
-              tone === "alert"
-                ? "text-amber-600 dark:text-amber-400"
-                : "text-muted-foreground"
-            )}
-          />
-        </div>
-        <p
-          className={cn(
-            "mt-3 text-3xl font-semibold tracking-tight tabular-nums",
-            tone === "alert" && "text-amber-600 dark:text-amber-400"
-          )}
-        >
-          {value}
-        </p>
-        {hint ? (
-          <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-            {hint}
-          </p>
-        ) : null}
-      </button>
-    </Card>
-  );
 }
 
 /**
@@ -387,37 +295,18 @@ export function MeuCanalView({
     }
   }
 
-  function SortIcon({ column }: { column: SortKey }) {
-    if (sortKey !== column) {
-      return (
-        <ArrowUpDown className="ml-1 inline size-3 text-muted-foreground/60" />
-      );
-    }
-    return sortDir === "asc" ? (
-      <ArrowUp className="ml-1 inline size-3" />
-    ) : (
-      <ArrowDown className="ml-1 inline size-3" />
-    );
-  }
-
   return (
     <>
       {/* Filtro global de filial */}
       {showBranchFilter ? (
         <div className="flex flex-wrap items-center gap-2">
-          <Label
-            htmlFor="filtro-local-global"
-            className="text-sm text-muted-foreground"
-          >
-            Local
-          </Label>
           <SearchableSelect
             id="filtro-local-global"
             options={branchOptions}
             value={branchFilter}
             onValueChange={setBranchFilter}
             placeholder="Todas as filiais"
-            className="w-56"
+            className="w-56 border-input bg-card"
           />
           {branchFilter ? (
             <Button
@@ -431,37 +320,43 @@ export function MeuCanalView({
         </div>
       ) : null}
 
-      {/* KPIs clicáveis */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <KpiCard
-          label="Total de atividades"
+      {/* KPIs clicáveis — mesmo componente de filtro da Minhas Atividades */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total de atividades"
           value={metrics.total}
-          hint="no plano"
+          sublabel="no plano"
           icon={ClipboardList}
+          interactive
           active={kpiFilter === "todos"}
           onClick={() => setKpiFilter("todos")}
         />
-        <KpiCard
-          label="Concluídas"
+        <StatCard
+          title="Concluídas"
           value={metrics.completed}
-          hint={`${metrics.completedPercent}%`}
+          sublabel={`${metrics.completedPercent}% do total`}
           icon={CircleCheckBig}
+          interactive
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}
         />
-        <KpiCard
-          label="Atrasadas"
+        <StatCard
+          title="Atrasadas"
           value={metrics.late}
+          sublabel={metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"}
           icon={CircleAlert}
-          tone={metrics.late > 0 ? "alert" : "default"}
+          tone={metrics.late > 0 ? "warning" : "neutral"}
+          interactive
           active={kpiFilter === "atrasadas"}
           onClick={() => setKpiFilter("atrasadas")}
         />
-        <KpiCard
-          label="Vencem em 7 dias"
+        <StatCard
+          title="Vencem em 7 dias"
           value={metrics.dueSoon}
+          sublabel="prazo próximo"
           icon={CalendarClock}
-          tone={metrics.dueSoon > 0 ? "alert" : "default"}
+          tone={metrics.dueSoon > 0 ? "warning" : "neutral"}
+          interactive
           active={kpiFilter === "vencendo"}
           onClick={() => setKpiFilter("vencendo")}
         />
@@ -494,7 +389,7 @@ export function MeuCanalView({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar atividade..."
-              className="h-10 pl-9"
+              className="h-10 border-input bg-card pl-9"
             />
           </div>
           {categoryOptions.length > 0 ? (
@@ -503,11 +398,11 @@ export function MeuCanalView({
               value={categoryFilter}
               onValueChange={setCategoryFilter}
               placeholder="Categoria"
-              className="h-10 min-w-40"
+              className="h-10 min-w-40 border-input bg-card"
             />
           ) : null}
           {showOnlyMine ? (
-            <label className="ml-auto flex items-center gap-2 text-sm font-medium">
+            <label className="ml-auto flex items-center gap-2 text-sm text-foreground">
               <Switch
                 checked={onlyMine}
                 onCheckedChange={(checked) => setOnlyMine(checked)}
@@ -561,177 +456,23 @@ export function MeuCanalView({
         </Card>
       ) : (
         <>
-          {/* Desktop — tabela densa */}
-          <div className="hidden overflow-x-auto rounded-xl border md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Atividade</TableHead>
-                  <TableHead className="hidden lg:table-cell">
-                    Categoria
-                  </TableHead>
-                  <TableHead className="hidden xl:table-cell">
-                    Meta
-                  </TableHead>
-                  <TableHead className="hidden lg:table-cell">
-                    Responsáveis
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      type="button"
-                      onClick={() => toggleSort("prazo")}
-                      className="flex items-center hover:text-foreground"
-                    >
-                      Prazo
-                      <SortIcon column="prazo" />
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      type="button"
-                      onClick={() => toggleSort("status")}
-                      className="flex items-center hover:text-foreground"
-                    >
-                      Status
-                      <SortIcon column="status" />
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paged.map((activity) => {
-                  const overdue = activity.status === "atrasada";
-                  const open = PENDING.has(activity.status);
-                  return (
-                    <TableRow
-                      key={activity.id}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        openActivity(activity.id)
-                      }
-                    >
-                      <TableCell className="max-w-72">
-                        <p className="truncate font-medium">
-                          {activity.title}
-                        </p>
-                        {activity.branchName ? (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {activity.branchName}
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {activity.category ? (
-                          <CategoryBadge category={activity.category} />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden max-w-48 truncate xl:table-cell">
-                        {activity.problemTitle ? (
-                          <span className="truncate">
-                            {activity.problemTitle}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground italic">
-                            Sem vínculo
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {activity.assignees.length > 0 ? (
-                          <AvatarGroup>
-                            {activity.assignees.slice(0, 3).map((assignee) => (
-                              <Avatar key={assignee.id} size="sm">
-                                <AvatarFallback className="text-[10px]">
-                                  {getInitials(assignee.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                            {activity.assignees.length > 3 ? (
-                              <AvatarGroupCount className="size-6 text-[10px]">
-                                +{activity.assignees.length - 3}
-                              </AvatarGroupCount>
-                            ) : null}
-                          </AvatarGroup>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            —
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "whitespace-nowrap tabular-nums",
-                          overdue
-                            ? "font-medium text-red-600 dark:text-red-400"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {activity.dueDate
-                          ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
-                              locale: ptBR,
-                            })
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={activity.status} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div
-                          onClick={(event) => event.stopPropagation()}
-                          className="flex justify-end"
-                        >
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label="Ações"
-                                >
-                                  <MoreHorizontal />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end">
-                              {open ? (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    openWizard({
-                                      mode: "registrar",
-                                      activityId: activity.id,
-                                    })
-                                  }
-                                >
-                                  <Camera />
-                                  Registrar
-                                </DropdownMenuItem>
-                              ) : null}
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  openActivity(activity.id)
-                                }
-                              >
-                                <Eye />
-                                Ver detalhes
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          {/* Desktop — tabela canônica */}
+          <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
+            <ActivityTable
+              activities={paged}
+              columns={CANAL_COLUMNS}
+              onRowClick={(activity) => openActivity(activity.id)}
+              rowAction="menu"
+              onRegister={(activity) =>
+                openWizard({ mode: "registrar", activityId: activity.id })
+              }
+              sort={{ key: sortKey, dir: sortDir, onToggle: toggleSort }}
+            />
           </div>
 
           {/* Mobile — cards empilhados usando linhas simplificadas */}
           <div className="flex flex-col gap-2 md:hidden">
             {paged.map((activity) => {
-              const overdue = activity.status === "atrasada";
               return (
                 <button
                   key={activity.id}
@@ -749,20 +490,11 @@ export function MeuCanalView({
                   ) : null}
                   <div className="flex items-center justify-between gap-2">
                     <StatusBadge status={activity.status} />
-                    <span
-                      className={cn(
-                        "text-xs tabular-nums",
-                        overdue
-                          ? "font-medium text-red-600 dark:text-red-400"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {activity.dueDate
-                        ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
-                            locale: ptBR,
-                          })
-                        : "sem prazo"}
-                    </span>
+                    <DeadlineText
+                      dueDate={activity.dueDate}
+                      status={activity.status}
+                      className="text-xs"
+                    />
                   </div>
                 </button>
               );
@@ -891,16 +623,11 @@ export function MeuCanalView({
       <button
         type="button"
         onClick={() => openWizard({ channelId: channel.id })}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-background shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
       >
         <Plus className="size-5" />
         Nova atividade
       </button>
-
-      {/* Ícone auxiliar para lint (usado indireto no import) */}
-      <span className="hidden">
-        <ClipboardCheck />
-      </span>
     </>
   );
 }

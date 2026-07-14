@@ -42,7 +42,7 @@ import {
   STATUS_LABELS,
   StatusBadge,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import {
   AlertDialog,
   AlertDialogAction,

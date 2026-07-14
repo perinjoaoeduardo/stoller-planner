@@ -1,5 +1,5 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
-import { ACTIVITY_STATUSES } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
+import { ACTIVITY_STATUSES } from "@/components/shared/status-badge";
 import { getDisplayStatus } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";
 

@@ -24,23 +24,26 @@ export const STATUS_LABELS: Record<ActivityStatus, string> = {
   nao_feita: "Não feita",
 };
 
+/**
+ * Badge de status ÚNICO do app (Constituição, item 2): âmbar é o alerta
+ * de atraso, verde é conclusão, o resto é neutro. NUNCA vermelho em
+ * badge — o vermelho pertence ao texto de prazo vencido (lib/deadline).
+ */
 const STATUS_STYLES: Record<
   ActivityStatus,
   { variant: React.ComponentProps<typeof Badge>["variant"]; className?: string }
 > = {
-  planejada: { variant: "outline" },
-  em_andamento: { variant: "secondary" },
+  planejada: { variant: "outline", className: "text-foreground" },
+  em_andamento: { variant: "outline", className: "text-foreground" },
   concluida: {
     variant: "outline",
-    className:
-      "border-transparent bg-[#96CB40]/15 text-[#4A7A10] dark:text-[#B5DC73]",
+    className: "border-transparent bg-success-bg text-success-fg",
   },
   atrasada: {
     variant: "outline",
-    className:
-      "border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400",
+    className: "border-transparent bg-warning-bg text-warning-fg",
   },
-  nao_feita: { variant: "destructive" },
+  nao_feita: { variant: "outline", className: "text-muted-foreground" },
 };
 
 export function StatusBadge({
@@ -54,6 +57,9 @@ export function StatusBadge({
 
   return (
     <Badge variant={config.variant} className={cn(config.className, className)}>
+      {status === "em_andamento" && (
+        <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
+      )}
       {STATUS_LABELS[status]}
     </Badge>
   );

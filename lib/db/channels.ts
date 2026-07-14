@@ -1,4 +1,4 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import type { ActivityCategory } from "@/lib/config";
 import { computeHealth, type ChannelHealth } from "@/lib/plan-utils";
 import { getDisplayStatus, isLateActivity } from "@/lib/db/status";

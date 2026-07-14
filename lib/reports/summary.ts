@@ -1,4 +1,4 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 
 /**
  * Resumo executivo do Relatório de Safra — texto determinístico, SEM IA.

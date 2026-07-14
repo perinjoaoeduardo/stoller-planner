@@ -15,7 +15,7 @@ import {
   ACTIVITY_STATUSES,
   STATUS_LABELS,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Field,

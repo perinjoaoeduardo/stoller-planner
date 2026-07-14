@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
 import {
   getCurrentProfile,

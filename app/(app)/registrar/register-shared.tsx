@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Camera, Check, ImagePlus, X } from "lucide-react";
+import { Camera, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -133,90 +133,6 @@ export function usePhotoDrafts() {
   return { photos, rejected, addFiles, removePhoto, reset, uploadAll };
 }
 
-/** Botão grande de câmera + grid de miniaturas (foto sempre opcional). */
-export function PhotoSection({
-  photos,
-  rejected,
-  onAdd,
-  onRemove,
-  inputRef,
-}: {
-  photos: PhotoDraft[];
-  rejected: boolean;
-  onAdd: (files: File[]) => void;
-  onRemove: (id: string) => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPTED_PHOTO_TYPES.join(",")}
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          const files = Array.from(event.target.files ?? []);
-          event.target.value = "";
-          onAdd(files);
-        }}
-      />
-      {photos.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="flex min-h-24 flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
-        >
-          <Camera className="size-7" />
-          <span className="text-sm font-semibold">
-            Anexar foto (opcional)
-          </span>
-          <span className="text-xs text-muted-foreground">
-            Câmera ou galeria — pode escolher várias
-          </span>
-        </button>
-      ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {photos.map((photo) => (
-            <div
-              key={photo.id}
-              className="relative aspect-square overflow-hidden rounded-xl border bg-muted"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={photo.url}
-                alt="Foto da execução"
-                className="h-full w-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => onRemove(photo.id)}
-                aria-label="Remover foto"
-                className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            aria-label="Adicionar mais fotos"
-            className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed text-muted-foreground hover:bg-muted/60"
-          >
-            <ImagePlus className="size-6" />
-          </button>
-        </div>
-      )}
-      {rejected ? (
-        <p className="text-xs text-destructive" role="alert">
-          Alguma foto foi ignorada: use JPG, PNG ou WEBP até 10MB.
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 /**
  * Nudge leve quando o registro vai sem foto — incentiva, nunca bloqueia.
  * Mobile: Drawer de baixo. Desktop: Dialog centralizado, sem X de fechar.
@@ -310,8 +226,8 @@ export function SuccessScreen({
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6 text-center">
-      <div className="flex size-24 items-center justify-center rounded-full bg-[#96CB40]/15 duration-500 animate-in zoom-in-50 fade-in">
-        <div className="flex size-16 items-center justify-center rounded-full bg-[#96CB40] delay-150 duration-500 animate-in zoom-in-50 fill-mode-backwards">
+      <div className="flex size-24 items-center justify-center rounded-full bg-success-bg duration-500 animate-in zoom-in-50 fade-in">
+        <div className="flex size-16 items-center justify-center rounded-full bg-success delay-150 duration-500 animate-in zoom-in-50 fill-mode-backwards">
           <Check className="size-9 text-white" strokeWidth={3} />
         </div>
       </div>
@@ -326,7 +242,7 @@ export function SuccessScreen({
             : " · sem fotos"}
         </p>
         {completed ? (
-          <p className="text-sm font-medium text-[#4A7A10] dark:text-[#B5DC73]">
+          <p className="text-sm font-medium text-success-fg">
             Atividade marcada como concluída
           </p>
         ) : null}

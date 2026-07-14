@@ -25,7 +25,7 @@ import { SearchableSelect } from "@/components/app/searchable-select";
 import {
   ACTIVITY_STATUSES,
   StatusBadge,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -123,7 +123,7 @@ function GalleryThumb({
         />
       )}
       {photo.caption ? (
-        <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-2 py-1 text-left text-[11px] text-white">
+        <span className="absolute inset-x-0 bottom-0 truncate bg-foreground/55 px-2 py-1 text-left text-[11px] text-white">
           {photo.caption}
         </span>
       ) : null}

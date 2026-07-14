@@ -2,34 +2,44 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  differenceInCalendarDays,
+  format,
+  parseISO,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Calendar,
   CalendarClock,
+  CalendarPlus,
   Camera,
   Check,
   CheckCircle2,
   ChevronRight,
   CircleAlert,
-  GraduationCap,
   Link2,
   MapPin,
-  Megaphone,
+  Pencil,
   PenLine,
-  Presentation,
-  Route,
   Search,
   SearchX,
   Store,
+  Target,
+  User,
   X,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
-
-import { CategoryBadge } from "@/components/app/category-badge";
 import { DatePicker } from "@/components/app/date-picker";
-import { StatusBadge } from "@/components/app/status-badge";
+import { CategoryIconBox, IconBox } from "@/components/shared/icon-box";
+import { PhotoAttach } from "@/components/shared/photo-attach";
+import {
+  WizardFooter,
+  WizardStepper,
+} from "@/components/shared/wizard-shell";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
+import { StatusBadge } from "@/components/shared/status-badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,13 +53,19 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Drawer,
   DrawerContent,
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { registerExecution } from "@/lib/actions/execution";
@@ -70,7 +86,6 @@ import { cn } from "@/lib/utils";
 import {
   MAX_DESCRIPTION,
   PhotoNudgeDrawer,
-  PhotoSection,
   usePhotoDrafts,
 } from "@/app/(app)/registrar/register-shared";
 
@@ -81,12 +96,94 @@ export type WizardMode = "agendar" | "registrar";
 type WizardView =
   | "bifurcation"
   | "channel"
-  | "agendar-form"
+  | "agendar-1"
+  | "agendar-2"
+  | "agendar-3"
   | "agendar-confirm"
   | "registrar-pick"
   | "registrar-complete"
-  | "registrar-adhoc"
+  | "adhoc-1"
+  | "adhoc-2"
+  | "adhoc-3"
   | "success";
+
+/** Passos do fluxo de agendar, na ordem do stepper. */
+const AGENDAR_STEPS: { view: WizardView; label: string }[] = [
+  { view: "agendar-1", label: "O quê" },
+  { view: "agendar-2", label: "Contexto" },
+  { view: "agendar-3", label: "Quando" },
+  { view: "agendar-confirm", label: "Revisão" },
+];
+
+/** Passos do registro fora do plano. */
+const ADHOC_STEPS: { view: WizardView; label: string }[] = [
+  { view: "adhoc-1", label: "O quê" },
+  { view: "adhoc-2", label: "Contexto" },
+  { view: "adhoc-3", label: "Evidências" },
+];
+
+function agendarStepIndex(view: WizardView): number {
+  return AGENDAR_STEPS.findIndex((s) => s.view === view);
+}
+
+function adhocStepIndex(view: WizardView): number {
+  return ADHOC_STEPS.findIndex((s) => s.view === view);
+}
+
+/** Rascunho do registro fora do plano — persiste entre os 3 passos. */
+type AdhocDraft = {
+  description: string;
+  category: ActivityCategory | null;
+  branchId: string | null;
+  problemChoice: string | "later" | null;
+};
+
+const EMPTY_ADHOC: AdhocDraft = {
+  description: "",
+  category: null,
+  branchId: null,
+  problemChoice: null,
+};
+
+/** O que acabou de ser registrado — alimenta a tela de sucesso. */
+type RegistrarResult = {
+  id: string;
+  title: string;
+  category: ActivityCategory | null;
+  kind: "adhoc" | "complete";
+  pendingLink: boolean;
+};
+
+/** Rascunho do agendamento — vive no pai pra persistir entre os passos. */
+type AgendarDraft = {
+  title: string;
+  category: ActivityCategory | null;
+  problemId: string | null;
+  branchId: string | null;
+  assigneeIds: string[];
+  dueDate: string | null;
+  description: string;
+};
+
+function emptyDraft(defaultDate: string | null): AgendarDraft {
+  return {
+    title: "",
+    category: null,
+    problemId: null,
+    branchId: null,
+    assigneeIds: [],
+    dueDate: defaultDate,
+    description: "",
+  };
+}
+
+/** Atividade recém-criada — alimenta o mini card da tela de sucesso. */
+type CreatedActivity = {
+  id: string;
+  title: string;
+  category: ActivityCategory;
+  dueDate: string;
+};
 
 export type ActionWizardProps = {
   open: boolean;
@@ -100,12 +197,48 @@ export type ActionWizardProps = {
 
 // ── Category icons (same as adhoc form) ────────────────────────────────
 
-const CATEGORY_ICONS: Record<ActivityCategory, LucideIcon> = {
-  reuniao_gerente: Presentation,
-  treinamento: GraduationCap,
-  rodada_canal: Route,
-  geracao_demanda: Megaphone,
-};
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (first + last).toUpperCase();
+}
+
+/** Grid 2x2 de tipos de ação selecionáveis — compartilhado agendar/adhoc. */
+function CategoryGrid({
+  value,
+  onChange,
+}: {
+  value: ActivityCategory | null;
+  onChange: (category: ActivityCategory) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {ACTIVITY_CATEGORIES.map((item) => {
+        const active = value === item;
+        return (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onChange(item)}
+            aria-pressed={active}
+            className={cn(
+              "flex min-h-14 cursor-pointer items-center gap-2.5 rounded-xl p-3 text-left transition-all",
+              active
+                ? "border-2 border-foreground bg-subtle"
+                : "border border-border bg-card hover:border-border-hover hover:bg-muted"
+            )}
+          >
+            <CategoryIconBox category={item} />
+            <span className="text-xs font-medium leading-tight">
+              {CATEGORY_LABELS[item]}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── Internal context ───────────────────────────────────────────────────
 
@@ -116,8 +249,20 @@ type WizardCtx = {
   channelName: string | null;
   channelCtx: WizardChannelContext | null;
   loadingCtx: boolean;
-  date: string | null;
   selectedActivity: WizardActivity | null;
+  draft: AgendarDraft;
+  updateDraft: (patch: Partial<AgendarDraft>) => void;
+  submitting: boolean;
+  submitError: string | null;
+  submitAgendar: () => Promise<void>;
+  created: CreatedActivity | null;
+  startAnotherAgendar: () => void;
+  adhoc: AdhocDraft;
+  updateAdhoc: (patch: Partial<AdhocDraft>) => void;
+  photoDrafts: ReturnType<typeof usePhotoDrafts>;
+  registrarResult: RegistrarResult | null;
+  setRegistrarResult: (r: RegistrarResult | null) => void;
+  startAnotherRegistrar: () => void;
   setView: (v: WizardView) => void;
   setMode: (m: WizardMode) => void;
   setChannel: (id: string, name: string) => void;
@@ -152,47 +297,73 @@ function useMediaQuery(query: string) {
   return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
 
-// ── View → progress mapping ────────────────────────────────────────────
-
-function viewProgress(view: WizardView, mode: WizardMode | null): number {
-  if (view === "bifurcation") return 0;
-  if (view === "channel") return 0.2;
-  if (view === "success") return 1;
-  if (mode === "agendar") {
-    if (view === "agendar-form") return 0.5;
-    if (view === "agendar-confirm") return 0.8;
-  }
-  if (mode === "registrar") {
-    if (view === "registrar-pick") return 0.4;
-    if (view === "registrar-complete" || view === "registrar-adhoc") return 0.7;
-  }
-  return 0.5;
-}
-
 function viewTitle(view: WizardView): string {
   switch (view) {
     case "bifurcation":
       return "O que você quer fazer?";
     case "channel":
       return "Selecione o canal";
-    case "agendar-form":
-      return "Detalhes da atividade";
+    case "agendar-1":
+    case "agendar-2":
+    case "agendar-3":
     case "agendar-confirm":
-      return "Confirmar agendamento";
+      return "Agendar atividade";
     case "registrar-pick":
       return "Selecione a atividade";
     case "registrar-complete":
       return "Concluir atividade";
-    case "registrar-adhoc":
-      return "Ação fora do plano";
+    case "adhoc-1":
+    case "adhoc-2":
+    case "adhoc-3":
+      return "Registrar execução";
     case "success":
       return "Concluído";
   }
 }
 
+// ── Stepper (FIX 2) ────────────────────────────────────────────────────
+
+/** Pergunta guia no topo de cada passo. */
+function StepIntro({ question, hint }: { question: string; hint: string }) {
+  return (
+    <div>
+      <p className="text-sm font-medium text-foreground">{question}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
 // ── Step 0: Bifurcation ────────────────────────────────────────────────
 
-function BifurcationStep() {
+function BifurcationOption({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-border-hover hover:bg-muted"
+    >
+      <IconBox icon={Icon} size="lg" className="size-11" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+    </button>
+  );
+}
+
+/** Opções da bifurcação — renderiza dentro do Dialog (desktop) ou Drawer (mobile). */
+function BifurcationOptions() {
   const { setMode, setView, channelId } = useWizard();
 
   function pick(mode: WizardMode) {
@@ -200,46 +371,32 @@ function BifurcationStep() {
     if (!channelId) {
       setView("channel");
     } else {
-      setView(mode === "agendar" ? "agendar-form" : "registrar-pick");
+      setView(mode === "agendar" ? "agendar-1" : "registrar-pick");
     }
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6">
-      <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          onClick={() => pick("agendar")}
-          className="flex items-center gap-4 rounded-2xl border bg-card p-5 text-left transition-colors hover:bg-muted/50 active:bg-muted"
-        >
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#0063A7]/10">
-            <Calendar className="size-6 text-[#0063A7]" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Agendar atividade</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Planeje algo que você vai fazer
-            </p>
-          </div>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-        </button>
-        <button
-          type="button"
-          onClick={() => pick("registrar")}
-          className="flex items-center gap-4 rounded-2xl border bg-card p-5 text-left transition-colors hover:bg-muted/50 active:bg-muted"
-        >
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
-            <Camera className="size-6 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Registrar execução</p>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Marque algo que você já fez
-            </p>
-          </div>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
-        </button>
-      </div>
+    <div className="flex flex-col gap-3">
+      <BifurcationOption
+        icon={Calendar}
+        title="Agendar atividade"
+        description="Planeje algo que você vai fazer"
+        onClick={() => pick("agendar")}
+      />
+      <BifurcationOption
+        icon={Camera}
+        title="Registrar execução"
+        description="Marque algo que você já fez"
+        onClick={() => pick("registrar")}
+      />
+    </div>
+  );
+}
+
+function BifurcationStep() {
+  return (
+    <div className="flex flex-col gap-4 p-6">
+      <BifurcationOptions />
     </div>
   );
 }
@@ -247,24 +404,48 @@ function BifurcationStep() {
 // ── Channel picker ─────────────────────────────────────────────────────
 
 function ChannelPickerStep({ channels }: { channels: ChannelOption[] }) {
-  const { setChannel, mode, setView } = useWizard();
+  const { setChannel, setView } = useWizard();
+  const [search, setSearch] = React.useState("");
+
+  // Canal com mais trabalho primeiro.
+  const sorted = React.useMemo(
+    () =>
+      [...channels].sort((a, b) => b.openActivityCount - a.openActivityCount),
+    [channels]
+  );
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? sorted.filter((ch) => ch.name.toLowerCase().includes(q))
+    : sorted;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-6">
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
       <p className="text-sm text-muted-foreground">
         Escolha o canal onde a ação será registrada.
       </p>
+      {channels.length > 6 && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar canal..."
+            className="h-10 border-input bg-card pl-9"
+          />
+        </div>
+      )}
       <div className="flex flex-col gap-2">
-        {channels.map((ch) => (
+        {filtered.map((ch) => (
           <button
             key={ch.id}
             type="button"
             onClick={() => setChannel(ch.id, ch.name)}
-            className="flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted"
+            className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-border-hover hover:bg-muted"
           >
-            <Store className="size-5 shrink-0 text-muted-foreground" />
+            <IconBox icon={Store} size="lg" iconClassName="size-4" />
             <div className="min-w-0 flex-1">
-              <p className="font-medium">{ch.name}</p>
+              <p className="text-sm font-semibold text-foreground">{ch.name}</p>
               <p className="text-sm tabular-nums text-muted-foreground">
                 {ch.openActivityCount > 0
                   ? `${ch.openActivityCount} ${ch.openActivityCount === 1 ? "atividade aberta" : "atividades abertas"}`
@@ -272,41 +453,64 @@ function ChannelPickerStep({ channels }: { channels: ChannelOption[] }) {
               </p>
             </div>
             {ch.openActivityCount > 0 && (
-              <Badge variant="secondary" className="shrink-0 tabular-nums">
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-foreground">
                 {ch.openActivityCount}
-              </Badge>
+              </span>
             )}
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
           </button>
         ))}
       </div>
-      {!mode && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="self-start text-muted-foreground"
-          onClick={() => setView("bifurcation")}
-        >
-          Voltar
-        </Button>
-      )}
+      </div>
+      <WizardFooter onBack={() => setView("bifurcation")} />
+    </>
+  );
+}
+
+// ── Agendar · Passo 1: O quê (FIX 3) ───────────────────────────────────
+
+function AgendarStep1() {
+  const { draft, updateDraft } = useWizard();
+
+  return (
+    <div className="flex flex-col gap-5 p-6">
+      <StepIntro
+        question="O que você vai fazer?"
+        hint="Dê um nome e escolha o tipo da atividade."
+      />
+
+      <fieldset className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium" htmlFor="wz-title">
+          Título <span className="text-destructive">*</span>
+        </label>
+        <Input
+          id="wz-title"
+          autoFocus
+          value={draft.title}
+          onChange={(e) => updateDraft({ title: e.target.value })}
+          placeholder="Ex: Treinamento da equipe sobre biológicos"
+          className="border-input bg-card text-base"
+          maxLength={200}
+        />
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-1.5">
+        <label className="text-sm font-medium">
+          Tipo de ação <span className="text-destructive">*</span>
+        </label>
+        <CategoryGrid
+          value={draft.category}
+          onChange={(category) => updateDraft({ category })}
+        />
+      </fieldset>
     </div>
   );
 }
 
-// ── PA2: Agendar form ──────────────────────────────────────────────────
+// ── Agendar · Passo 2: Contexto (FIX 4) ────────────────────────────────
 
-function AgendarFormStep() {
-  const { channelCtx, loadingCtx, setView, date: defaultDate } = useWizard();
-  const [title, setTitle] = React.useState("");
-  const [category, setCategory] = React.useState<ActivityCategory | null>(null);
-  const [problemId, setProblemId] = React.useState<string | null>(null);
-  const [branchId, setBranchId] = React.useState<string | null>(null);
-  const [assigneeIds, setAssigneeIds] = React.useState<string[]>([]);
-  const [dueDate, setDueDate] = React.useState<string | null>(
-    defaultDate ?? null
-  );
-  const [description, setDescription] = React.useState("");
+function AgendarStep2() {
+  const { channelCtx, loadingCtx, draft, updateDraft } = useWizard();
 
   if (loadingCtx || !channelCtx) {
     return (
@@ -317,119 +521,92 @@ function AgendarFormStep() {
   }
 
   const { branches, problems, responsibles } = channelCtx;
-  const hasProblems = problems.length > 0;
-
-  const canContinue =
-    title.trim().length > 0 && category !== null && dueDate !== null;
-
-  const disabledHint = !title.trim()
-    ? "Informe o título da atividade."
-    : !category
-      ? "Escolha o tipo de ação."
-      : !dueDate
-        ? "Selecione o prazo."
-        : null;
-
-  function handleContinue() {
-    if (!canContinue) return;
-    agendarFormRef.current = {
-      title,
-      category: category!,
-      problemId,
-      branchId,
-      assigneeIds,
-      dueDate: dueDate!,
-      description,
-    };
-    setView("agendar-confirm");
-  }
 
   return (
-    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
-      {/* Título */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium" htmlFor="wz-title">
-          Título <span className="text-destructive">*</span>
-        </label>
-        <Input
-          id="wz-title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Ex: Treinamento da equipe sobre biológicos"
-          className="text-base"
-          maxLength={200}
-        />
-      </fieldset>
+    <div className="flex flex-col gap-6 p-6">
+      <StepIntro
+        question="Onde essa atividade se encaixa?"
+        hint="Vincule a uma meta e defina local e responsáveis."
+      />
 
-      {/* Tipo de ação */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium">
-          Tipo de ação <span className="text-destructive">*</span>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {ACTIVITY_CATEGORIES.map((item) => {
-            const Icon = CATEGORY_ICONS[item];
-            const active = category === item;
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setCategory(item)}
-                aria-pressed={active}
-                className={cn(
-                  "flex min-h-14 items-center gap-2.5 rounded-xl border p-3 text-left text-sm font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "bg-card text-foreground hover:bg-muted"
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "size-5 shrink-0",
-                    active ? "text-primary" : "text-muted-foreground"
-                  )}
-                />
-                <span className="leading-tight text-xs">
-                  {CATEGORY_LABELS[item]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      {/* Meta */}
-      {hasProblems && (
+      {problems.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">Meta do plano</label>
-          <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            Meta do plano
+            <span className="text-xs font-normal text-muted-foreground">
+              opcional
+            </span>
+          </label>
+          <RadioGroup
+            value={draft.problemId ?? "none"}
+            onValueChange={(value) =>
+              updateDraft({
+                problemId: value === "none" ? null : String(value),
+              })
+            }
+            className="gap-1"
+          >
+            <label
+              className={cn(
+                "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                draft.problemId === null
+                  ? "bg-muted"
+                  : "hover:bg-subtle"
+              )}
+            >
+              <RadioGroupItem
+                value="none"
+                className="data-checked:bg-foreground dark:data-checked:bg-foreground"
+              />
+              <span className="italic text-muted-foreground">Sem vínculo</span>
+            </label>
             {problems.map((p) => {
-              const active = problemId === p.id;
+              const active = draft.problemId === p.id;
               return (
-                <button
+                <label
                   key={p.id}
-                  type="button"
-                  onClick={() => setProblemId(active ? null : p.id)}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors",
+                    "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
                     active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "bg-card hover:bg-muted/60"
+                      ? "bg-muted"
+                      : "hover:bg-subtle"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-                      active
-                        ? "border-primary bg-primary"
-                        : "border-muted-foreground/50"
-                    )}
-                  >
-                    {active && (
-                      <span className="size-1.5 rounded-full bg-primary-foreground" />
-                    )}
-                  </span>
+                  <RadioGroupItem
+                    value={p.id}
+                    className="data-checked:bg-foreground dark:data-checked:bg-foreground"
+                  />
                   <span className="leading-snug">{p.title}</span>
+                </label>
+              );
+            })}
+          </RadioGroup>
+        </fieldset>
+      )}
+
+      {branches.length > 0 && (
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Local</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: null as string | null, name: "Canal geral" },
+              ...branches,
+            ].map((b) => {
+              const active = draft.branchId === b.id;
+              return (
+                <button
+                  key={b.id ?? "geral"}
+                  type="button"
+                  onClick={() => updateDraft({ branchId: b.id })}
+                  aria-pressed={active}
+                  className={cn(
+                    "h-9 cursor-pointer rounded-full border px-3 text-sm font-medium transition-colors",
+                    active
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-border bg-card text-foreground hover:bg-muted"
+                  )}
+                >
+                  {b.name}
                 </button>
               );
             })}
@@ -437,93 +614,94 @@ function AgendarFormStep() {
         </fieldset>
       )}
 
-      {/* Local */}
-      {branches.length > 0 && (
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">Local</label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setBranchId(null)}
-              className={cn(
-                "h-9 rounded-full border px-3 text-sm font-medium transition-colors",
-                branchId === null
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted/50"
-              )}
-            >
-              Canal geral
-            </button>
-            {branches.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => setBranchId(b.id)}
-                className={cn(
-                  "h-9 rounded-full border px-3 text-sm font-medium transition-colors",
-                  branchId === b.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {b.name}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      )}
-
-      {/* Responsável */}
       {responsibles.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">
           <label className="text-sm font-medium">Responsáveis</label>
           <div className="flex flex-wrap gap-2">
             {responsibles.map((r) => {
-              const active = assigneeIds.includes(r.id);
+              const active = draft.assigneeIds.includes(r.id);
               return (
                 <button
                   key={r.id}
                   type="button"
                   onClick={() =>
-                    setAssigneeIds((prev) =>
-                      active
-                        ? prev.filter((id) => id !== r.id)
-                        : [...prev, r.id]
-                    )
+                    updateDraft({
+                      assigneeIds: active
+                        ? draft.assigneeIds.filter((id) => id !== r.id)
+                        : [...draft.assigneeIds, r.id],
+                    })
                   }
+                  aria-pressed={active}
                   className={cn(
-                    "h-9 rounded-full border px-3 text-sm font-medium transition-colors",
+                    "flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
                     active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-card text-muted-foreground hover:bg-muted"
+                      ? "border-2 border-foreground bg-muted"
+                      : "border border-border bg-card hover:bg-muted"
                   )}
                 >
+                  <span className="flex size-5 items-center justify-center rounded-full bg-border text-[9px] font-semibold text-foreground/70">
+                    {initials(r.name)}
+                  </span>
                   {r.name}
+                  {active && <Check className="size-3" />}
                 </button>
               );
             })}
           </div>
-          {assigneeIds.length === 0 && (
+          {draft.assigneeIds.length === 0 && (
             <p className="text-xs text-muted-foreground">
               Se nenhum for selecionado, você será o responsável.
             </p>
           )}
         </fieldset>
       )}
+    </div>
+  );
+}
 
-      {/* Prazo */}
+// ── Agendar · Passo 3: Quando (FIX 5) ──────────────────────────────────
+
+const DUE_SHORTCUTS: { label: string; resolve: () => Date }[] = [
+  { label: "Em 1 semana", resolve: () => addDays(new Date(), 7) },
+  { label: "Em 2 semanas", resolve: () => addDays(new Date(), 14) },
+  { label: "Em 1 mês", resolve: () => addMonths(new Date(), 1) },
+];
+
+function AgendarStep3() {
+  const { draft, updateDraft } = useWizard();
+
+  return (
+    <div className="flex flex-col gap-5 p-6">
+      <StepIntro
+        question="Para quando?"
+        hint="Defina o prazo e detalhe se precisar."
+      />
+
       <fieldset className="flex flex-col gap-1.5">
         <label className="text-sm font-medium">
           Prazo <span className="text-destructive">*</span>
         </label>
+        <div className="flex flex-wrap gap-2 pb-1">
+          {DUE_SHORTCUTS.map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              onClick={() =>
+                updateDraft({ dueDate: format(s.resolve(), "yyyy-MM-dd") })
+              }
+              className="h-7 cursor-pointer rounded-full border border-border bg-card px-2.5 text-xs transition-colors hover:bg-muted"
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
         <DatePicker
-          value={dueDate}
-          onChange={setDueDate}
+          value={draft.dueDate}
+          onChange={(value) => updateDraft({ dueDate: value })}
           placeholder="Selecione o prazo"
         />
       </fieldset>
 
-      {/* Descrição */}
       <fieldset className="flex flex-col gap-1.5">
         <label className="text-sm font-medium" htmlFor="wz-desc">
           Descrição{" "}
@@ -531,174 +709,206 @@ function AgendarFormStep() {
         </label>
         <Textarea
           id="wz-desc"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={draft.description}
+          onChange={(e) => updateDraft({ description: e.target.value })}
           maxLength={MAX_DESCRIPTION}
           placeholder="Detalhe o que precisa ser feito e o resultado esperado."
           className="min-h-20"
         />
         <span className="self-end text-xs text-muted-foreground tabular-nums">
-          {description.length}/{MAX_DESCRIPTION}
+          {draft.description.length}/{MAX_DESCRIPTION}
         </span>
       </fieldset>
-
-      {/* Footer */}
-      <div className="flex flex-col gap-2 pt-2">
-        <Button onClick={handleContinue} disabled={!canContinue}>
-          Continuar
-        </Button>
-        {disabledHint && (
-          <p className="text-center text-xs text-muted-foreground">
-            {disabledHint}
-          </p>
-        )}
-      </div>
     </div>
   );
 }
 
-// ── Shared ref for form data between agendar steps ─────────────────────
-
-const agendarFormRef: { current: {
-  title: string;
-  category: ActivityCategory;
-  problemId: string | null;
-  branchId: string | null;
-  assigneeIds: string[];
-  dueDate: string;
-  description: string;
-} | null } = { current: null };
-
-function ConfirmRow({
+function ReviewRow({
   label,
+  editView,
   children,
 }: {
   label: string;
+  editView?: WizardView;
   children: React.ReactNode;
 }) {
+  const { setView } = useWizard();
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div className="group flex items-start justify-between gap-3">
       <span className="shrink-0 text-sm text-muted-foreground">{label}</span>
-      <span className="text-right text-sm font-medium">{children}</span>
+      <span className="flex min-w-0 items-center justify-end gap-1.5 text-right text-sm text-foreground">
+        {children}
+        {/* Slot fixo em TODAS as linhas — os valores alinham na mesma
+            borda mesmo quando a linha não tem lápis (ex.: Canal). */}
+        <span className="flex size-3.5 shrink-0 items-center justify-center">
+          {editView && (
+            <button
+              type="button"
+              aria-label={`Editar ${label}`}
+              onClick={() => setView(editView)}
+              className="cursor-pointer opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+            >
+              <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+            </button>
+          )}
+        </span>
+      </span>
     </div>
   );
 }
 
-// ── PA2: Agendar confirm ───────────────────────────────────────────────
+// ── Agendar · Revisão (FIX 6) ──────────────────────────────────────────
 
-function AgendarConfirmStep() {
-  const { channelId, channelName, channelCtx, setView } = useWizard();
-  const router = useRouter();
-  const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+function AgendarReviewStep() {
+  const { channelName, channelCtx, draft, submitError } = useWizard();
 
-  const form = agendarFormRef.current;
-  if (!form || !channelId) {
+  const category = draft.category;
+  const dueDate = draft.dueDate;
+  if (!draft.title.trim() || category === null || dueDate === null) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
-        <p className="text-muted-foreground">Erro: dados não encontrados.</p>
+        <p className="text-muted-foreground">Preencha os passos anteriores.</p>
       </div>
     );
   }
 
+  const TypeIcon = CATEGORY_ICONS[category];
   const branchName =
-    channelCtx?.branches.find((b) => b.id === form.branchId)?.name ?? null;
+    channelCtx?.branches.find((b) => b.id === draft.branchId)?.name ?? null;
   const problemName =
-    channelCtx?.problems.find((p) => p.id === form.problemId)?.title ?? null;
-  const assigneeNames = form.assigneeIds
+    channelCtx?.problems.find((p) => p.id === draft.problemId)?.title ?? null;
+  const assigneeNames = draft.assigneeIds
     .map((id) => channelCtx?.responsibles.find((r) => r.id === id)?.name)
     .filter(Boolean);
 
-  async function handleSubmit() {
-    if (!form || !channelId) return;
-    setSubmitting(true);
-    setError(null);
-    const result = await scheduleActivity({
-      channelId,
-      title: form.title,
-      category: form.category,
-      description: form.description || undefined,
-      problemId: form.problemId,
-      branchId: form.branchId,
-      assigneeIds: form.assigneeIds,
-      dueDate: form.dueDate,
-    });
-    setSubmitting(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    toast.success("Atividade agendada com sucesso!");
-    router.refresh();
-    setView("success");
-  }
-
   return (
-    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
-        <p className="text-base font-semibold leading-snug">{form.title}</p>
-        <Separator />
-        <ConfirmRow label="Canal">{channelName}</ConfirmRow>
-        <ConfirmRow label="Tipo">
-          <CategoryBadge category={form.category} />
-        </ConfirmRow>
-        {problemName && <ConfirmRow label="Meta">{problemName}</ConfirmRow>}
-        <ConfirmRow label="Local">{branchName ?? "Canal geral"}</ConfirmRow>
-        <ConfirmRow label="Responsáveis">
-          {assigneeNames.length > 0 ? assigneeNames.join(", ") : "Você"}
-        </ConfirmRow>
-        <ConfirmRow label="Prazo">
-          {format(new Date(form.dueDate + "T12:00:00"), "dd 'de' MMMM 'de' yyyy", {
-            locale: ptBR,
-          })}
-        </ConfirmRow>
-        {form.description && (
-          <>
-            <Separator />
-            <div>
-              <p className="text-xs text-muted-foreground">Descrição</p>
-              <p className="mt-1 text-sm leading-relaxed">{form.description}</p>
-            </div>
-          </>
-        )}
+    <div className="flex flex-col gap-5 p-6">
+      <StepIntro
+        question="Confirme o agendamento"
+        hint="Revise antes de criar. Dá pra editar qualquer item."
+      />
+
+      <div className="rounded-xl border border-border">
+        <div className="border-b border-border p-4">
+          <p className="text-base font-semibold leading-snug">{draft.title}</p>
+        </div>
+        <div className="flex flex-col gap-3 p-4">
+          <ReviewRow label="Canal">{channelName}</ReviewRow>
+          <ReviewRow label="Tipo" editView="agendar-1">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1">
+              <TypeIcon className="size-3.5 text-foreground/70" />
+              {CATEGORY_LABELS[category]}
+            </span>
+          </ReviewRow>
+          <ReviewRow label="Meta" editView="agendar-2">
+            {problemName ?? (
+              <span className="italic text-muted-foreground">Sem vínculo</span>
+            )}
+          </ReviewRow>
+          <ReviewRow label="Local" editView="agendar-2">
+            {branchName ?? "Canal geral"}
+          </ReviewRow>
+          <ReviewRow label="Responsáveis" editView="agendar-2">
+            {assigneeNames.length > 0 ? assigneeNames.join(", ") : "Você"}
+          </ReviewRow>
+          <ReviewRow label="Prazo" editView="agendar-3">
+            {format(
+              new Date(dueDate + "T12:00:00"),
+              "dd 'de' MMMM 'de' yyyy",
+              { locale: ptBR }
+            )}
+          </ReviewRow>
+          <ReviewRow label="Descrição" editView="agendar-3">
+            {draft.description ? (
+              <span className="leading-relaxed">{draft.description}</span>
+            ) : (
+              <span className="italic text-muted-foreground">
+                Sem descrição
+              </span>
+            )}
+          </ReviewRow>
+        </div>
       </div>
 
-      {error && (
+      {submitError && (
         <div
           className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
           role="alert"
         >
           <CircleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{error}</span>
+          <span>{submitError}</span>
         </div>
       )}
+    </div>
+  );
+}
 
-      <div className="flex gap-3 pt-2">
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => setView("agendar-form")}
-          disabled={submitting}
-        >
-          Voltar
-        </Button>
-        <Button
-          className="flex-1"
-          onClick={() => void handleSubmit()}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <>
-              <Spinner className="size-4" />
-              Agendando...
-            </>
-          ) : (
-            <>
-              <Calendar className="size-4" />
-              Agendar atividade
-            </>
-          )}
-        </Button>
+// ── Rodapé fixo do fluxo de agendar (FIX 2) ────────────────────────────
+
+function agendarStepValidation(
+  view: WizardView,
+  draft: AgendarDraft
+): { canContinue: boolean; hint: string | null } {
+  if (view === "agendar-1") {
+    const ok = draft.title.trim().length > 0 && draft.category !== null;
+    return {
+      canContinue: ok,
+      hint: ok ? null : "Preencha o título e escolha o tipo",
+    };
+  }
+  if (view === "agendar-3") {
+    const ok = draft.dueDate !== null;
+    return { canContinue: ok, hint: ok ? null : "Selecione o prazo" };
+  }
+  return { canContinue: true, hint: null };
+}
+
+function AgendarFooter() {
+  const { view, setView, draft, submitting, submitAgendar } = useWizard();
+  const idx = agendarStepIndex(view);
+  const isReview = view === "agendar-confirm";
+  const { canContinue, hint } = agendarStepValidation(view, draft);
+
+  return (
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+      <div>
+        {idx > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => setView(AGENDAR_STEPS[idx - 1].view)}
+            disabled={submitting}
+          >
+            Voltar
+          </Button>
+        )}
+      </div>
+      <div className="flex min-w-0 items-center gap-3">
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        {isReview ? (
+          <Button
+            onClick={() => void submitAgendar()}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <Spinner className="size-4" />
+                Agendando...
+              </>
+            ) : (
+              <>
+                <CalendarPlus className="size-4" />
+                Agendar atividade
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            disabled={!canContinue}
+            onClick={() => setView(AGENDAR_STEPS[idx + 1].view)}
+          >
+            Continuar
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -706,8 +916,25 @@ function AgendarConfirmStep() {
 
 // ── PA3: Registrar pick (sub-bifurcation) ──────────────────────────────
 
+/**
+ * Prazo na lista do registrar — regra de alarme único: quando o badge já
+ * diz "Atrasada", o texto do prazo fica neutro. Futuro: 0-7 dias âmbar.
+ */
+function pickDueClass(activity: WizardActivity): string {
+  if (activity.status === "atrasada" || !activity.dueDate) {
+    return "text-muted-foreground";
+  }
+  const days = differenceInCalendarDays(
+    parseISO(activity.dueDate),
+    new Date()
+  );
+  if (days <= 7) return "text-warning";
+  return "text-muted-foreground";
+}
+
 function RegistrarPickStep() {
-  const { channelCtx, loadingCtx, setView, setSelectedActivity } = useWizard();
+  const { channelCtx, loadingCtx, setView, setSelectedActivity, photoDrafts } =
+    useWizard();
   const [search, setSearch] = React.useState("");
 
   if (loadingCtx || !channelCtx) {
@@ -719,121 +946,143 @@ function RegistrarPickStep() {
   }
 
   const { openActivities } = channelCtx;
+  // Atrasadas primeiro, depois prazo mais próximo (padrão do app).
+  const sorted = [...openActivities].sort((a, b) => {
+    const rank = (x: WizardActivity) => (x.status === "atrasada" ? 0 : 1);
+    if (rank(a) !== rank(b)) return rank(a) - rank(b);
+    if (a.dueDate === b.dueDate) return a.title.localeCompare(b.title);
+    if (a.dueDate === null) return 1;
+    if (b.dueDate === null) return -1;
+    return a.dueDate < b.dueDate ? -1 : 1;
+  });
   const q = search.trim().toLowerCase();
   const filtered = q
-    ? openActivities.filter(
+    ? sorted.filter(
         (a) =>
           a.title.toLowerCase().includes(q) ||
           (a.branchName ?? "").toLowerCase().includes(q)
       )
-    : openActivities;
+    : sorted;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-      {/* CTA adhoc */}
-      <button
-        type="button"
-        onClick={() => setView("registrar-adhoc")}
-        className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-[#0063A7]/15 bg-[#0063A7]/5 p-4 text-left transition-colors hover:bg-[#0063A7]/10 active:bg-[#0063A7]/15 dark:border-[#0063A7]/25 dark:bg-[#0063A7]/10"
-      >
-        <PenLine className="size-5 shrink-0 text-[#0063A7]" />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">Registrar ação fora do plano</p>
-          <p className="text-xs text-muted-foreground">
-            Realizou algo que não estava planejado? Registre aqui.
-          </p>
-        </div>
-        <ChevronRight className="size-4 shrink-0 text-[#0063A7]" />
-      </button>
-
-      <div className="relative flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="shrink-0 text-xs text-muted-foreground">
-          ou selecione uma atividade planejada
-        </span>
-        <Separator className="flex-1" />
-      </div>
-
-      {/* Search */}
-      {openActivities.length > 3 && (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar atividade..."
-            className="h-10 pl-9"
-          />
-        </div>
-      )}
-
-      {/* Activity list */}
-      <div className="flex flex-col gap-2">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-6 text-center">
-            <SearchX className="size-8 text-muted-foreground" />
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+        {/* CTA adhoc — tracejado comunica "criar algo novo" */}
+        <button
+          type="button"
+          onClick={() => {
+            photoDrafts.reset();
+            setView("adhoc-1");
+          }}
+          className="flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-border-hover bg-subtle p-4 text-left transition-all hover:border-border-active hover:bg-muted"
+        >
+          <IconBox icon={PenLine} size="lg" iconClassName="size-4" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground">
+              Registrar ação fora do plano
+            </p>
             <p className="text-sm text-muted-foreground">
-              {q
-                ? "Nenhum resultado para essa busca."
-                : "Nenhuma atividade planejada aberta."}
+              Realizou algo que não estava planejado? Registre aqui.
             </p>
           </div>
-        ) : (
-          filtered.map((activity) => (
-            <button
-              key={activity.id}
-              type="button"
-              onClick={() => {
-                setSelectedActivity(activity);
-                setView("registrar-complete");
-              }}
-              className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-xs transition-colors hover:bg-muted/50 active:bg-muted"
-            >
-              <div className="min-w-0 flex-1 space-y-1">
-                <div className="flex items-center gap-2">
-                  <p className="line-clamp-1 text-sm font-medium leading-snug">
-                    {activity.title}
-                  </p>
-                  {activity.isMine && (
-                    <Badge
-                      variant="secondary"
-                      className="shrink-0 bg-primary/10 text-primary hover:bg-primary/10 text-xs"
-                    >
-                      minha
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={activity.status} />
-                  <span
-                    className={cn(
-                      "text-xs tabular-nums",
-                      activity.status === "atrasada"
-                        ? "font-medium text-red-600 dark:text-red-400"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {formatRelativeDue(activity.dueDate)}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-            </button>
-          ))
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+        </button>
+
+        <div className="relative flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          <span className="shrink-0 text-xs text-muted-foreground">
+            ou selecione uma atividade planejada
+          </span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        {/* Search */}
+        {openActivities.length > 5 && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar atividade..."
+              className="h-10 border-input bg-card pl-9"
+            />
+          </div>
         )}
+
+        {/* Activity list */}
+        <div className="flex flex-col gap-2">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-6 text-center">
+              <SearchX className="size-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                {q
+                  ? "Nenhum resultado para essa busca."
+                  : "Nenhuma atividade planejada aberta."}
+              </p>
+            </div>
+          ) : (
+            filtered.map((activity) => (
+              <button
+                key={activity.id}
+                type="button"
+                onClick={() => {
+                  photoDrafts.reset();
+                  setSelectedActivity(activity);
+                  setView("registrar-complete");
+                }}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-3.5 text-left transition-all hover:border-border-hover hover:bg-muted"
+              >
+                {activity.category ? (
+                  <CategoryIconBox category={activity.category} />
+                ) : (
+                  <IconBox icon={PenLine} size="md" />
+                )}
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="line-clamp-1 text-sm font-medium leading-snug">
+                      {activity.title}
+                    </p>
+                    {activity.isMine && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 text-xs text-muted-foreground"
+                      >
+                        <User className="size-3" />
+                        minha
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={activity.status} />
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        pickDueClass(activity)
+                      )}
+                    >
+                      {formatRelativeDue(activity.dueDate)}
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+            ))
+          )}
+        </div>
       </div>
-    </div>
+      <WizardFooter onBack={() => setView("channel")} />
+    </>
   );
 }
 
 // ── PA3 Step 3A: Complete planned activity ─────────────────────────────
 
 function RegistrarCompleteStep() {
-  const { selectedActivity, setView } = useWizard();
+  const { selectedActivity, setView, photoDrafts, setRegistrarResult } =
+    useWizard();
   const router = useRouter();
   const fileRef = React.useRef<HTMLInputElement>(null);
-  const { photos, rejected, addFiles, removePhoto, uploadAll } =
-    usePhotoDrafts();
+  const { photos, rejected, addFiles, removePhoto, uploadAll } = photoDrafts;
   const [description, setDescription] = React.useState("");
   const [nudgeOpen, setNudgeOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -848,6 +1097,7 @@ function RegistrarCompleteStep() {
   }
 
   const activity = selectedActivity;
+  const TypeIcon = activity.category ? CATEGORY_ICONS[activity.category] : null;
 
   async function submit() {
     setSubmitting(true);
@@ -864,7 +1114,14 @@ function RegistrarCompleteStep() {
         setError(result.error);
         return;
       }
-      toast.success("Atividade concluída!");
+      // Sem toast: a tela de sucesso já comunica (FIX 6).
+      setRegistrarResult({
+        id: result.activityId,
+        title: activity.title,
+        category: activity.category,
+        kind: "complete",
+        pendingLink: false,
+      });
       router.refresh();
       setView("success");
     } catch {
@@ -883,97 +1140,99 @@ function RegistrarCompleteStep() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
-      {/* Activity card (read-only) */}
-      <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
-        <p className="font-medium leading-snug">{activity.title}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={activity.status} />
-          {activity.category && (
-            <CategoryBadge category={activity.category} />
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-2 border-t pt-3 text-sm">
-          <div className="flex items-start gap-2">
-            <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-            <span>{activity.branchName ?? "Canal geral"}</span>
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+        {/* Resumo da atividade — contexto de leitura, cinza sutil (FIX 4) */}
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-subtle p-4">
+          <p className="font-medium leading-snug">{activity.title}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge status={activity.status} />
+            {activity.category && TypeIcon && (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+                <TypeIcon className="size-3.5 text-foreground/70" />
+                {CATEGORY_LABELS[activity.category]}
+              </span>
+            )}
           </div>
-          <div className="flex items-start gap-2">
-            <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-            <span
-              className={cn(
-                activity.status === "atrasada" &&
-                  "font-medium text-red-600 dark:text-red-400"
-              )}
-            >
-              {formatRelativeDue(activity.dueDate)}
-            </span>
-          </div>
-          {activity.problemTitle && (
-            <div className="col-span-2 flex items-start gap-2">
-              <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-              <span>{activity.problemTitle}</span>
+          <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 text-sm">
+            <div className="flex items-start gap-2">
+              <MapPin className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+              <span>{activity.branchName ?? "Canal geral"}</span>
             </div>
-          )}
+            <div className="flex items-start gap-2">
+              <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+              {/* Alarme único: o badge de status já comunica o atraso. */}
+              <span className="text-muted-foreground">
+                {formatRelativeDue(activity.dueDate)}
+              </span>
+            </div>
+            {activity.problemTitle && (
+              <div className="col-span-2 flex items-start gap-2">
+                <Target className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                <span>{activity.problemTitle}</span>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Relato */}
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium" htmlFor="wz-exec-desc">
+            O que aconteceu?{" "}
+            <span className="font-normal text-muted-foreground">
+              (opcional)
+            </span>
+          </label>
+          <Textarea
+            id="wz-exec-desc"
+            value={description}
+            maxLength={MAX_DESCRIPTION}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Adicione detalhes se a execução foi diferente do planejado."
+            className="min-h-20"
+          />
+          <span className="self-end text-xs text-muted-foreground tabular-nums">
+            {description.length}/{MAX_DESCRIPTION}
+          </span>
+        </fieldset>
+
+        {/* Fotos */}
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">
+            Fotos{" "}
+            <span className="font-normal text-muted-foreground">
+              (opcional)
+            </span>
+          </label>
+          <PhotoAttach
+            photos={photos.map((photo) => ({ id: photo.id, url: photo.url }))}
+            onAdd={addFiles}
+            onRemove={removePhoto}
+            inputRef={fileRef}
+          />
+          {rejected ? (
+            <p className="text-xs text-destructive" role="alert">
+              Alguma foto foi ignorada: use JPG, PNG ou WEBP até 10MB.
+            </p>
+          ) : null}
+        </fieldset>
+
+        {error && (
+          <div
+            className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+            role="alert"
+          >
+            <CircleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
       </div>
 
-      {/* Description */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium" htmlFor="wz-exec-desc">
-          O que aconteceu?{" "}
-          <span className="font-normal text-muted-foreground">(opcional)</span>
-        </label>
-        <Textarea
-          id="wz-exec-desc"
-          value={description}
-          maxLength={MAX_DESCRIPTION}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Adicione detalhes se a execução foi diferente do planejado."
-          className="min-h-20"
-        />
-        <span className="self-end text-xs text-muted-foreground tabular-nums">
-          {description.length}/{MAX_DESCRIPTION}
-        </span>
-      </fieldset>
-
-      {/* Photos */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium">
-          Fotos{" "}
-          <span className="font-normal text-muted-foreground">(opcional)</span>
-        </label>
-        <PhotoSection
-          photos={photos}
-          rejected={rejected}
-          onAdd={addFiles}
-          onRemove={removePhoto}
-          inputRef={fileRef}
-        />
-      </fieldset>
-
-      {error && (
-        <div
-          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          <CircleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {/* Submit */}
-      <div className="flex gap-3 pt-2">
+      <WizardFooter
+        onBack={() => setView("registrar-pick")}
+        backDisabled={submitting}
+      >
         <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => setView("registrar-pick")}
-          disabled={submitting}
-        >
-          Voltar
-        </Button>
-        <Button
-          className="flex-1"
           onClick={handleConclude}
           disabled={submitting}
         >
@@ -989,7 +1248,7 @@ function RegistrarCompleteStep() {
             </>
           )}
         </Button>
-      </div>
+      </WizardFooter>
 
       <PhotoNudgeDrawer
         open={nudgeOpen}
@@ -997,30 +1256,73 @@ function RegistrarCompleteStep() {
         onAddPhoto={() => fileRef.current?.click()}
         onConfirm={() => void submit()}
       />
-    </div>
+    </>
   );
 }
 
-// ── PA3 Step 3B: Adhoc (ação fora do plano) ────────────────────────────
+// ── Registrar fora do plano · 3 passos (FIX 3) ─────────────────────────
 
-function RegistrarAdhocStep() {
-  const { channelId, channelCtx, setView } = useWizard();
-  const router = useRouter();
-  const fileRef = React.useRef<HTMLInputElement>(null);
-  const { photos, rejected, addFiles, removePhoto, uploadAll } =
-    usePhotoDrafts();
+function AdhocStep1() {
+  const { adhoc, updateAdhoc, setView } = useWizard();
+  const canContinue =
+    adhoc.description.trim().length > 0 && adhoc.category !== null;
 
-  const [description, setDescription] = React.useState("");
-  const [category, setCategory] = React.useState<ActivityCategory | null>(null);
-  const [branchId, setBranchId] = React.useState<string | null>(null);
-  const [problemChoice, setProblemChoice] = React.useState<
-    string | "later" | null
-  >(null);
-  const [nudgeOpen, setNudgeOpen] = React.useState(false);
-  const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  return (
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
+        <StepIntro
+          question="O que foi feito?"
+          hint="Descreva a ação e escolha o tipo."
+        />
 
-  if (!channelCtx || !channelId) {
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium" htmlFor="wz-adhoc-desc">
+            O que foi feito? <span className="text-destructive">*</span>
+          </label>
+          <Textarea
+            id="wz-adhoc-desc"
+            autoFocus
+            value={adhoc.description}
+            maxLength={MAX_DESCRIPTION}
+            onChange={(e) => updateAdhoc({ description: e.target.value })}
+            placeholder="Ex: Dia de campo sobre biológicos com 18 produtores"
+            className="min-h-20 text-base"
+          />
+          <span className="self-end text-xs text-muted-foreground tabular-nums">
+            {adhoc.description.length}/{MAX_DESCRIPTION}
+          </span>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">
+            Tipo de ação <span className="text-destructive">*</span>
+          </label>
+          <CategoryGrid
+            value={adhoc.category}
+            onChange={(category) => updateAdhoc({ category })}
+          />
+        </fieldset>
+      </div>
+
+      <WizardFooter
+        onBack={() => setView("registrar-pick")}
+        hint={canContinue ? null : "Descreva a ação e escolha o tipo"}
+      >
+        <Button
+          disabled={!canContinue}
+          onClick={() => setView("adhoc-2")}
+        >
+          Continuar
+        </Button>
+      </WizardFooter>
+    </>
+  );
+}
+
+function AdhocStep2() {
+  const { channelCtx, loadingCtx, adhoc, updateAdhoc, setView } = useWizard();
+
+  if (loadingCtx || !channelCtx) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <Spinner className="size-6" />
@@ -1030,32 +1332,148 @@ function RegistrarAdhocStep() {
 
   const { branches, problems } = channelCtx;
   const hasProblems = problems.length > 0;
-  const problemOk = !hasProblems || problemChoice !== null;
-  const canSubmit =
-    description.trim().length > 0 && category !== null && problemOk;
+  const problemOk = !hasProblems || adhoc.problemChoice !== null;
 
-  const disabledHint = !description.trim()
-    ? "Descreva o que foi feito."
-    : !category
-      ? "Escolha o tipo de ação."
-      : !problemOk
-        ? 'Escolha uma meta ou "Vincular depois".'
-        : null;
+  return (
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+        <StepIntro
+          question="Onde isso aconteceu?"
+          hint="Defina o local e vincule a uma meta do plano."
+        />
+
+        {branches.length > 0 && (
+          <fieldset className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Local</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: null as string | null, name: "Canal geral" },
+                ...branches,
+              ].map((b) => {
+                const active = adhoc.branchId === b.id;
+                return (
+                  <button
+                    key={b.id ?? "geral"}
+                    type="button"
+                    onClick={() =>
+                      updateAdhoc({ branchId: b.id, problemChoice: null })
+                    }
+                    aria-pressed={active}
+                    className={cn(
+                      "h-9 cursor-pointer rounded-full border px-3 text-sm font-medium transition-colors",
+                      active
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-card text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {b.name}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+        )}
+
+        {hasProblems && (
+          <fieldset className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">
+              Meta do plano <span className="text-destructive">*</span>
+            </label>
+            <div className="flex flex-col gap-1">
+              {problems.map((p) => {
+                const active = adhoc.problemChoice === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => updateAdhoc({ problemChoice: p.id })}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                      active
+                        ? "bg-muted"
+                        : "hover:bg-subtle"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
+                        active
+                          ? "border-foreground bg-foreground"
+                          : "border-muted-foreground/50"
+                      )}
+                    >
+                      {active && (
+                        <span className="size-1.5 rounded-full bg-card" />
+                      )}
+                    </span>
+                    <span className="leading-snug">{p.title}</span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => updateAdhoc({ problemChoice: "later" })}
+                className={cn(
+                  "mt-1 flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-border-hover p-3 text-left text-sm transition-colors",
+                  adhoc.problemChoice === "later"
+                    ? "border-foreground/60 bg-muted"
+                    : "text-muted-foreground hover:bg-subtle"
+                )}
+              >
+                <Link2 className="size-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="font-medium leading-snug">Vincular depois</p>
+                  <p className="text-xs italic text-muted-foreground">
+                    Fica como pendência.
+                  </p>
+                </div>
+              </button>
+            </div>
+          </fieldset>
+        )}
+      </div>
+
+      <WizardFooter
+        onBack={() => setView("adhoc-1")}
+        hint={problemOk ? null : 'Escolha uma meta ou "Vincular depois"'}
+      >
+        <Button
+          disabled={!problemOk}
+          onClick={() => setView("adhoc-3")}
+        >
+          Continuar
+        </Button>
+      </WizardFooter>
+    </>
+  );
+}
+
+function AdhocStep3() {
+  const { channelId, adhoc, photoDrafts, setView, setRegistrarResult } =
+    useWizard();
+  const router = useRouter();
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const { photos, rejected, addFiles, removePhoto, uploadAll } = photoDrafts;
+  const [nudgeOpen, setNudgeOpen] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   async function submit() {
-    if (!canSubmit || !category || !channelId) return;
+    if (!channelId || !adhoc.category || !adhoc.description.trim()) return;
     setSubmitting(true);
     setError(null);
     try {
       const paths = await uploadAll();
       const result = await registerExecution({
-        ...(branchId
-          ? { adhocBranchId: branchId }
+        ...(adhoc.branchId
+          ? { adhocBranchId: adhoc.branchId }
           : { adhocChannelId: channelId }),
-        description,
-        category,
+        description: adhoc.description,
+        category: adhoc.category,
         problemId:
-          problemChoice && problemChoice !== "later" ? problemChoice : null,
+          adhoc.problemChoice && adhoc.problemChoice !== "later"
+            ? adhoc.problemChoice
+            : null,
         markCompleted: true,
         photoPaths: paths,
       });
@@ -1063,7 +1481,14 @@ function RegistrarAdhocStep() {
         setError(result.error);
         return;
       }
-      toast.success("Ação registrada com sucesso!");
+      // Sem toast: a tela de sucesso já comunica (FIX 6).
+      setRegistrarResult({
+        id: result.activityId,
+        title: adhoc.description.trim(),
+        category: adhoc.category,
+        kind: "adhoc",
+        pendingLink: adhoc.problemChoice === "later",
+      });
       router.refresh();
       setView("success");
     } catch {
@@ -1082,195 +1507,40 @@ function RegistrarAdhocStep() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
-      {/* Description */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium" htmlFor="wz-adhoc-desc">
-          O que foi feito? <span className="text-destructive">*</span>
-        </label>
-        <Textarea
-          id="wz-adhoc-desc"
-          value={description}
-          maxLength={MAX_DESCRIPTION}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Ex: Dia de campo sobre biológicos com 18 produtores"
-          className="min-h-20 text-base"
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
+        <StepIntro
+          question="Alguma foto?"
+          hint="Opcional, mas ajuda a documentar."
         />
-        <span className="self-end text-xs text-muted-foreground tabular-nums">
-          {description.length}/{MAX_DESCRIPTION}
-        </span>
-      </fieldset>
 
-      {/* Category */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium">
-          Tipo de ação <span className="text-destructive">*</span>
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {ACTIVITY_CATEGORIES.map((item) => {
-            const Icon = CATEGORY_ICONS[item];
-            const active = category === item;
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setCategory(item)}
-                aria-pressed={active}
-                className={cn(
-                  "flex min-h-14 items-center gap-2.5 rounded-xl border p-3 text-left text-sm font-medium transition-colors",
-                  active
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "bg-card text-foreground hover:bg-muted"
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "size-5 shrink-0",
-                    active ? "text-primary" : "text-muted-foreground"
-                  )}
-                />
-                <span className="leading-tight text-xs">
-                  {CATEGORY_LABELS[item]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      {/* Branch */}
-      {branches.length > 0 && (
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">Local</label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setBranchId(null);
-                setProblemChoice(null);
-              }}
-              className={cn(
-                "h-9 rounded-full border px-3 text-sm font-medium transition-colors",
-                branchId === null
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted/50"
-              )}
-            >
-              Canal geral
-            </button>
-            {branches.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => {
-                  setBranchId(b.id);
-                  setProblemChoice(null);
-                }}
-                className={cn(
-                  "h-9 rounded-full border px-3 text-sm font-medium transition-colors",
-                  branchId === b.id
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {b.name}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-      )}
-
-      {/* Problem */}
-      {hasProblems && (
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">
-            Meta do plano <span className="text-destructive">*</span>
-          </label>
-          <div className="flex flex-col gap-1.5">
-            {problems.map((p) => {
-              const active = problemChoice === p.id;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setProblemChoice(p.id)}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg border p-3 text-left text-sm transition-colors",
-                    active
-                      ? "border-primary bg-primary/10"
-                      : "bg-card hover:bg-muted/60"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-                      active
-                        ? "border-primary bg-primary"
-                        : "border-muted-foreground/50"
-                    )}
-                  >
-                    {active && (
-                      <span className="size-1.5 rounded-full bg-primary-foreground" />
-                    )}
-                  </span>
-                  <span className={cn("leading-snug", active && "text-primary")}>
-                    {p.title}
-                  </span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() => setProblemChoice("later")}
-              className={cn(
-                "flex items-center gap-2.5 rounded-lg border-2 border-dashed p-3 text-left text-sm transition-colors",
-                problemChoice === "later"
-                  ? "border-primary/60 bg-primary/5"
-                  : "text-muted-foreground hover:bg-muted/50"
-              )}
-            >
-              <Link2 className="size-4 shrink-0" />
-              <div>
-                <p className="font-medium leading-snug">Vincular depois</p>
-                <p className="text-xs text-muted-foreground">
-                  Fica como pendência.
-                </p>
-              </div>
-            </button>
-          </div>
-        </fieldset>
-      )}
-
-      {/* Photos */}
-      <fieldset className="flex flex-col gap-1.5">
-        <label className="text-sm font-medium">
-          Fotos{" "}
-          <span className="font-normal text-muted-foreground">(opcional)</span>
-        </label>
-        <PhotoSection
-          photos={photos}
-          rejected={rejected}
+        <PhotoAttach
+          photos={photos.map((photo) => ({ id: photo.id, url: photo.url }))}
           onAdd={addFiles}
           onRemove={removePhoto}
           inputRef={fileRef}
-        />
-      </fieldset>
+          />
+          {rejected ? (
+            <p className="text-xs text-destructive" role="alert">
+              Alguma foto foi ignorada: use JPG, PNG ou WEBP até 10MB.
+            </p>
+          ) : null}
 
-      {error && (
-        <div
-          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          <CircleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+        {error && (
+          <div
+            className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+            role="alert"
+          >
+            <CircleAlert className="mt-0.5 size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
 
-      {/* Submit */}
-      <div className="flex flex-col gap-2 pt-2">
+      <WizardFooter onBack={() => setView("adhoc-2")} backDisabled={submitting}>
         <Button
           onClick={handleRegister}
-          disabled={submitting || !canSubmit}
+          disabled={submitting}
         >
           {submitting ? (
             <>
@@ -1279,26 +1549,12 @@ function RegistrarAdhocStep() {
             </>
           ) : (
             <>
-              <CheckCircle2 className="size-4" />
-              Registrar ação concluída
+              <Check className="size-4" />
+              Registrar execução
             </>
           )}
         </Button>
-        {disabledHint && (
-          <p className="text-center text-xs text-muted-foreground">
-            {disabledHint}
-          </p>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          onClick={() => setView("registrar-pick")}
-          disabled={submitting}
-        >
-          Voltar
-        </Button>
-      </div>
+      </WizardFooter>
 
       <PhotoNudgeDrawer
         open={nudgeOpen}
@@ -1306,53 +1562,156 @@ function RegistrarAdhocStep() {
         onAddPhoto={() => fileRef.current?.click()}
         onConfirm={() => void submit()}
       />
-    </div>
+    </>
   );
 }
 
-// ── Success screen ─────────────────────────────────────────────────────
+// ── Success screens ────────────────────────────────────────────────────
 
-function WizardSuccess() {
-  const { mode, reset, close } = useWizard();
+/** Sucesso do registrar (FIX 6): mesmo padrão do agendar + aviso de meta pendente. */
+function RegistrarSuccess() {
+  const { channelName, registrarResult, close, startAnotherRegistrar } =
+    useWizard();
+  const router = useRouter();
+
+  function viewActivity() {
+    if (!registrarResult) return;
+    close();
+    router.push(`/atividades/${registrarResult.id}`);
+  }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-      <div className="flex size-20 items-center justify-center rounded-full bg-[#96CB40]/15 duration-500 animate-in zoom-in-50 fade-in">
-        <div className="flex size-14 items-center justify-center rounded-full bg-[#96CB40] delay-150 duration-500 animate-in zoom-in-50 fill-mode-backwards">
-          <Check className="size-8 text-white" strokeWidth={3} />
+    <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6">
+      <div className="flex w-full max-w-sm flex-col items-center text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-success-bg duration-300 animate-in zoom-in-50">
+          <Check
+            className="size-7 text-success"
+            strokeWidth={2.5}
+          />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold">
+          {registrarResult?.kind === "complete"
+            ? "Atividade concluída"
+            : "Execução registrada"}
+        </h3>
+        {channelName && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Registrada em {channelName}.
+          </p>
+        )}
+        {registrarResult && (
+          <>
+            <button
+              type="button"
+              onClick={viewActivity}
+              className="group mt-5 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border p-3.5 text-left transition-all hover:border-border-hover"
+            >
+              {registrarResult.category ? (
+                <CategoryIconBox category={registrarResult.category} />
+              ) : (
+                <IconBox icon={PenLine} size="md" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {registrarResult.title}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(), "dd 'de' MMMM", { locale: ptBR })}
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </button>
+            {registrarResult.pendingLink && (
+              <div className="mt-2 flex w-full items-start gap-2 rounded-lg bg-warning-bg p-2.5 text-left text-xs text-warning-fg">
+                <Link2 className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Meta pendente de vínculo. Você pode vincular pelo painel da
+                  atividade.
+                </span>
+              </div>
+            )}
+          </>
+        )}
+        <div className="mt-5 grid w-full grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            className="h-10"
+            onClick={startAnotherRegistrar}
+          >
+            Registrar outra
+          </Button>
+          <Button
+            className="h-10"
+            onClick={viewActivity}
+          >
+            Ver atividade
+          </Button>
         </div>
       </div>
-      <div className="text-center delay-200 duration-500 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards">
-        <h3 className="text-lg font-semibold">
-          {mode === "agendar"
-            ? "Atividade agendada!"
-            : "Execução registrada!"}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {mode === "agendar"
-            ? "Sua atividade foi adicionada ao plano."
-            : "Sua ação foi registrada com sucesso."}
-        </p>
-      </div>
-      <div className="flex gap-3 delay-300 duration-500 animate-in fade-in fill-mode-backwards">
-        <Button variant="outline" onClick={reset}>
-          {mode === "agendar" ? "Agendar outra" : "Registrar outra"}
-        </Button>
-        <Button onClick={close}>Fechar</Button>
-      </div>
     </div>
   );
 }
 
-// ── Progress bar ───────────────────────────────────────────────────────
+/** Sucesso do agendar (FIX 7): composição compacta, ações lado a lado. */
+function AgendarSuccess() {
+  const { channelName, created, close, startAnotherAgendar } = useWizard();
+  const router = useRouter();
 
-function StepProgress({ value }: { value: number }) {
+  function viewActivity() {
+    if (!created) return;
+    close();
+    router.push(`/atividades/${created.id}`);
+  }
+
   return (
-    <div className="h-1 w-full bg-muted">
-      <div
-        className="h-full bg-primary transition-all duration-300"
-        style={{ width: `${Math.round(value * 100)}%` }}
-      />
+    <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6">
+      <div className="flex w-full max-w-sm flex-col items-center text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-success-bg duration-300 animate-in zoom-in-50">
+          <Check
+            className="size-7 text-success"
+            strokeWidth={2.5}
+          />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold">Atividade agendada</h3>
+        {channelName && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Adicionada ao plano de {channelName}.
+          </p>
+        )}
+        {created && (
+          <button
+            type="button"
+            onClick={viewActivity}
+            className="group mt-5 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border p-3.5 text-left transition-all hover:border-border-hover"
+          >
+            <CategoryIconBox category={created.category} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">
+                {created.title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {formatRelativeDue(created.dueDate)}
+              </p>
+            </div>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          </button>
+        )}
+        <div className="mt-5 grid w-full grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            className="h-10"
+            onClick={startAnotherAgendar}
+          >
+            Agendar outra
+          </Button>
+          <Button
+            className="h-10"
+            onClick={viewActivity}
+          >
+            Ver atividade
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1370,17 +1729,18 @@ export function ActionWizard({
   defaultMode,
 }: ActionWizardProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const router = useRouter();
 
   const resolveInitialView = React.useCallback((): WizardView => {
     if (defaultMode && defaultChannelId) {
-      if (defaultMode === "agendar") return "agendar-form";
+      if (defaultMode === "agendar") return "agendar-1";
       if (defaultMode === "registrar") {
         return defaultActivityId ? "registrar-complete" : "registrar-pick";
       }
     }
     if (defaultMode && !defaultChannelId) {
       return channels.length <= 1 ? (
-        defaultMode === "agendar" ? "agendar-form" : "registrar-pick"
+        defaultMode === "agendar" ? "agendar-1" : "registrar-pick"
       ) : "channel";
     }
     return "bifurcation";
@@ -1406,8 +1766,51 @@ export function ActionWizard({
   const [selectedActivity, setSelectedActivity] = React.useState<WizardActivity | null>(null);
   const [showConfirm, setShowConfirm] = React.useState(false);
 
-  const hasDirtyData =
-    view !== "bifurcation" && view !== "channel" && view !== "success";
+  // Rascunho do agendar — vive aqui pra persistir entre os passos.
+  const [draft, setDraft] = React.useState<AgendarDraft>(() =>
+    emptyDraft(defaultDate ?? null)
+  );
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [created, setCreated] = React.useState<CreatedActivity | null>(null);
+
+  const updateDraft = React.useCallback((patch: Partial<AgendarDraft>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  // Registro fora do plano — draft + fotos compartilhadas entre os passos.
+  const [adhoc, setAdhoc] = React.useState<AdhocDraft>(EMPTY_ADHOC);
+  const [registrarResult, setRegistrarResult] =
+    React.useState<RegistrarResult | null>(null);
+  const photoDrafts = usePhotoDrafts();
+
+  const updateAdhoc = React.useCallback((patch: Partial<AdhocDraft>) => {
+    setAdhoc((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const isAgendarStepView = agendarStepIndex(view) >= 0;
+  const isAdhocStepView = adhocStepIndex(view) >= 0;
+
+  // Só pergunta antes de fechar se há algo digitado de fato.
+  const draftDirty =
+    draft.title.trim() !== "" ||
+    draft.category !== null ||
+    draft.problemId !== null ||
+    draft.branchId !== null ||
+    draft.assigneeIds.length > 0 ||
+    draft.description !== "" ||
+    draft.dueDate !== (defaultDate ?? null);
+  const adhocDirty =
+    adhoc.description.trim() !== "" ||
+    adhoc.category !== null ||
+    adhoc.branchId !== null ||
+    adhoc.problemChoice !== null ||
+    photoDrafts.photos.length > 0;
+  const hasDirtyData = isAgendarStepView
+    ? draftDirty
+    : isAdhocStepView
+      ? adhocDirty
+      : view === "registrar-complete";
 
   React.useEffect(() => {
     if (!channelId) return;
@@ -1429,8 +1832,68 @@ export function ActionWizard({
   function handleSetChannel(id: string, name: string) {
     setChannelId(id);
     setChannelName(name);
-    if (mode === "agendar") setView("agendar-form");
+    if (mode === "agendar") setView("agendar-1");
     else if (mode === "registrar") setView("registrar-pick");
+  }
+
+  async function submitAgendar() {
+    if (
+      !channelId ||
+      !draft.title.trim() ||
+      draft.category === null ||
+      draft.dueDate === null
+    ) {
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    const result = await scheduleActivity({
+      channelId,
+      title: draft.title,
+      category: draft.category,
+      description: draft.description || undefined,
+      problemId: draft.problemId,
+      branchId: draft.branchId,
+      assigneeIds: draft.assigneeIds,
+      dueDate: draft.dueDate,
+    });
+    setSubmitting(false);
+    if (!result.ok) {
+      setSubmitError(result.error);
+      return;
+    }
+    // Sem toast aqui: a tela de sucesso já comunica (FIX 7).
+    setCreated({
+      id: result.activityId,
+      title: draft.title.trim(),
+      category: draft.category,
+      dueDate: draft.dueDate,
+    });
+    // Avisa superfícies abertas (ex.: calendário) pra destacar a recém-criada.
+    window.dispatchEvent(
+      new CustomEvent("stoller:activity-created", {
+        detail: { id: result.activityId },
+      })
+    );
+    router.refresh();
+    setView("success");
+  }
+
+  function startAnotherAgendar() {
+    setDraft(emptyDraft(defaultDate ?? null));
+    setCreated(null);
+    setSubmitError(null);
+    setMode("agendar");
+    setView("agendar-1");
+  }
+
+  function startAnotherRegistrar() {
+    setAdhoc(EMPTY_ADHOC);
+    setRegistrarResult(null);
+    setSelectedActivity(null);
+    photoDrafts.reset();
+    setMode("registrar");
+    setView("registrar-pick");
   }
 
   function handleReset() {
@@ -1446,7 +1909,13 @@ export function ActionWizard({
     });
     setSelectedActivity(null);
     setView(resolveInitialView());
-    agendarFormRef.current = null;
+    setDraft(emptyDraft(defaultDate ?? null));
+    setCreated(null);
+    setSubmitError(null);
+    setSubmitting(false);
+    setAdhoc(EMPTY_ADHOC);
+    setRegistrarResult(null);
+    photoDrafts.reset();
   }
 
   function handleClose() {
@@ -1476,8 +1945,20 @@ export function ActionWizard({
     channelName,
     channelCtx: resolvedChannelCtx,
     loadingCtx,
-    date: defaultDate ?? null,
     selectedActivity,
+    draft,
+    updateDraft,
+    submitting,
+    submitError,
+    submitAgendar,
+    created,
+    startAnotherAgendar,
+    adhoc,
+    updateAdhoc,
+    photoDrafts,
+    registrarResult,
+    setRegistrarResult,
+    startAnotherRegistrar,
     setView,
     setMode,
     setChannel: handleSetChannel,
@@ -1487,74 +1968,140 @@ export function ActionWizard({
   };
 
   const isSuccess = view === "success";
-  const progress = viewProgress(view, mode);
+  // Bifurcação no desktop = modal centrado compacto (FIX 1), não painel
+  // lateral. Ambos os containers ficam montados (cada um com o próprio
+  // open derivado) — trocar de container com open=true não renderiza.
+  const bifurcationAsDialog = isDesktop && view === "bifurcation";
+  const dialogOpen = open && bifurcationAsDialog;
+  const drawerOpen = open && !bifurcationAsDialog;
 
   return (
     <WizardContext.Provider value={ctx}>
-      <Drawer
-        open={open}
+      <Dialog
+        open={dialogOpen}
         onOpenChange={(v) => {
-          if (!v) tryClose();
-          else onOpenChange(true);
+          if (!v && bifurcationAsDialog) tryClose();
+        }}
+      >
+        <DialogContent className="gap-4 sm:max-w-md">
+          <DialogTitle className="text-base font-semibold">
+            O que você quer fazer?
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Escolha entre agendar uma atividade ou registrar uma execução
+          </DialogDescription>
+          <BifurcationOptions />
+        </DialogContent>
+      </Dialog>
+      <Drawer
+        open={drawerOpen}
+        onOpenChange={(v) => {
+          if (!v && !bifurcationAsDialog) tryClose();
         }}
         modal
         swipeDirection={isDesktop ? "right" : "down"}
       >
-        <DrawerContent
-          className={cn(
-            isDesktop &&
-              "data-[swipe-axis=x]:sm:[--drawer-content-width:32rem]"
-          )}
-        >
-          <DrawerTitle className="sr-only">
-            {mode === "agendar"
-              ? "Agendar atividade"
-              : mode === "registrar"
-                ? "Registrar execução"
-                : "Nova atividade"}
-          </DrawerTitle>
-          <DrawerDescription className="sr-only">
-            Wizard para criar ou registrar atividades
-          </DrawerDescription>
+          <DrawerContent
+            className={cn(
+              isDesktop &&
+                "data-[swipe-axis=x]:sm:[--drawer-content-width:32rem]"
+            )}
+          >
+            <DrawerTitle className="sr-only">
+              {mode === "agendar"
+                ? "Agendar atividade"
+                : mode === "registrar"
+                  ? "Registrar execução"
+                  : "Nova atividade"}
+            </DrawerTitle>
+            <DrawerDescription className="sr-only">
+              Wizard para criar ou registrar atividades
+            </DrawerDescription>
 
-          {!isSuccess && <StepProgress value={progress} />}
-
-          {!isSuccess && (
-            <div className="flex items-center justify-between border-b px-6 py-4">
-              <div className="min-w-0">
-                <p className="font-medium">{viewTitle(view)}</p>
-                {channelName &&
-                  view !== "channel" &&
-                  view !== "bifurcation" && (
-                    <p className="truncate text-sm text-muted-foreground">
-                      {channelName}
-                    </p>
-                  )}
-              </div>
+            {isSuccess && (
               <Button
                 variant="ghost"
                 size="icon-sm"
                 onClick={tryClose}
-                className="shrink-0"
+                className="absolute right-4 top-4 z-10 rounded-full bg-secondary"
               >
                 <X className="size-4" />
                 <span className="sr-only">Fechar</span>
               </Button>
-            </div>
-          )}
+            )}
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            {view === "bifurcation" && <BifurcationStep />}
-            {view === "channel" && <ChannelPickerStep channels={channels} />}
-            {view === "agendar-form" && <AgendarFormStep />}
-            {view === "agendar-confirm" && <AgendarConfirmStep />}
-            {view === "registrar-pick" && <RegistrarPickStep />}
-            {view === "registrar-complete" && <RegistrarCompleteStep />}
-            {view === "registrar-adhoc" && <RegistrarAdhocStep />}
-            {view === "success" && <WizardSuccess />}
-          </div>
-        </DrawerContent>
-      </Drawer>
+            {!isSuccess && (
+              <div className="shrink-0 border-b border-border">
+                <div className="flex items-center justify-between px-6 py-4">
+                  <div className="min-w-0">
+                    <p className="text-base font-semibold">{viewTitle(view)}</p>
+                    {channelName &&
+                      view !== "channel" &&
+                      view !== "bifurcation" && (
+                        <p className="truncate text-sm text-muted-foreground">
+                          {channelName}
+                        </p>
+                      )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={tryClose}
+                    className="shrink-0"
+                  >
+                    <X className="size-4" />
+                    <span className="sr-only">Fechar</span>
+                  </Button>
+                </div>
+                {isAgendarStepView && (
+                  <WizardStepper
+                    steps={AGENDAR_STEPS.map((s) => s.label)}
+                    current={agendarStepIndex(view)}
+                  />
+                )}
+                {isAdhocStepView && (
+                  <WizardStepper
+                    steps={ADHOC_STEPS.map((s) => s.label)}
+                    current={adhocStepIndex(view)}
+                  />
+                )}
+              </div>
+            )}
+
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col",
+                // Telas com rodapé próprio gerenciam o próprio scroll.
+                view === "channel" ||
+                  view === "registrar-pick" ||
+                  view === "registrar-complete" ||
+                  isAdhocStepView
+                  ? "overflow-hidden"
+                  : "overflow-y-auto"
+              )}
+            >
+              {view === "bifurcation" && <BifurcationStep />}
+              {view === "channel" && <ChannelPickerStep channels={channels} />}
+              {view === "agendar-1" && <AgendarStep1 />}
+              {view === "agendar-2" && <AgendarStep2 />}
+              {view === "agendar-3" && <AgendarStep3 />}
+              {view === "agendar-confirm" && <AgendarReviewStep />}
+              {view === "registrar-pick" && <RegistrarPickStep />}
+              {view === "registrar-complete" && <RegistrarCompleteStep />}
+              {view === "adhoc-1" && <AdhocStep1 />}
+              {view === "adhoc-2" && <AdhocStep2 />}
+              {view === "adhoc-3" && <AdhocStep3 />}
+              {view === "success" &&
+                (mode === "agendar" ? (
+                  <AgendarSuccess />
+                ) : (
+                  <RegistrarSuccess />
+                ))}
+            </div>
+
+            {isAgendarStepView && <AgendarFooter />}
+          </DrawerContent>
+        </Drawer>
 
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
         <AlertDialogContent>

@@ -21,7 +21,7 @@ import {
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
 import { CategoryBadge } from "@/components/app/category-badge";
-import { StatusBadge, STATUS_LABELS } from "@/components/app/status-badge";
+import { StatusBadge, STATUS_LABELS } from "@/components/shared/status-badge";
 import {
   Avatar,
   AvatarFallback,
@@ -451,7 +451,7 @@ export default async function AtividadePage({
                   const Icon = eventIcon(event.type, event.description);
                   return (
                     <li key={event.id} className="relative flex gap-3 pl-0">
-                      <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
+                      <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-card">
                         <Icon className="size-3 text-muted-foreground" />
                       </span>
                       <div className="min-w-0 space-y-0.5">
@@ -484,7 +484,7 @@ export default async function AtividadePage({
                 })}
                 {!hasCreationEvent ? (
                   <li className="relative flex gap-3">
-                    <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
+                    <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-card">
                       <Plus className="size-3 text-muted-foreground" />
                     </span>
                     <div className="space-y-0.5">
@@ -515,7 +515,7 @@ export default async function AtividadePage({
 
       {/* Botão Registrar sticky no rodapé apenas no mobile e se atividade aberta */}
       {isOpen && canRegister ? (
-        <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:-mx-8 lg:hidden">
+        <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-card/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-card/85 md:-mx-8 lg:hidden">
           <NewActivityButton
             mode="registrar"
             label="Registrar"

@@ -52,6 +52,7 @@ import type {
   BranchPlanInfo,
   ChannelOption,
 } from "@/lib/db/execution";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { cn } from "@/lib/utils";
 
 import {
@@ -61,13 +62,6 @@ import {
   SuccessScreen,
   usePhotoDrafts,
 } from "./register-shared";
-
-const CATEGORY_ICONS: Record<ActivityCategory, LucideIcon> = {
-  reuniao_gerente: Presentation,
-  treinamento: GraduationCap,
-  rodada_canal: Route,
-  geracao_demanda: Megaphone,
-};
 
 type ProblemChoice = string | "later" | null;
 
@@ -486,7 +480,7 @@ export function AdhocForm({
                         type="button"
                         onClick={() => removePhoto(photo.id)}
                         aria-label="Remover foto"
-                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80"
+                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-foreground/60 text-white active:bg-foreground/80"
                       >
                         <X className="size-4" />
                       </button>
@@ -586,7 +580,7 @@ export function AdhocForm({
       </div>
 
       {/* Botão sticky no rodapé mobile */}
-      <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:-mx-8 lg:hidden">
+      <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-card/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-card/85 md:-mx-8 lg:hidden">
         <Button
           size="lg"
           className="h-12 w-full text-base disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"

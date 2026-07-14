@@ -26,7 +26,7 @@ import {
   StatusBadge,
   STATUS_LABELS,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import { NAV_BY_ROLE, ROLE_LABELS, type Role } from "@/lib/auth/nav";
 import { searchGlobal } from "@/lib/actions/search";
 import type { GlobalSearchResults } from "@/lib/db/search";
@@ -540,9 +540,9 @@ export function GlobalSearch({
                         go("/minhas-atividades?status=atrasadas")
                       }
                     >
-                      <CircleAlert className="text-amber-600 dark:text-amber-400" />
+                      <CircleAlert className="text-warning" />
                       Atividades atrasadas
-                      <span className="ml-1.5 text-xs font-medium text-amber-600 tabular-nums dark:text-amber-400">
+                      <span className="ml-1.5 text-xs font-medium text-warning tabular-nums">
                         {overdueCount}
                       </span>
                     </CommandItem>

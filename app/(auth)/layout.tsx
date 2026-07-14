@@ -36,7 +36,7 @@ export default function AuthLayout({
           className="object-cover"
         />
         {/* Overlay sutil com o azul Corteva + frase de marca */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0063A7]/70 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-accent-brand/70 via-transparent to-transparent" />
         <div className="absolute bottom-8 left-8 right-8 text-white">
           <p className="text-lg font-semibold tracking-tight">
             Planejamento e execução comercial

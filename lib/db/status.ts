@@ -1,4 +1,4 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 
 /**
  * FONTE ÚNICA DO STATUS EXIBIDO

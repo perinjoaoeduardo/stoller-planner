@@ -3,14 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 
-import { Camera, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
+import {
+  ActivityTable,
+  type ActivityTableColumn,
+} from "@/components/shared/activity-table";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import { ActivityCard } from "@/components/app/activity-card";
 import {
   StatusBadge,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -19,18 +24,15 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatRelativeDue } from "@/lib/plan-utils";
 import type { ActivityCategory } from "@/lib/config";
+
+const HOME_COLUMNS: ActivityTableColumn[] = [
+  "atividade",
+  "prazo",
+  "status",
+  "acao",
+];
 
 export type RtvActivityRow = {
   id: string;
@@ -60,6 +62,7 @@ export function RtvActivitiesTable({
   profileName: string;
 }) {
   const { openActivity } = useActivityDrawer();
+  const { openWizard } = useWizardProvider();
   const hasMore = totalOpen > activities.length;
 
   if (activities.length === 0) {
@@ -80,69 +83,18 @@ export function RtvActivitiesTable({
 
   return (
     <>
-      {/* Desktop — table */}
+      {/* Desktop — tabela canônica */}
       <div className="hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Atividade</TableHead>
-              <TableHead>Local</TableHead>
-              <TableHead>Prazo</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Ação</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {activities.map((activity) => {
-              const overdue = activity.status === "atrasada";
-              return (
-                <TableRow
-                  key={activity.id}
-                  className="cursor-pointer"
-                  onClick={() => openActivity(activity.id)}
-                >
-                  <TableCell className="max-w-72 truncate font-medium">
-                    {activity.title}
-                  </TableCell>
-                  <TableCell className="max-w-48 truncate text-muted-foreground">
-                    {activity.branchName ?? (
-                      <span className="italic">Canal geral</span>
-                    )}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      "whitespace-nowrap tabular-nums",
-                      overdue
-                        ? "font-medium text-red-600 dark:text-red-400"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {formatRelativeDue(activity.dueDate)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={activity.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      nativeButton={false}
-                      render={
-                        <Link
-                          href={`/registrar?atividade=${activity.id}`}
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <Camera />
-                          Registrar
-                        </Link>
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+        <ActivityTable
+          activities={activities}
+          columns={HOME_COLUMNS}
+          onRowClick={(activity) => openActivity(activity.id)}
+          rowAction="registrar"
+          onRegister={(activity) =>
+            openWizard({ mode: "registrar", activityId: activity.id })
+          }
+          deadlineFormat="relative"
+        />
       </div>
 
       {/* Mobile — cards */}

@@ -2,14 +2,19 @@
 
 import * as React from "react";
 import { Dialog as PanelPrimitive } from "@base-ui/react/dialog";
-import { format, formatDistanceToNow, parseISO } from "date-fns";
+import {
+  differenceInCalendarDays,
+  format,
+  formatDistanceToNow,
+  parseISO,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
+  Calendar,
   Camera,
   CheckCircle2,
   ClipboardCheck,
   ImageMinus,
-  ImagePlus,
   Link2,
   MessageSquare,
   MoreHorizontal,
@@ -18,19 +23,22 @@ import {
   RefreshCw,
   RotateCcw,
   Trash2,
-  XIcon,
+  X as XIcon,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ProblemEditor } from "@/app/(app)/atividades/[id]/problem-editor";
-import { CategoryBadge } from "@/components/app/category-badge";
+import { IconBox } from "@/components/shared/icon-box";
+import { PhotoAttach } from "@/components/shared/photo-attach";
+import { categoryIcon } from "@/lib/category-icons";
+import { deadlineClass } from "@/lib/deadline";
 import {
   ACTIVITY_STATUSES,
   STATUS_LABELS,
   StatusBadge,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -89,6 +97,7 @@ import {
   deleteActivityPhoto,
   registerActivityPhoto,
 } from "@/lib/actions/plan";
+import { CATEGORY_LABELS } from "@/lib/config";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -184,7 +193,7 @@ export function ActivityDrawerProvider({
           {/* Overlay com blur — mesmo tom do command palette (Ctrl K) */}
           <PanelPrimitive.Backdrop
             data-slot="activity-panel-overlay"
-            className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-foreground/40 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-backdrop-filter:backdrop-blur-sm"
           />
           {/*
             Painel flutuante:
@@ -362,22 +371,6 @@ function eventIcon(type: string, description: string | null): LucideIcon {
   return icons[type] ?? RefreshCw;
 }
 
-function statusContextLabel(activity: DrawerActivity): string | null {
-  if (activity.status === "concluida") {
-    return activity.completedAt
-      ? `Concluída em ${formatDate(activity.completedAt)}`
-      : null;
-  }
-  if (activity.status === "atrasada" && activity.dueDate) {
-    return `Atrasada desde ${formatDate(activity.dueDate)}`;
-  }
-  const statusEvent = activity.events.find(
-    (event) => event.type === "status_alterado" || event.type === "reaberta"
-  );
-  const since = statusEvent?.createdAt ?? activity.createdAt;
-  return `${STATUS_LABELS[activity.status]} desde ${formatDate(since)}`;
-}
-
 // ── Drawer body ──────────────────────────────────────────────────────
 
 function DrawerBody({
@@ -426,28 +419,33 @@ function DrawerBody({
 
   return (
     <>
-      {/* ══ HEADER — container cinza único agrupando identidade + status ═ */}
-      <div className="shrink-0 p-4 pt-8 md:p-4 md:pt-6">
-        <HeaderContainer
-          activity={activity}
-          canChangeStatus={canChangeStatus}
-          onOpenStatusDialog={() => setStatusDialog(true)}
-        />
+      {/* ══ HEADER — container cinza único agrupando identidade + prazo ═ */}
+      <div className="shrink-0 p-6 pt-8 md:pt-6">
+        <HeaderContainer activity={activity} />
       </div>
 
       {/* Corpo com scroll */}
-      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 md:px-4 md:pb-4">
+      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6">
         {/* ══ AÇÃO PRIMÁRIA — Registrar alinhado à esquerda, não full ═══ */}
-        {(isOpen && activity.canRegister) || activity.canEdit ? (
+        {(isOpen && activity.canRegister) ||
+        activity.canEdit ||
+        canChangeStatus ? (
           <div className="flex items-center gap-2">
             {isOpen && activity.canRegister ? (
-              <Button size="lg" onClick={handleRegistrar}>
-                <Camera className="size-5" />
+              <Button
+                onClick={handleRegistrar}
+              >
+                <Camera className="size-4" />
                 Registrar execução
               </Button>
             ) : null}
-            {activity.canEdit ? (
-              <ActionMenu onDelete={() => setConfirmDelete(true)} />
+            {activity.canEdit || canChangeStatus ? (
+              <ActionMenu
+                canChangeStatus={canChangeStatus}
+                canDelete={activity.canEdit}
+                onChangeStatus={() => setStatusDialog(true)}
+                onDelete={() => setConfirmDelete(true)}
+              />
             ) : null}
           </div>
         ) : null}
@@ -473,16 +471,20 @@ function DrawerBody({
           </div>
         </div>
 
-        {/* ══ RODAPÉ discreto — datas de referência ═════════════════ */}
-        <div className="mt-2 border-t border-border/50 pt-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
-            <span>Criada em {formatDate(activity.createdAt, true)}</span>
-            {activity.completedAt ? (
-              <span>
-                Concluída em {formatDate(activity.completedAt, true)}
-              </span>
-            ) : null}
-          </div>
+        {/* ══ RODAPÉ discreto — criação + autor ═════════════════════ */}
+        <div className="mt-2 border-t border-border pt-4">
+          <p className="text-xs tabular-nums text-muted-foreground">
+            Criada em {formatDate(activity.createdAt)}
+            {(() => {
+              const creator =
+                activity.events.find((event) => event.type === "criada")
+                  ?.profileName ?? activity.responsibleName;
+              return creator ? ` por ${creator}` : "";
+            })()}
+            {activity.completedAt
+              ? ` · Concluída em ${formatDate(activity.completedAt)}`
+              : ""}
+          </p>
         </div>
       </div>
 
@@ -633,7 +635,17 @@ function StatusChangeDialog({
 
 // ── Menu de ações secundárias (só DSM/CX — Excluir) ──────────────────
 
-function ActionMenu({ onDelete }: { onDelete: () => void }) {
+function ActionMenu({
+  canChangeStatus,
+  canDelete,
+  onChangeStatus,
+  onDelete,
+}: {
+  canChangeStatus: boolean;
+  canDelete: boolean;
+  onChangeStatus: () => void;
+  onDelete: () => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -644,10 +656,18 @@ function ActionMenu({ onDelete }: { onDelete: () => void }) {
         <MoreHorizontal className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem variant="destructive" onClick={onDelete}>
-          <Trash2 />
-          Excluir atividade
-        </DropdownMenuItem>
+        {canChangeStatus ? (
+          <DropdownMenuItem onClick={onChangeStatus}>
+            <RefreshCw />
+            Alterar status
+          </DropdownMenuItem>
+        ) : null}
+        {canDelete ? (
+          <DropdownMenuItem variant="destructive" onClick={onDelete}>
+            <Trash2 />
+            Excluir atividade
+          </DropdownMenuItem>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -658,33 +678,30 @@ function ActionMenu({ onDelete }: { onDelete: () => void }) {
 // uma faixa interna com contexto do status + prazo. A faixa é clicável
 // pra abrir o dialog de alterar status quando o role pode mudar.
 
-function HeaderContainer({
-  activity,
-  canChangeStatus,
-  onOpenStatusDialog,
-}: {
-  activity: DrawerActivity;
-  canChangeStatus: boolean;
-  onOpenStatusDialog: () => void;
-}) {
-  const contextLabel = statusContextLabel(activity);
-  const headerContext =
-    activity.branchName ?? "Canal geral";
+function HeaderContainer({ activity }: { activity: DrawerActivity }) {
+  const headerContext = activity.branchName ?? "Canal geral";
+  const TypeIcon = activity.category ? categoryIcon(activity.category) : null;
+  const overdueDays =
+    activity.overdue && activity.dueDate
+      ? differenceInCalendarDays(new Date(), parseISO(activity.dueDate))
+      : 0;
 
   return (
-    <div className="relative rounded-xl bg-muted/30 p-5 dark:bg-muted/20">
-      {/* Linha 1 — Identidade */}
-      <PanelPrimitive.Title className="pr-9 text-xl font-semibold leading-snug line-clamp-2">
+    <div className="relative rounded-xl bg-subtle p-4 dark:bg-muted/20">
+      {/* Identidade agrupada — o vermelho aparece no máximo 1x (no prazo) */}
+      <PanelPrimitive.Title className="pr-9 text-lg font-semibold leading-snug text-foreground line-clamp-2">
         {activity.title}
       </PanelPrimitive.Title>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={activity.status} className="px-2.5 py-0.5" />
-        {activity.category && (
-          <CategoryBadge category={activity.category} />
-        )}
+        {activity.category && TypeIcon ? (
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+            <TypeIcon className="size-3.5 text-foreground/70" />
+            {CATEGORY_LABELS[activity.category]}
+          </span>
+        ) : null}
       </div>
 
-      {/* Linha 2 — Contexto: canal em destaque, filial secundária */}
       <PanelPrimitive.Description className="mt-3 text-sm">
         <span className="font-medium text-foreground">
           {activity.channelName}
@@ -692,73 +709,26 @@ function HeaderContainer({
         <span className="text-muted-foreground"> · {headerContext}</span>
       </PanelPrimitive.Description>
 
-      {/* Linha 3 — Status + Prazo integrados (clicável quando pode alterar) */}
-      <div
-        className={cn(
-          "mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/50 px-4 py-3 dark:bg-muted/40",
-          canChangeStatus &&
-            "group/status cursor-pointer transition-colors hover:bg-muted/70 dark:hover:bg-muted/60"
-        )}
-        onClick={canChangeStatus ? onOpenStatusDialog : undefined}
-        role={canChangeStatus ? "button" : undefined}
-        tabIndex={canChangeStatus ? 0 : undefined}
-        onKeyDown={
-          canChangeStatus
-            ? (event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onOpenStatusDialog();
-                }
-              }
-            : undefined
-        }
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          {contextLabel ? (
-            <p
-              className={cn(
-                "text-sm",
-                activity.status === "atrasada"
-                  ? "font-medium text-red-600 dark:text-red-400"
-                  : "text-muted-foreground"
-              )}
-            >
-              {contextLabel}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {STATUS_LABELS[activity.status]}
-            </p>
+      {/* Prazo compacto — sem barra dedicada de atraso */}
+      <div className="mt-2 flex items-center gap-1.5 text-sm">
+        <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
+        <span className="text-muted-foreground">Prazo:</span>
+        <span
+          className={cn(
+            "tabular-nums",
+            deadlineClass(activity.dueDate, activity.status)
           )}
-          {canChangeStatus ? (
-            <Pencil
-              aria-hidden
-              className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/status:opacity-100"
-            />
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Prazo
+        >
+          {activity.dueDate ? formatDate(activity.dueDate) : "Sem prazo"}
+        </span>
+        {overdueDays > 0 ? (
+          <span className="text-xs text-destructive/80">
+            (há {overdueDays} {overdueDays === 1 ? "dia" : "dias"})
           </span>
-          <span
-            className={cn(
-              "text-sm font-medium tabular-nums",
-              activity.overdue && "text-red-600 dark:text-red-400"
-            )}
-          >
-            {activity.dueDate ? (
-              formatDate(activity.dueDate)
-            ) : (
-              <span className="font-normal text-muted-foreground">
-                Sem prazo
-              </span>
-            )}
-          </span>
-        </div>
+        ) : null}
       </div>
 
-      {/* Botão X — canto superior direito do container cinza */}
+      {/* Botão X — canto superior direito do painel */}
       <PanelPrimitive.Close
         render={
           <Button
@@ -791,48 +761,59 @@ function EvidencesBlock({
   canManage: boolean;
   onChanged: () => void;
 }) {
-  const inputRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
-  const [preview, setPreview] = React.useState<DrawerActivity["photos"][number] | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState<
     DrawerActivity["photos"][number] | null
   >(null);
   const [deleting, setDeleting] = React.useState(false);
 
-  async function handleUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (!ALLOWED_TYPES.has(file.type)) {
-      toast.error("Formato não suportado. Envie JPG, PNG ou WEBP.");
-      return;
-    }
-    if (file.size > MAX_UPLOAD_SIZE) {
-      toast.error("A foto pode ter no máximo 5MB.");
-      return;
-    }
+  async function handleAdd(files: File[]) {
+    if (files.length === 0) return;
 
     setUploading(true);
     try {
-      const blob = await compressImage(file);
-      const extension =
-        blob.type === "image/jpeg" ? "jpg" : file.name.split(".").pop() ?? "jpg";
-      const path = `${activityId}/${Date.now()}.${extension}`;
-      const supabase = createSupabaseClient();
-      const { error } = await supabase.storage
-        .from("activity-photos")
-        .upload(path, blob, { contentType: blob.type, upsert: false });
-      if (error) {
-        toast.error("Falha ao enviar a foto. Tente novamente.");
-        return;
+      let sent = 0;
+      for (const file of files) {
+        if (!ALLOWED_TYPES.has(file.type)) {
+          toast.error("Formato não suportado. Envie JPG, PNG ou WEBP.");
+          continue;
+        }
+        if (file.size > MAX_UPLOAD_SIZE) {
+          toast.error("A foto pode ter no máximo 5MB.");
+          continue;
+        }
+        const blob = await compressImage(file);
+        const extension =
+          blob.type === "image/jpeg"
+            ? "jpg"
+            : file.name.split(".").pop() ?? "jpg";
+        const path = `${activityId}/${Date.now()}-${sent}.${extension}`;
+        const supabase = createSupabaseClient();
+        const { error } = await supabase.storage
+          .from("activity-photos")
+          .upload(path, blob, { contentType: blob.type, upsert: false });
+        if (error) {
+          toast.error("Falha ao enviar a foto. Tente novamente.");
+          continue;
+        }
+        const result = await registerActivityPhoto({
+          activityId,
+          storagePath: path,
+        });
+        if (!result.ok) {
+          toast.error(result.error);
+          continue;
+        }
+        sent += 1;
       }
-      const result = await registerActivityPhoto({ activityId, storagePath: path });
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
+      if (sent > 0) {
+        onChanged();
+        toast.success(
+          sent === 1
+            ? "Foto adicionada às evidências."
+            : `${sent} fotos adicionadas às evidências.`
+        );
       }
-      onChanged();
-      toast.success("Foto adicionada às evidências.");
     } finally {
       setUploading(false);
     }
@@ -850,155 +831,36 @@ function EvidencesBlock({
     onChanged();
     toast.success("Foto removida.");
     setConfirmDelete(null);
-    setPreview(null);
   }
-
-  const isEmpty = photos.length === 0;
-  const addButtonLabel = uploading ? "Enviando…" : "Adicionar foto";
 
   return (
     <>
       <Card className={PANEL_CARD}>
-        <CardHeader
-          className={cn(
-            PANEL_CARD_HEADER,
-            "flex flex-row items-start justify-between gap-2"
-          )}
-        >
-          <div className="min-w-0">
-            <CardTitle>Evidências</CardTitle>
-            {isEmpty ? (
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Fotos da execução
-              </p>
-            ) : null}
-          </div>
-          {canManage && !isEmpty ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={uploading}
-              onClick={() => inputRef.current?.click()}
-              className="shrink-0"
-            >
-              {uploading ? <Spinner /> : <ImagePlus className="size-3.5" />}
-              <span className="hidden @[380px]/abody:inline">
-                {addButtonLabel}
-              </span>
-            </Button>
-          ) : null}
+        <CardHeader className={PANEL_CARD_HEADER}>
+          <CardTitle className="text-base font-semibold">Evidências</CardTitle>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Fotos da execução
+          </p>
         </CardHeader>
         <CardContent>
-          {canManage ? (
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleUpload}
-            />
-          ) : null}
-
-          {isEmpty ? (
-            // Vazio: bloco compacto centralizado com respiro (≈180px)
-            <div className="flex min-h-[7rem] flex-col items-center justify-center gap-2 rounded-md bg-muted/20 py-6 text-center dark:bg-muted/30">
-              <Camera className="size-6 text-muted-foreground/70" />
-              <p className="text-sm text-muted-foreground">Nenhuma foto ainda</p>
-              {canManage ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={uploading}
-                  onClick={() => inputRef.current?.click()}
-                  className="mt-1"
-                >
-                  {uploading ? (
-                    <>
-                      <Spinner />
-                      Enviando…
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="size-3.5" />
-                      Adicionar foto
-                    </>
-                  )}
-                </Button>
-              ) : null}
-            </div>
-          ) : (
-            // Com fotos: grid 3 col
-            <div className="grid grid-cols-3 gap-3">
-              {photos.slice(0, 6).map((photo) => (
-                <button
-                  key={photo.id}
-                  type="button"
-                  onClick={() => setPreview(photo)}
-                  className="group relative aspect-square overflow-hidden rounded-md border bg-muted"
-                  aria-label={photo.caption ?? "Ampliar evidência"}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoPublicUrl(photo.storagePath)}
-                    alt={photo.caption ?? "Evidência da atividade"}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                  />
-                </button>
-              ))}
-              {photos.length > 6 ? (
-                <button
-                  type="button"
-                  onClick={() => setPreview(photos[6])}
-                  className="flex aspect-square items-center justify-center rounded-md border bg-muted/40 text-xs font-medium text-muted-foreground hover:bg-muted/70"
-                >
-                  +{photos.length - 6}
-                </button>
-              ) : null}
-            </div>
-          )}
+          <PhotoAttach
+            photos={photos.map((photo) => ({
+              id: photo.id,
+              url: photoPublicUrl(photo.storagePath),
+              caption: photo.caption,
+              createdAt: photo.createdAt,
+            }))}
+            onAdd={(files) => void handleAdd(files)}
+            onRemove={(id) => {
+              const photo = photos.find((item) => item.id === id);
+              if (photo) setConfirmDelete(photo);
+            }}
+            size="compact"
+            busy={uploading}
+            readOnly={!canManage}
+          />
         </CardContent>
       </Card>
-
-      {/* Lightbox */}
-      <Dialog
-        open={!!preview}
-        onOpenChange={(o) => !o && setPreview(null)}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Evidência</DialogTitle>
-            <DialogDescription>
-              {preview?.caption ??
-                (preview
-                  ? `Adicionada em ${format(
-                      parseISO(preview.createdAt),
-                      "dd 'de' MMMM 'de' yyyy",
-                      { locale: ptBR }
-                    )}`
-                  : "")}
-            </DialogDescription>
-          </DialogHeader>
-          {preview ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={photoPublicUrl(preview.storagePath)}
-              alt={preview.caption ?? "Evidência da atividade"}
-              className="max-h-[70dvh] w-full rounded-md object-contain"
-            />
-          ) : null}
-          {canManage && preview ? (
-            <DialogFooter>
-              <Button
-                variant="destructive"
-                onClick={() => setConfirmDelete(preview)}
-              >
-                <Trash2 />
-                Excluir foto
-              </Button>
-            </DialogFooter>
-          ) : null}
-        </DialogContent>
-      </Dialog>
 
       {/* Confirmação de exclusão */}
       <AlertDialog
@@ -1055,41 +917,48 @@ function SobreCard({
       event.description.trim().length > 0
   );
 
+  const TypeIcon = activity.category ? categoryIcon(activity.category) : null;
+
   return (
-    <Card className="gap-0 rounded-xl border-border/60 py-6 shadow-xs [--card-spacing:--spacing(6)]">
+    <Card className="gap-0 rounded-xl border-border py-6 shadow-sm [--card-spacing:--spacing(6)]">
       <CardHeader className="pb-0">
-        <CardTitle>Sobre</CardTitle>
-        <CardDescription>Detalhes e contexto da atividade</CardDescription>
+        <CardTitle className="text-base font-semibold">Sobre</CardTitle>
+        <CardDescription className="mt-1">
+          Detalhes e contexto da atividade
+        </CardDescription>
       </CardHeader>
-      <CardContent className="mt-4 flex flex-col gap-3">
-        {/* Descrição */}
+      <CardContent className="mt-4 flex flex-col gap-5">
+        {/* Descrição — texto puro, sem label nem container (a posição explica) */}
         {activity.description ? (
-          <SobreTile label="Descrição">
-            <p className="text-sm leading-relaxed">{activity.description}</p>
-          </SobreTile>
+          <p className="text-sm leading-relaxed text-foreground">
+            {activity.description}
+          </p>
         ) : null}
 
-        {/* Local */}
-        <SobreTile label="Local">
-          <p className="text-sm">
+        {/* Local — texto puro */}
+        <SobreField label="Local">
+          <p className="text-sm text-foreground">
             {activity.branchName
               ? `${activity.branchName}${activity.branchCity ? ` — ${activity.branchCity}` : ""}`
               : "Canal geral"}
           </p>
-        </SobreTile>
+        </SobreField>
 
-        {/* Tipo de ação */}
-        <SobreTile label="Tipo de ação">
-          {activity.category ? (
-            <CategoryBadge category={activity.category} />
+        {/* Tipo de ação — chip neutro */}
+        <SobreField label="Tipo de ação">
+          {activity.category && TypeIcon ? (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-foreground">
+              <TypeIcon className="size-3.5 text-foreground/70" />
+              {CATEGORY_LABELS[activity.category]}
+            </span>
           ) : (
             <span className="text-sm text-muted-foreground">—</span>
           )}
-        </SobreTile>
+        </SobreField>
 
-        {/* Meta vinculada — edição inline real (ProblemEditor) */}
-        <SobreTile label="Meta vinculada">
-          <div className="text-sm">
+        {/* Meta vinculada — ÚNICO campo com container cinza (vínculo selecionável) */}
+        <SobreField label="Meta vinculada">
+          <div className="rounded-md bg-muted px-3 py-2 text-sm">
             <ProblemEditor
               activityId={activity.id}
               problemId={activity.problemId}
@@ -1101,10 +970,10 @@ function SobreCard({
               onChanged={onRefresh}
             />
           </div>
-        </SobreTile>
+        </SobreField>
 
-        {/* Responsáveis — um por linha, avatar + nome */}
-        <SobreTile label="Responsáveis">
+        {/* Responsáveis — avatar de iniciais + nome */}
+        <SobreField label="Responsáveis">
           {activity.assignees.length > 0 ? (
             <div className="flex flex-col gap-2">
               {activity.assignees.map((a) => (
@@ -1123,11 +992,11 @@ function SobreCard({
               Sem responsável
             </span>
           )}
-        </SobreTile>
+        </SobreField>
 
         {executionEvent ? (
-          <SobreTile label="Descrição da execução">
-            <p className="text-sm leading-relaxed">
+          <SobreField label="Descrição da execução">
+            <p className="text-sm leading-relaxed text-foreground">
               {executionEvent.description}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
@@ -1137,7 +1006,7 @@ function SobreCard({
                 addSuffix: true,
               })}
             </p>
-          </SobreTile>
+          </SobreField>
         ) : null}
       </CardContent>
     </Card>
@@ -1145,12 +1014,10 @@ function SobreCard({
 }
 
 /**
- * Tile de campo do Sobre (mock do usuário, look shadcn/create): bloco
- * cinza sutil com label uppercase pequena dentro e valor abaixo. O
- * lápis de edição só aparece quando existe edição real — hoje a Meta
- * traz o dele embutido no ProblemEditor.
+ * Campo do Sobre (padrão restaurado): label text-sm font-medium SEM
+ * uppercase e valor em texto limpo — cinza APENAS na Meta vinculada.
  */
-function SobreTile({
+function SobreField({
   label,
   children,
 }: {
@@ -1158,74 +1025,91 @@ function SobreTile({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg bg-muted/40 p-4 dark:bg-muted/30">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <div className="mt-2 min-w-0">{children}</div>
+    <div>
+      <p className="text-sm font-medium text-foreground">{label}</p>
+      <div className="mt-1.5 min-w-0">{children}</div>
     </div>
   );
 }
 
 // ── Bloco "Linha do tempo" (mais recentes no topo) ────────────────────
 
+/** Normaliza strings legadas "Problema …" para o vocabulário "Meta …". */
+function normalizeEventDescription(description: string | null): string | null {
+  return (
+    description
+      ?.replace(/Problema vinculado/g, "Meta vinculada")
+      .replace(/Vínculo com problema removido/g, "Vínculo com meta removido")
+      .replace(/Problema desvinculado/g, "Meta desvinculada") ?? null
+  );
+}
+
+/** Título específico: o que mudou, não "Atividade editada" genérico. */
+function eventTitle(event: DrawerActivity["events"][number]): {
+  title: string;
+  detail: string | null;
+} {
+  const description = normalizeEventDescription(event.description);
+  if (event.type === "status_alterado" && description) {
+    const match = description.match(/para "([^"]+)"/);
+    if (match) {
+      // O título já diz o que mudou; sem detalhe redundante.
+      return { title: `Status alterado para ${match[1]}`, detail: null };
+    }
+  }
+  if (event.type === "execucao_registrada") {
+    return { title: "Execução registrada", detail: description };
+  }
+  return {
+    title: EVENT_LABELS[event.type] ?? event.type,
+    detail: description,
+  };
+}
+
 function TimelineItem({
   event,
 }: {
   event: DrawerActivity["events"][number];
 }) {
-  const [expanded, setExpanded] = React.useState(false);
-  // Renomeia string legada "Problema vinculado/removido" pra "Meta …"
-  const description = event.description
-    ?.replace(/Problema vinculado/g, "Meta vinculada")
-    .replace(/Vínculo com problema removido/g, "Vínculo com meta removido")
-    .replace(/Problema desvinculado/g, "Meta desvinculada");
-  const long = description && description.length > 140;
+  const { title, detail } = eventTitle(event);
+  const isConclusion =
+    event.type === "status_alterado" &&
+    event.description?.includes('para "Concluída"');
+  const when = formatDistanceToNow(parseISO(event.createdAt), {
+    locale: ptBR,
+    addSuffix: true,
+  });
 
   return (
     <li className="relative flex gap-3">
-      <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-        <EventIcon
-          type={event.type}
-          description={event.description}
-          className="size-3 text-muted-foreground"
-        />
-      </span>
+      <IconBox
+        icon={eventIcon(event.type, event.description)}
+        size="sm"
+        className={cn(
+          "z-10 rounded-full",
+          isConclusion && "bg-success-bg"
+        )}
+        iconClassName={cn(isConclusion && "text-success")}
+      />
       <div className="min-w-0 space-y-0.5">
-        <p className="text-sm font-medium">
-          {EVENT_LABELS[event.type] ?? event.type}
-        </p>
-        {description ? (
-          <>
-            <p
-              className={cn(
-                "text-xs text-muted-foreground",
-                !expanded && "line-clamp-3"
-              )}
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        {detail ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <p className="line-clamp-1 text-sm text-muted-foreground" />
+              }
             >
-              {description}
-            </p>
-            {long ? (
-              <button
-                type="button"
-                onClick={() => setExpanded((v) => !v)}
-                className="text-xs font-medium text-foreground hover:underline"
-              >
-                {expanded ? "ver menos" : "ver mais"}
-              </button>
-            ) : null}
-          </>
+              {detail}
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">{detail}</TooltipContent>
+          </Tooltip>
         ) : null}
         <Tooltip>
           <TooltipTrigger
-            render={
-              <p className="w-fit text-xs text-muted-foreground" />
-            }
+            render={<p className="w-fit text-xs text-muted-foreground" />}
           >
-            {formatDistanceToNow(parseISO(event.createdAt), {
-              locale: ptBR,
-              addSuffix: true,
-            })}
+            {event.profileName ? `${event.profileName} · ${when}` : when}
           </TooltipTrigger>
           <TooltipContent>
             {formatDate(event.createdAt, true)}
@@ -1236,31 +1120,41 @@ function TimelineItem({
   );
 }
 
+const TIMELINE_COLLAPSED = 5;
+
 function TimelineCard({ activity }: { activity: DrawerActivity }) {
+  const [showAll, setShowAll] = React.useState(false);
   const hasCreationEvent = activity.events.some(
     (event) => event.type === "criada"
   );
   // Mais recentes primeiro — a fallback de criação (se faltar o evento)
   // é a mais antiga, então continua por último.
   const events = [...activity.events].reverse();
+  const visible = showAll ? events : events.slice(0, TIMELINE_COLLAPSED);
+  const hidden = events.length - visible.length;
 
   return (
     <Card className={PANEL_CARD}>
       <CardHeader className={PANEL_CARD_HEADER}>
-        <CardTitle>Linha do tempo</CardTitle>
+        <CardTitle className="text-base font-semibold">
+          Linha do tempo
+        </CardTitle>
+        <p className="mt-0.5 text-sm text-muted-foreground">
+          Histórico da atividade
+        </p>
       </CardHeader>
       <CardContent>
-        <ol className="relative flex flex-col gap-4 before:absolute before:top-2 before:bottom-2 before:left-[11px] before:w-px before:bg-border">
-          {events.map((event) => (
+        <ol className="relative flex flex-col gap-4 before:absolute before:top-2 before:bottom-2 before:left-[13px] before:w-px before:bg-border">
+          {visible.map((event) => (
             <TimelineItem key={event.id} event={event} />
           ))}
-          {!hasCreationEvent ? (
+          {!hasCreationEvent && (showAll || hidden === 0) ? (
             <li className="relative flex gap-3">
-              <span className="z-10 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                <Plus className="size-3 text-muted-foreground" />
-              </span>
+              <IconBox icon={Plus} size="sm" className="z-10 rounded-full" />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium">Atividade criada</p>
+                <p className="text-sm font-medium text-foreground">
+                  Atividade criada
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {formatDistanceToNow(parseISO(activity.createdAt), {
                     locale: ptBR,
@@ -1271,6 +1165,16 @@ function TimelineCard({ activity }: { activity: DrawerActivity }) {
             </li>
           ) : null}
         </ol>
+        {hidden > 0 ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-3 text-sm text-muted-foreground"
+            onClick={() => setShowAll(true)}
+          >
+            Ver histórico completo ({events.length})
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );

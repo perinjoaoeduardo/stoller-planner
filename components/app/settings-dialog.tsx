@@ -127,7 +127,7 @@ export function SettingsDialog({
                 className={cn(
                   "flex min-h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-colors",
                   section === item.id
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
@@ -325,7 +325,7 @@ function ThemePreview({ theme }: { theme: "light" | "dark" | "system" }) {
       aria-hidden
       className={cn(
         "relative h-16 w-full overflow-hidden rounded-lg border",
-        dark ? "bg-zinc-900" : "bg-white"
+        dark ? "bg-zinc-900" : "bg-card"
       )}
     >
       {half ? (

@@ -4,13 +4,13 @@ import * as React from "react";
 import Link from "next/link";
 import { Store } from "lucide-react";
 
+import { CanalCard } from "@/components/shared/canal-card";
 import { PageShell } from "@/components/app/page-shell";
 import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
@@ -18,9 +18,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Progress } from "@/components/ui/progress";
 import type { ChannelCard } from "@/lib/db/channels";
-import { HEALTH_CONFIG } from "@/lib/plan-utils";
 
 function harvestLabel(harvest: string | null): string {
   if (!harvest) return "Safra 2025/26";
@@ -32,82 +30,13 @@ function healthRank(h: ChannelCard["health"]): number {
   return h === "critico" ? 0 : h === "atencao" ? 1 : 2;
 }
 
-function healthLine(channel: ChannelCard): string {
-  if (channel.health === "em_dia") return "Em dia";
-  const label = channel.health === "critico" ? "Crítico" : "Atenção";
-  if (channel.lateCount === 0) return label;
-  return `${label} · ${channel.lateCount} ${channel.lateCount === 1 ? "atrasada" : "atrasadas"}`;
-}
-
-function MetricCol({
-  value,
-  label,
-}: {
-  value: number | string;
-  label: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-2xl font-semibold tracking-tight tabular-nums">
-        {value}
-      </p>
-      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
 function ChannelCardTile({ channel }: { channel: ChannelCard }) {
   return (
-    <Card className="p-0 transition-colors hover:bg-muted/40">
-      <Link
-        href={`/meus-canais/${channel.id}`}
-        className="flex flex-col gap-4 p-6"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <p className="min-w-0 truncate text-lg font-semibold">{channel.name}</p>
-          <Badge variant="outline" className="shrink-0">
-            {harvestLabel(channel.harvest)}
-          </Badge>
-        </div>
-
-        <p className="-mt-2 text-sm text-muted-foreground">{channel.region}</p>
-
-        <div className="grid grid-cols-3 gap-4">
-          <MetricCol value={channel.problemCount} label="metas" />
-          <MetricCol value={channel.activityCount} label="atividades" />
-          <MetricCol
-            value={`${channel.completedPercent}%`}
-            label="concluídas"
-          />
-        </div>
-
-        <Progress value={channel.completedPercent} className="h-2" />
-
-        <div className="flex items-center justify-between gap-2 text-sm">
-          <span className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className={`size-2.5 shrink-0 rounded-full ${HEALTH_CONFIG[channel.health].dotClass}`}
-            />
-            <span
-              className={
-                channel.health === "critico"
-                  ? "font-medium text-red-600 dark:text-red-400"
-                  : channel.health === "atencao"
-                    ? "font-medium text-amber-600 dark:text-amber-400"
-                    : "text-muted-foreground"
-              }
-            >
-              {healthLine(channel)}
-            </span>
-          </span>
-          <span className="text-muted-foreground tabular-nums">
-            {channel.branchCount}{" "}
-            {channel.branchCount === 1 ? "filial" : "filiais"}
-          </span>
-        </div>
-      </Link>
-    </Card>
+    <CanalCard
+      canal={channel}
+      variant="full"
+      href={`/meus-canais/${channel.id}`}
+    />
   );
 }
 
@@ -132,6 +61,10 @@ export function MeusCanaisView({ channels }: { channels: ChannelCard[] }) {
   }, [channels]);
 
   const showRegionFilter = regions.length > 1;
+
+  // Contexto de safra é global da tela — deriva do primeiro canal (todos na
+  // mesma safra corrente), com fallback pro rótulo padrão.
+  const safraLabel = harvestLabel(channels[0]?.harvest ?? null);
 
   const regionOptions: SelectOption[] = React.useMemo(
     () =>
@@ -160,15 +93,23 @@ export function MeusCanaisView({ channels }: { channels: ChannelCard[] }) {
       title="Meus Canais"
       description="Os canais em que você atua nesta safra."
       actions={
-        showRegionFilter ? (
-          <SearchableSelect
-            options={regionOptions}
-            value={regionId}
-            onValueChange={setRegionId}
-            placeholder="Todas as regiões"
-            className="h-10 min-w-52"
-          />
-        ) : null
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="outline"
+            className="text-muted-foreground font-normal"
+          >
+            {safraLabel}
+          </Badge>
+          {showRegionFilter ? (
+            <SearchableSelect
+              options={regionOptions}
+              value={regionId}
+              onValueChange={setRegionId}
+              placeholder="Todas as regiões"
+              className="h-10 min-w-52"
+            />
+          ) : null}
+        </div>
       }
     >
       {channels.length === 0 ? (
@@ -196,7 +137,7 @@ export function MeusCanaisView({ channels }: { channels: ChannelCard[] }) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {sorted.map((channel) => (
             <ChannelCardTile key={channel.id} channel={channel} />
           ))}

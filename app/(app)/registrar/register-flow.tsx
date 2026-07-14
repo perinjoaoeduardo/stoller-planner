@@ -17,7 +17,7 @@ import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
-import { StatusBadge } from "@/components/app/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -280,16 +280,16 @@ export function RegisterFlow({
       <button
         type="button"
         onClick={() => setAdhoc(true)}
-        className="flex min-h-20 w-full items-center gap-3 rounded-2xl border border-[#0063A7]/15 bg-[#0063A7]/5 p-5 text-left transition-colors hover:bg-[#0063A7]/10 active:bg-[#0063A7]/15 dark:border-[#0063A7]/25 dark:bg-[#0063A7]/10 dark:hover:bg-[#0063A7]/15"
+        className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-border-hover bg-subtle p-5 text-left transition-colors hover:border-border-active hover:bg-muted"
       >
-        <PenLine className="size-6 shrink-0 text-[#0063A7]" />
+        <PenLine className="size-6 shrink-0 text-foreground/70" />
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="font-medium">Registrar ação fora do plano</p>
           <p className="text-sm text-muted-foreground">
             Realizou uma ação que não estava no plano? Registre aqui.
           </p>
         </div>
-        <ChevronRight className="size-5 shrink-0 text-[#0063A7]" />
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
       </button>
 
       {/* Bloco 2 — Separador */}

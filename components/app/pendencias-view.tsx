@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CameraOff, ChevronRight, PartyPopper, Tag, Unlink } from "lucide-react";
 
 import { CategoryBadge } from "@/components/app/category-badge";
-import { StatusBadge } from "@/components/app/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,

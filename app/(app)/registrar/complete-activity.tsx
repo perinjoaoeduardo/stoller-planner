@@ -18,7 +18,7 @@ import {
 
 import { CategoryBadge } from "@/components/app/category-badge";
 import { PageShell } from "@/components/app/page-shell";
-import { StatusBadge } from "@/components/app/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -292,7 +292,7 @@ export function CompleteActivity({
                         type="button"
                         onClick={() => removePhoto(photo.id)}
                         aria-label="Remover foto"
-                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80"
+                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-foreground/60 text-white active:bg-foreground/80"
                       >
                         <X className="size-4" />
                       </button>
@@ -390,7 +390,7 @@ export function CompleteActivity({
       </div>
 
       {/* Botão sticky no rodapé apenas no mobile */}
-      <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:-mx-8 lg:hidden">
+      <div className="sticky bottom-0 -mx-5 mt-2 border-t bg-card/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-card/85 md:-mx-8 lg:hidden">
         <Button
           size="lg"
           className="h-12 w-full text-base"

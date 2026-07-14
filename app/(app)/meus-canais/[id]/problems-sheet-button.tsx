@@ -3,7 +3,6 @@
 import { Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 /**
  * Botão "Ver metas" no header da visão do canal. Dispara um
@@ -21,9 +20,7 @@ export function ProblemsSheetButton({ count }: { count: number }) {
     >
       <Target className="size-4" />
       Ver metas
-      <Badge variant="secondary" className="ml-1 tabular-nums">
-        {count}
-      </Badge>
+      <span className="tabular-nums text-muted-foreground">({count})</span>
     </Button>
   );
 }

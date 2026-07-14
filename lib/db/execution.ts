@@ -1,4 +1,4 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import {
   getScopedBranchIds,
   getScopedChannelIds,

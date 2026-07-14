@@ -1,30 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   CalendarClock,
-  Camera,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
   CircleCheckBig,
   ClipboardList,
-  Eye,
   ListTodo,
-  MoreHorizontal,
   Plus,
   Search,
   SearchX,
 } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
+import {
+  ActivityTable,
+  type ActivityTableColumn,
+} from "@/components/shared/activity-table";
+import { StatCard } from "@/components/shared/stat-card";
 import { ActivityCard } from "@/components/app/activity-card";
-import { CategoryBadge } from "@/components/app/category-badge";
 import {
   SearchableSelect,
   type SelectOption,
@@ -32,19 +28,13 @@ import {
 import {
   StatusBadge,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Empty,
   EmptyContent,
@@ -54,14 +44,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 import { cn } from "@/lib/utils";
@@ -79,69 +61,16 @@ type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 20;
 
+const LIST_COLUMNS: ActivityTableColumn[] = [
+  "atividade",
+  "meta",
+  "prazo",
+  "status",
+  "acao",
+];
+
 /** Aceita o mesmo range de status já usado no page.tsx. */
 export type InitialStatus = KpiFilter | "todas";
-
-function KpiCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-  active,
-  tone = "default",
-  onClick,
-}: {
-  label: string;
-  value: number | string;
-  hint?: string;
-  icon: typeof CircleAlert;
-  active: boolean;
-  tone?: "default" | "alert";
-  onClick: () => void;
-}) {
-  return (
-    <Card
-      className={cn(
-        "gap-2 p-0 transition-colors",
-        active
-          ? "border-[#0063A7] bg-[#0063A7]/5 dark:bg-[#0063A7]/10"
-          : "hover:bg-muted/30"
-      )}
-    >
-      <button
-        type="button"
-        onClick={onClick}
-        aria-pressed={active}
-        className="w-full p-6 text-left"
-      >
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <Icon
-            className={cn(
-              "size-4 shrink-0",
-              tone === "alert"
-                ? "text-amber-600 dark:text-amber-400"
-                : "text-muted-foreground"
-            )}
-          />
-        </div>
-        <p
-          className={cn(
-            "mt-3 text-3xl font-semibold tracking-tight tabular-nums",
-            tone === "alert" && "text-amber-600 dark:text-amber-400"
-          )}
-        >
-          {value}
-        </p>
-        {hint ? (
-          <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-            {hint}
-          </p>
-        ) : null}
-      </button>
-    </Card>
-  );
-}
 
 /**
  * Visão pessoal do RTV — herda o padrão da visão do canal: KPIs
@@ -158,20 +87,6 @@ function WizardEmptyButton() {
   );
 }
 
-function RegisterMenuItem({ activityId }: { activityId: string }) {
-  const { openWizard } = useWizardProvider();
-  return (
-    <DropdownMenuItem
-      onClick={() =>
-        openWizard({ mode: "registrar", activityId })
-      }
-    >
-      <Camera />
-      Registrar
-    </DropdownMenuItem>
-  );
-}
-
 export function MyActivitiesList({
   activities,
   initialStatus = "abertas",
@@ -180,6 +95,7 @@ export function MyActivitiesList({
   initialStatus?: InitialStatus;
 }) {
   const { openActivity } = useActivityDrawer();
+  const { openWizard } = useWizardProvider();
 
   // Mapeia initialStatus legado (P10) para o novo KpiFilter.
   const mapInitial = (s: InitialStatus): KpiFilter =>
@@ -399,19 +315,6 @@ export function MyActivitiesList({
     }
   }
 
-  function SortIcon({ column }: { column: SortKey }) {
-    if (sortKey !== column) {
-      return (
-        <ArrowUpDown className="ml-1 inline size-3 text-muted-foreground/60" />
-      );
-    }
-    return sortDir === "asc" ? (
-      <ArrowUp className="ml-1 inline size-3" />
-    ) : (
-      <ArrowDown className="ml-1 inline size-3" />
-    );
-  }
-
   // Sem nenhuma atividade — empty central com CTA.
   if (activities.length === 0) {
     return (
@@ -435,39 +338,43 @@ export function MyActivitiesList({
   return (
     <>
       {/* KPIs clicáveis */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <KpiCard
-          label="Total"
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total"
           value={metrics.total}
-          hint="no total"
+          sublabel="no total"
           icon={ClipboardList}
+          interactive
           active={kpiFilter === "todos"}
           onClick={() => setKpiFilter("todos")}
         />
-        <KpiCard
-          label="Abertas"
+        <StatCard
+          title="Abertas"
           value={metrics.open - metrics.late}
-          hint="em andamento"
+          sublabel="em andamento"
           icon={ListTodo}
+          interactive
           active={kpiFilter === "abertas"}
           onClick={() => setKpiFilter("abertas")}
         />
-        <KpiCard
-          label="Atrasadas"
+        <StatCard
+          title="Atrasadas"
           value={metrics.late}
-          hint={
+          sublabel={
             metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"
           }
           icon={CircleAlert}
-          tone={metrics.late > 0 ? "alert" : "default"}
+          tone={metrics.late > 0 ? "warning" : "neutral"}
+          interactive
           active={kpiFilter === "atrasadas"}
           onClick={() => setKpiFilter("atrasadas")}
         />
-        <KpiCard
-          label="Concluídas"
+        <StatCard
+          title="Concluídas"
           value={metrics.completed}
-          hint={`${metrics.completedPercent}% do total`}
+          sublabel={`${metrics.completedPercent}% do total`}
           icon={CircleCheckBig}
+          interactive
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}
         />
@@ -482,7 +389,7 @@ export function MyActivitiesList({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por título..."
-              className="h-10 pl-9"
+              className="h-10 border-input bg-card pl-9"
             />
           </div>
           {showChannelFilter ? (
@@ -491,7 +398,7 @@ export function MyActivitiesList({
               value={channelId}
               onValueChange={setChannelId}
               placeholder="Todos os canais"
-              className="h-10 min-w-44"
+              className="h-10 min-w-44 border-input bg-card"
             />
           ) : null}
           {showBranchFilter ? (
@@ -500,7 +407,7 @@ export function MyActivitiesList({
               value={branchId}
               onValueChange={setBranchId}
               placeholder="Todas as filiais"
-              className="h-10 min-w-44"
+              className="h-10 min-w-44 border-input bg-card"
             />
           ) : null}
           {categoryOptions.length > 0 ? (
@@ -509,7 +416,7 @@ export function MyActivitiesList({
               value={categoryFilter}
               onValueChange={setCategoryFilter}
               placeholder="Categoria"
-              className="h-10 min-w-40"
+              className="h-10 min-w-40 border-input bg-card"
             />
           ) : null}
           {showMetaFilter ? (
@@ -518,7 +425,7 @@ export function MyActivitiesList({
               value={metaFilter}
               onValueChange={setMetaFilter}
               placeholder="Meta"
-              className="h-10 min-w-44"
+              className="h-10 min-w-44 border-input bg-card"
             />
           ) : null}
         </div>
@@ -550,136 +457,18 @@ export function MyActivitiesList({
         </Card>
       ) : (
         <>
-          {/* Desktop — tabela densa */}
-          <div className="hidden overflow-x-auto rounded-xl border md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Atividade</TableHead>
-                  <TableHead className="hidden lg:table-cell">Canal</TableHead>
-                  <TableHead className="hidden xl:table-cell">
-                    Categoria
-                  </TableHead>
-                  <TableHead className="hidden xl:table-cell">Meta</TableHead>
-                  <TableHead>
-                    <button
-                      type="button"
-                      onClick={() => toggleSort("prazo")}
-                      className="flex items-center hover:text-foreground"
-                    >
-                      Prazo
-                      <SortIcon column="prazo" />
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      type="button"
-                      onClick={() => toggleSort("status")}
-                      className="flex items-center hover:text-foreground"
-                    >
-                      Status
-                      <SortIcon column="status" />
-                    </button>
-                  </TableHead>
-                  <TableHead className="text-right">Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paged.map((activity) => {
-                  const overdue = activity.status === "atrasada";
-                  const open = OPEN.has(activity.status);
-                  return (
-                    <TableRow
-                      key={activity.id}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        openActivity(activity.id)
-                      }
-                    >
-                      <TableCell className="max-w-72">
-                        <p className="truncate font-medium">
-                          {activity.title}
-                        </p>
-                        {activity.branchName ? (
-                          <p className="truncate text-xs text-muted-foreground">
-                            {activity.branchName}
-                          </p>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="hidden max-w-40 lg:table-cell">
-                        <p className="truncate">{activity.channelName}</p>
-                      </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                        {activity.category ? (
-                          <CategoryBadge category={activity.category} />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden max-w-48 xl:table-cell">
-                        {activity.problemTitle ? (
-                          <p className="truncate">{activity.problemTitle}</p>
-                        ) : (
-                          <p className="italic text-muted-foreground">
-                            Sem vínculo
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "whitespace-nowrap tabular-nums",
-                          overdue
-                            ? "font-medium text-red-600 dark:text-red-400"
-                            : "text-muted-foreground"
-                        )}
-                      >
-                        {activity.dueDate
-                          ? format(parseISO(activity.dueDate), "dd MMM yyyy", {
-                              locale: ptBR,
-                            })
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={activity.status} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div
-                          onClick={(event) => event.stopPropagation()}
-                          className="flex justify-end"
-                        >
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  aria-label="Ações"
-                                >
-                                  <MoreHorizontal />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end">
-                              {open ? (
-                                <RegisterMenuItem activityId={activity.id} />
-                              ) : null}
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  openActivity(activity.id)
-                                }
-                              >
-                                <Eye />
-                                Ver detalhes
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+          {/* Desktop — tabela canônica */}
+          <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
+            <ActivityTable
+              activities={paged}
+              columns={LIST_COLUMNS}
+              onRowClick={(activity) => openActivity(activity.id)}
+              rowAction="menu"
+              onRegister={(activity) =>
+                openWizard({ mode: "registrar", activityId: activity.id })
+              }
+              sort={{ key: sortKey, dir: sortDir, onToggle: toggleSort }}
+            />
           </div>
 
           {/* Mobile — ActivityCards empilhados */}

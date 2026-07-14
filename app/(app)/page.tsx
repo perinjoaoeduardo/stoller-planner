@@ -26,11 +26,14 @@ import { ptBR } from "date-fns/locale";
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
+import { CanalCard } from "@/components/shared/canal-card";
+import { StatCard } from "@/components/shared/stat-card";
 import { RtvActivitiesTable } from "@/components/app/rtv-activities-table";
-import { StatusBadge } from "@/components/app/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -122,18 +125,13 @@ function MetricsGrid({
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {metrics.map((metric) => (
-        <Card key={metric.label} className="gap-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardDescription>{metric.label}</CardDescription>
-            <metric.icon className="size-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tracking-tight tabular-nums">
-              {metric.value}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          key={metric.label}
+          title={metric.label}
+          value={metric.value}
+          sublabel={metric.hint}
+          icon={metric.icon}
+        />
       ))}
     </div>
   );
@@ -332,35 +330,17 @@ function RtvMetrics({
   ];
 
   return (
-    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((metric) => (
-        <Card
+        <StatCard
           key={metric.label}
-          className="gap-2 p-0 transition-colors hover:bg-muted/40"
-        >
-          <Link href={metric.href} className="block p-6">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">{metric.label}</p>
-              <metric.icon
-                className={
-                  metric.tone === "alert"
-                    ? "size-4 shrink-0 text-amber-600 dark:text-amber-400"
-                    : "size-4 shrink-0 text-muted-foreground"
-                }
-              />
-            </div>
-            <p
-              className={
-                metric.tone === "alert"
-                  ? "mt-3 text-3xl font-semibold tracking-tight tabular-nums text-amber-600 dark:text-amber-400"
-                  : "mt-3 text-3xl font-semibold tracking-tight tabular-nums"
-              }
-            >
-              {metric.value}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">{metric.hint}</p>
-          </Link>
-        </Card>
+          title={metric.label}
+          value={metric.value}
+          sublabel={metric.hint}
+          icon={metric.icon}
+          tone={metric.tone === "alert" ? "warning" : "neutral"}
+          href={metric.href}
+        />
       ))}
     </div>
   );
@@ -399,52 +379,16 @@ function ChannelsSummaryCard({ channels }: { channels: ChannelCard[] }) {
             </EmptyHeader>
           </Empty>
         ) : (
-          <ItemGroup>
-            {items.map((channel, index) => (
-              <div key={channel.id}>
-                {index > 0 ? <ItemSeparator /> : null}
-                <Item
-                  size="sm"
-                  render={<Link href={`/meus-canais/${channel.id}`} />}
-                  className="hover:bg-muted/60"
-                >
-                  <ItemContent className="min-w-0 gap-1.5">
-                    <div className="flex items-center gap-2">
-                      <span
-                        aria-label={HEALTH_CONFIG[channel.health].label}
-                        title={HEALTH_CONFIG[channel.health].label}
-                        className={`size-2 shrink-0 rounded-full ${HEALTH_CONFIG[channel.health].dotClass}`}
-                      />
-                      <span className="min-w-0 truncate font-medium">
-                        {channel.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
-                      <span>
-                        {channel.completedCount}/{channel.activityCount} feitas
-                      </span>
-                      {channel.pendingCount > 0 ? (
-                        <span>· {channel.pendingCount} pendentes</span>
-                      ) : null}
-                      {channel.lateCount > 0 ? (
-                        <span className="font-medium text-amber-600 dark:text-amber-400">
-                          · {channel.lateCount}{" "}
-                          {channel.lateCount === 1
-                            ? "atrasada"
-                            : "atrasadas"}
-                        </span>
-                      ) : null}
-                    </div>
-                    <Progress
-                      value={channel.completedPercent}
-                      className="h-1"
-                    />
-                  </ItemContent>
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                </Item>
-              </div>
+          <div className="space-y-3">
+            {items.map((channel) => (
+              <CanalCard
+                key={channel.id}
+                canal={channel}
+                variant="compact"
+                href={`/meus-canais/${channel.id}`}
+              />
             ))}
-          </ItemGroup>
+          </div>
         )}
         {channels.length > 4 ? (
           <div className="mt-auto pt-1">
@@ -573,18 +517,18 @@ async function FieldHome() {
     completedCount: completed.length,
     totalCount: mine.length,
   });
-  const contextClass =
-    late.length > 0
-      ? "text-sm font-medium text-amber-600 dark:text-amber-400"
-      : "text-sm text-muted-foreground";
+  const contextClass = "text-sm text-muted-foreground";
 
   // Ordem: atrasadas (por dias de atraso desc = prazo mais antigo primeiro)
   // > vencendo em 7 dias > outras abertas > planejadas por prazo asc. Sem
-  // prazo por último. Preenche a tabela até 8 linhas mesmo sem urgência —
-  // "abertas" inclui planejada + em_andamento + atrasada.
+  // prazo por último. "abertas" = não concluídas (planejada, em_andamento,
+  // atrasada, nao_feita) — a tabela lista todas, não só as próximas.
+  const openForTable = mine.filter(
+    (activity) => activity.status !== "concluida"
+  );
   const tomorrow = new Date();
-  const openOrdered = [...open].sort((a, b) => {
-    const rank = (activity: (typeof open)[number]) => {
+  const openOrdered = [...openForTable].sort((a, b) => {
+    const rank = (activity: (typeof openForTable)[number]) => {
       if (activity.status === "atrasada") return 0;
       if (
         activity.dueDate !== null &&
@@ -608,8 +552,8 @@ async function FieldHome() {
     (execution) => differenceInDays(now, parseISO(execution.createdAt)) <= 7
   );
 
-  // Até 8 abertas para a tabela da home.
-  const tableRows = openOrdered.slice(0, 8).map((activity) => ({
+  // Todas as abertas para a tabela da home.
+  const tableRows = openOrdered.map((activity) => ({
     id: activity.id,
     title: activity.title,
     status: activity.status,
@@ -625,10 +569,14 @@ async function FieldHome() {
       title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
-      actions={<NewActivityButton size="lg" />}
+      actions={
+        <NewActivityButton
+          size="lg"
+          />
+      }
     >
       <RtvMetrics
-        openCount={open.length}
+        openCount={openForTable.length}
         completedCount={completed.length}
         totalCount={mine.length}
         lateCount={late.length}
@@ -643,11 +591,21 @@ async function FieldHome() {
             </CardTitle>
             {tableRows.length > 0 ? (
               <CardDescription>
-                {tableRows.length === 1
-                  ? "A próxima atividade aberta."
-                  : `As ${tableRows.length} próximas atividades abertas — atrasadas primeiro.`}
+                Todas as atividades abertas, atrasadas primeiro.
               </CardDescription>
             ) : null}
+            <CardAction>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-sm text-muted-foreground"
+                nativeButton={false}
+                render={<Link href="/minhas-atividades" />}
+              >
+                Ver todos
+                <ChevronRight className="size-4" />
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent>
             <RtvActivitiesTable

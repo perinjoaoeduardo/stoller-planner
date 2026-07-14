@@ -10,7 +10,7 @@ import { useActivityDrawer } from "@/components/app/activity-drawer";
 import {
   StatusBadge,
   type ActivityStatus,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import {
   Avatar,
   AvatarFallback,

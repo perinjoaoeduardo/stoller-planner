@@ -2,8 +2,8 @@
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
-import type { ActivityStatus } from "@/components/app/status-badge";
-import { STATUS_LABELS } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
+import { STATUS_LABELS } from "@/components/shared/status-badge";
 import {
   ChartContainer,
   ChartTooltip,

@@ -1,4 +1,4 @@
-import type { ActivityStatus } from "@/components/app/status-badge";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import type { ActivityCategory } from "@/lib/config";
 import { getDisplayStatus } from "@/lib/db/status";
 import { createClient } from "@/lib/supabase/server";

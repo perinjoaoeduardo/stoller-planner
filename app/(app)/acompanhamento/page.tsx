@@ -8,7 +8,7 @@ import { PageShell } from "@/components/app/page-shell";
 import { PendenciasView } from "@/components/app/pendencias-view";
 import { PeopleTable } from "@/components/app/people-table";
 import type { SelectOption } from "@/components/app/searchable-select";
-import { StatusBadge } from "@/components/app/status-badge";
+import { StatusBadge } from "@/components/shared/status-badge";
 import {
   Card,
   CardContent,

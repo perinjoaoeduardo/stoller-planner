@@ -25,7 +25,7 @@ import { SearchableSelect } from "@/components/app/searchable-select";
 import {
   ACTIVITY_STATUSES,
   StatusBadge,
-} from "@/components/app/status-badge";
+} from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
