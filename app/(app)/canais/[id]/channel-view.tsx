@@ -12,6 +12,7 @@ import {
   CircleCheckBig,
   ClipboardList,
   Plus,
+  StickyNote,
 } from "lucide-react";
 
 import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
@@ -86,6 +87,7 @@ export function ChannelView({
   responsibles,
   canEdit,
   defaultTab,
+  noteCount = 0,
 }: {
   channel: ChannelDetail;
   problems: ProblemRow[];
@@ -93,6 +95,8 @@ export function ChannelView({
   responsibles: ResponsibleOption[];
   canEdit: boolean;
   defaultTab?: string;
+  /** Total de notas do canal — vira o contador do botão "Notas (N)". */
+  noteCount?: number;
 }) {
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
@@ -235,6 +239,16 @@ export function ChannelView({
               Relatório de safra
             </Button>
           ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            nativeButton={false}
+            render={<Link href={`/canais/${channel.id}/notas`} />}
+          >
+            <StickyNote />
+            {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
+          </Button>
           {canEdit && plan ? (
             <>
               <Button

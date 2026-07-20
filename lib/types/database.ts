@@ -253,6 +253,57 @@ export type Database = {
           },
         ]
       }
+      channel_notes: {
+        Row: {
+          author_id: string
+          body: string
+          channel_id: string
+          created_at: string
+          id: string
+          photo_path: string | null
+          pinned: boolean
+          pinned_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          channel_id: string
+          created_at?: string
+          id?: string
+          photo_path?: string | null
+          pinned?: boolean
+          pinned_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          channel_id?: string
+          created_at?: string
+          id?: string
+          photo_path?: string | null
+          pinned?: boolean
+          pinned_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_notes_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_notes_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           channel_id: string

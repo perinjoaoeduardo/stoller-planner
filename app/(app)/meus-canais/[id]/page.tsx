@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileText, Store } from "lucide-react";
+import { FileText, StickyNote, Store } from "lucide-react";
 
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/empty";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelDetail, getPlanBoard } from "@/lib/db/channels";
+import { getChannelNoteCount } from "@/lib/db/notes";
 
 import { MeuCanalView } from "./meu-canal-view";
 import { ProblemsSheetButton } from "./problems-sheet-button";
@@ -84,12 +85,15 @@ export default async function MeuCanalPage({
   const channel = await getChannelDetail(id);
   if (!channel) return <ChannelNotFound />;
 
-  const board = channel.plan
-    ? await getPlanBoard(channel.plan.id, {
-        id: channel.id,
-        name: channel.name,
-      })
-    : { problems: [], activities: [] };
+  const [board, noteCount] = await Promise.all([
+    channel.plan
+      ? getPlanBoard(channel.plan.id, {
+          id: channel.id,
+          name: channel.name,
+        })
+      : Promise.resolve({ problems: [], activities: [] }),
+    getChannelNoteCount(id),
+  ]);
 
   return (
     <PageShell
@@ -119,6 +123,16 @@ export default async function MeuCanalPage({
           >
             <FileText className="size-4" />
             <span className="hidden md:inline">Relatório de safra</span>
+          </Button>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={`/canais/${id}/notas`} />}
+          >
+            <StickyNote className="size-4" />
+            <span className="hidden md:inline">
+              {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
+            </span>
           </Button>
           {board.problems.length > 0 ? (
             <ProblemsSheetButton count={board.problems.length} />
