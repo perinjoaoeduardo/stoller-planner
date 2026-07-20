@@ -7,9 +7,8 @@ import { ptBR } from "date-fns/locale";
 import {
   CalendarRange,
   ClipboardList,
-  FileDown,
+  Download,
   Link2,
-  Play,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,7 +55,6 @@ import type { ReportPhoto, SeasonReport } from "@/lib/db/report";
 import { buildExecutiveSummary } from "@/lib/reports/summary";
 import { cn } from "@/lib/utils";
 
-import { PresentMode, type Slide } from "./present-mode";
 import {
   ChannelAvatar,
   MetaBlock,
@@ -70,6 +68,7 @@ import {
   type PanoramaStats,
   type ReportMode,
 } from "./report-blocks";
+import type { HeatmapMonth } from "@/components/shared/season-heatmap";
 
 const MODE_STORAGE_KEY = "corteva:report-mode";
 
@@ -84,9 +83,7 @@ type PeriodValue = (typeof PERIOD_PRESETS)[number]["value"] | "custom";
 
 /**
  * Relatório de Safra — página longa e narrativa montada como BLOCOS
- * autônomos. Os mesmos blocos alimentam a tela empilhada e o modo
- * Apresentar (um por slide), então não existe versão "de apresentação"
- * paralela para sair de sincronia.
+ * autônomos.
  *
  * O toggle Interno/Externo é a decisão central: interno fala de
  * execução (%, atrasos, pendências), externo é o que vai para o canal e
@@ -113,7 +110,6 @@ export function ReportView({
     null
   );
   const [lightbox, setLightbox] = React.useState<ReportPhoto | null>(null);
-  const [presenting, setPresenting] = React.useState(false);
 
   const generatedAt = React.useMemo(() => new Date().toISOString(), []);
   const currentMonth = React.useMemo(
@@ -232,18 +228,13 @@ export function ReportView({
       return activity.completedAt.slice(0, 10) <= activity.dueDate;
     }).length;
 
-    const months = new Set(
+    const monthsSet = new Set(
       filtered.flatMap((activity) =>
         activity.executionDates.map((date) => date.slice(0, 7))
       )
     );
-    const sortedMonths = [...months].sort();
-    const periodLabel =
-      sortedMonths.length > 0
-        ? `de ${monthShort(sortedMonths[0])} a ${monthShort(
-            sortedMonths[sortedMonths.length - 1]
-          )}`
-        : "sem registros";
+    const sortedMonths = [...monthsSet].sort();
+    const activeMonthLabels = sortedMonths.map(monthShort);
 
     return {
       done,
@@ -253,8 +244,8 @@ export function ReportView({
       workedProblems: workedSections.length,
       totalProblems: report.problems.length,
       photoCount,
-      activeMonths: months.size,
-      periodLabel,
+      activeMonths: monthsSet.size,
+      activeMonthLabels,
       // "No ritmo" = nada atrasado e nenhuma meta órfã.
       healthy: late === 0 && metasSemPlano.length === 0,
     };
@@ -296,12 +287,25 @@ export function ReportView({
   );
 
   const byProblem = React.useMemo(() => {
-    const rows = workedSections.map((section) => ({
-      label: section.problem.title,
-      total: section.activities.length,
-    }));
+    // Anexa o % concluído para o Números da safra escolher a meta com
+    // menor execução como destaque (accent-brand, ver FIX 7).
+    const rows = workedSections.map((section) => {
+      const done = section.activities.filter(
+        (activity) => activity.status === "concluida"
+      ).length;
+      const total = section.activities.length;
+      return {
+        label: section.problem.title,
+        total,
+        completionPercent: total > 0 ? done / total : 1,
+      };
+    });
     if (unplanned.length > 0) {
-      rows.push({ label: "Fora do plano inicial", total: unplanned.length });
+      rows.push({
+        label: "Fora do plano inicial",
+        total: unplanned.length,
+        completionPercent: 1,
+      });
     }
     return rows;
   }, [workedSections, unplanned]);
@@ -321,28 +325,42 @@ export function ReportView({
     return rows;
   }, [filtered]);
 
-  /** FIX 5 — série mensal de execuções para o heatmap. */
-  const monthly = React.useMemo(() => {
-    const map = new Map<string, number>();
+  /** FIX 5 — série mensal com os 12 meses inteiros da safra: os buracos
+   *  são exatamente o insight (abandono, sazonalidade), então mês sem
+   *  ação renderiza como célula vazia e mês futuro como não iniciado. */
+  const monthly = React.useMemo<HeatmapMonth[]>(() => {
+    const counts = new Map<string, number>();
     for (const activity of filtered) {
       for (const date of activity.executionDates) {
         const month = date.slice(0, 7);
-        map.set(month, (map.get(month) ?? 0) + 1);
+        counts.set(month, (counts.get(month) ?? 0) + 1);
       }
     }
-    if (map.size === 0) return [];
-    // Preenche os buracos: um mês sem ação é informação, não ausência.
-    const sorted = [...map.keys()].sort();
-    const out: { month: string; total: number }[] = [];
-    const cursor = parseISO(`${sorted[0]}-01`);
-    const last = parseISO(`${sorted[sorted.length - 1]}-01`);
-    while (cursor <= last) {
+
+    // Safra padrão: setembro do primeiro ano → agosto do segundo. Se o
+    // harvest vier em formato reconhecível ("2025/26"), usamos ele;
+    // senão, ancoramos no ano corrente da tela.
+    const [startYear, endYear] = parseHarvest(
+      report.plan?.harvest ?? null,
+      currentMonth
+    );
+
+    const out: HeatmapMonth[] = [];
+    // Setembro (mês 9) do primeiro ano até agosto (mês 8) do segundo.
+    const cursor = new Date(startYear, 8, 1); // month é 0-indexed
+    const stop = new Date(endYear, 8, 1); // parar em setembro seguinte
+    while (cursor < stop) {
       const key = format(cursor, "yyyy-MM");
-      out.push({ month: key, total: map.get(key) ?? 0 });
+      const isFuture = key > currentMonth;
+      out.push({
+        month: key,
+        total: counts.get(key) ?? 0,
+        future: isFuture,
+      });
       cursor.setMonth(cursor.getMonth() + 1);
     }
     return out;
-  }, [filtered]);
+  }, [filtered, report.plan?.harvest, currentMonth]);
 
   const adjustments = React.useMemo(
     () =>
@@ -377,19 +395,18 @@ export function ReportView({
 
   const isEmpty = workedSections.length === 0 && unplanned.length === 0;
 
-  // ── Blocos → slides. A tela empilha; o Apresentar mostra um por vez.
-  const slides: Slide[] = React.useMemo(() => {
-    const list: Slide[] = [];
+  // Blocos empilhados: cada bloco tem uma key estável para o React
+  // reconciliar quando o modo/filtros mudam.
+  const blocks = React.useMemo(() => {
+    const list: { id: string; node: React.ReactNode }[] = [];
 
     list.push({
       id: "panorama",
-      title: "Panorama",
       node: <PanoramaBlock mode={mode} stats={stats} />,
     });
 
     list.push({
       id: "resumo",
-      title: "Resumo executivo",
       node: (
         <Card className="report-section">
           <CardContent className="pt-6">
@@ -402,7 +419,6 @@ export function ReportView({
     if (mode === "interno" && metasSemPlano.length > 0) {
       list.push({
         id: "sem-plano",
-        title: "Metas sem plano",
         node: (
           <MetasSemPlanoBlock
             problems={metasSemPlano}
@@ -415,7 +431,6 @@ export function ReportView({
     workedSections.forEach((section, index) => {
       list.push({
         id: section.problem.id,
-        title: section.problem.title,
         node: (
           <MetaBlock
             index={index}
@@ -436,7 +451,6 @@ export function ReportView({
     if (unplanned.length > 0) {
       list.push({
         id: "fora-do-plano",
-        title: "Ações fora do plano inicial",
         node: (
           <MetaBlock
             title="Ações fora do plano inicial"
@@ -449,18 +463,14 @@ export function ReportView({
       });
     }
 
-    if (monthly.length > 0) {
-      list.push({
-        id: "ritmo",
-        title: "Ritmo da safra",
-        node: <RitmoBlock data={monthly} currentMonth={currentMonth} />,
-      });
-    }
+    list.push({
+      id: "ritmo",
+      node: <RitmoBlock data={monthly} currentMonth={currentMonth} />,
+    });
 
     if (mode === "interno") {
       list.push({
         id: "numeros",
-        title: "Números da safra",
         node: (
           <NumerosBlock
             byStatus={byStatus}
@@ -488,54 +498,6 @@ export function ReportView({
     report.channel.id,
     canEdit,
   ]);
-
-  if (presenting) {
-    return (
-      <PresentMode
-        slides={[
-          {
-            id: "capa",
-            title: report.channel.name,
-            node: (
-              <div className="flex flex-col items-center gap-4 py-16 text-center">
-                <ChannelAvatar name={report.channel.name} />
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Relatório de safra
-                </p>
-                <h1 className="text-4xl font-semibold tracking-tight">
-                  {report.channel.name}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {report.channel.region}
-                  {report.plan ? ` · ${report.plan.harvest}` : ""}
-                </p>
-              </div>
-            ),
-          },
-          ...slides,
-          {
-            id: "encerramento",
-            title: "Encerramento",
-            node: (
-              <div className="py-16 text-center">
-                <p className="text-2xl font-semibold tracking-tight">
-                  Obrigado.
-                </p>
-                <ReportFooter
-                  channelName={report.channel.name}
-                  harvest={report.plan?.harvest ?? null}
-                  generatedAt={generatedAt}
-                  mode={mode}
-                  adjustments={adjustments}
-                />
-              </div>
-            ),
-          },
-        ]}
-        onClose={() => setPresenting(false)}
-      />
-    );
-  }
 
   return (
     <div
@@ -712,17 +674,9 @@ export function ReportView({
               <Link2 className="size-4" />
               <span className="hidden sm:inline">Copiar link</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPresenting(true)}
-            >
-              <Play className="size-4" />
-              Apresentar
-            </Button>
             {!isField && (
-              <Button size="sm" onClick={() => window.print()}>
-                <FileDown className="size-4" />
+              <Button variant="brand" size="sm" onClick={() => window.print()}>
+                <Download className="size-4" />
                 Exportar PDF
               </Button>
             )}
@@ -750,8 +704,8 @@ export function ReportView({
           </CardContent>
         </Card>
       ) : (
-        slides.map((slide) => (
-          <React.Fragment key={slide.id}>{slide.node}</React.Fragment>
+        blocks.map((block) => (
+          <React.Fragment key={block.id}>{block.node}</React.Fragment>
         ))
       )}
 
@@ -799,4 +753,24 @@ function monthShort(month: string) {
     ".",
     ""
   );
+}
+
+/** "2025/26" ou "Safra 2025/26" → [2025, 2026]. Ancora na safra atual
+ *  (setembro do ano corrente) quando não reconhece o formato. */
+function parseHarvest(
+  harvest: string | null,
+  currentMonth: string
+): [number, number] {
+  const match = harvest?.match(/(\d{4})\s*\/\s*(\d{2,4})/);
+  if (match) {
+    const start = Number(match[1]);
+    const end =
+      match[2].length === 2 ? 2000 + Number(match[2]) : Number(match[2]);
+    return [start, end];
+  }
+  const [currentYear, currentMonthNum] = currentMonth.split("-").map(Number);
+  // Setembro é o corte da safra: antes dele estamos na safra do ano
+  // passado; a partir dele, a nova começou.
+  const start = currentMonthNum >= 9 ? currentYear : currentYear - 1;
+  return [start, start + 1];
 }

@@ -179,7 +179,10 @@ function ActivityLine({
       type="button"
       onClick={() => onOpen(activity.id)}
       style={{ breakInside: "avoid" }}
-      className="group flex w-full items-center gap-3 py-3 text-left transition-colors duration-base ease-standard hover:bg-hover-surface"
+      // -mx-2 compensa o px-2 do hover para a barra do hover ficar
+      // "flutuando" dentro do card com respiro nas bordas — sem isso a
+      // linha do hover encostava nas paredes do card e parecia crua.
+      className="group -mx-2 flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-3 text-left transition-colors duration-base ease-standard hover:bg-hover-surface"
     >
       <CategoryIconBox
         category={activity.category}
@@ -228,7 +231,8 @@ export type PanoramaStats = {
   totalProblems: number;
   photoCount: number;
   activeMonths: number;
-  periodLabel: string;
+  /** Meses com pelo menos uma execução, formatados curto ("mai", "jun"). */
+  activeMonthLabels: string[];
   healthy: boolean;
 };
 
@@ -240,8 +244,33 @@ export function PanoramaBlock({
   stats: PanoramaStats;
 }) {
   if (mode === "externo") {
+    // Card Evidências some quando não há foto — mostrar "0 fotos" para o
+    // canal soa como cobrança contra o time. Menos > mal-vendido.
+    const showEvidencias = stats.photoCount > 0;
+    // "Ações realizadas em" mostra os meses; só cai para o resumo
+    // "N meses ativos" quando a lista fica longa demais.
+    const monthsValue =
+      stats.activeMonthLabels.length === 0
+        ? "—"
+        : stats.activeMonthLabels.length <= 4
+          ? stats.activeMonthLabels.join(" · ")
+          : `${stats.activeMonths} meses ativos`;
+    const monthsSublabel =
+      stats.activeMonthLabels.length === 0
+        ? "sem execuções registradas"
+        : stats.activeMonthLabels.length <= 4
+          ? "de 12 meses da safra"
+          : `${stats.activeMonthLabels[0]} a ${stats.activeMonthLabels[stats.activeMonthLabels.length - 1]}`;
+
     return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div
+        className={cn(
+          "grid gap-4",
+          showEvidencias
+            ? "grid-cols-2 md:grid-cols-4"
+            : "grid-cols-1 sm:grid-cols-3"
+        )}
+      >
         <StatCard
           title="Ações realizadas"
           value={stats.done}
@@ -254,16 +283,18 @@ export function PanoramaBlock({
           sublabel="endereçadas"
           icon={ListChecks}
         />
+        {showEvidencias ? (
+          <StatCard
+            title="Evidências registradas"
+            value={stats.photoCount}
+            sublabel="fotos em campo"
+            icon={Camera}
+          />
+        ) : null}
         <StatCard
-          title="Evidências registradas"
-          value={stats.photoCount}
-          sublabel="fotos em campo"
-          icon={Camera}
-        />
-        <StatCard
-          title="Período de trabalho"
-          value={`${stats.activeMonths} ${stats.activeMonths === 1 ? "mês" : "meses"}`}
-          sublabel={stats.periodLabel}
+          title="Ações realizadas em"
+          value={monthsValue}
+          sublabel={monthsSublabel}
           icon={CalendarRange}
         />
       </div>
@@ -382,9 +413,8 @@ function ResultadoCard({
   const [pending, startTransition] = React.useTransition();
 
   // No externo, resultado vazio simplesmente não existe — não se expõe
-  // lacuna interna para o canal. Sem permissão de edição, idem: o CTA
-  // convidaria para uma ação que o servidor recusa.
-  if (!resultado && (mode === "externo" || !canEdit)) return null;
+  // lacuna interna para o canal.
+  if (!resultado && mode === "externo") return null;
 
   function save() {
     startTransition(async () => {
@@ -459,12 +489,21 @@ function ResultadoCard({
     );
   }
 
-  // Vazio no interno: convite óbvio, não texto apagado.
+  // Vazio no interno. Editor: convite dashed clicável (a chamada
+  // canônica pro DSM/CX registrar). Leitor: card muted informando o
+  // débito, sem cursor pointer.
+  if (!canEdit) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-4 text-sm italic text-muted-foreground">
+        Sem resultado registrado.
+      </div>
+    );
+  }
   return (
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground transition-colors hover:border-border-hover hover:bg-hover-surface hover:text-foreground"
+      className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground transition-colors hover:border-border-hover hover:bg-hover-surface hover:text-foreground"
     >
       <Plus className="size-4" />
       Registrar resultado
@@ -474,11 +513,12 @@ function ResultadoCard({
 
 // ── FIX 4 — Bloco de meta ─────────────────────────────────────────────
 
-/** Cor da barra por saúde da execução (nunca decorativa). */
+/** Cor da barra por saúde da execução. Sem cinza: 33% em cinza escuro
+ *  soaria "desligado", quando é "abaixo do esperado" — a leitura vira
+ *  binária (verde acima de 75, âmbar abaixo). */
 function progressClass(percent: number) {
   if (percent >= 75) return "[&_[data-slot=progress-indicator]]:bg-success";
-  if (percent >= 40) return "[&_[data-slot=progress-indicator]]:bg-warning";
-  return "[&_[data-slot=progress-indicator]]:bg-muted-foreground/40";
+  return "[&_[data-slot=progress-indicator]]:bg-warning";
 }
 
 export function MetaBlock({
@@ -708,16 +748,20 @@ export function NumerosBlock({
   byCategory,
 }: {
   byStatus: { status: string; total: number }[];
-  byProblem: { label: string; total: number }[];
+  byProblem: { label: string; total: number; completionPercent: number }[];
   byCategory: { label: string; total: number }[];
 }) {
-  // Uma barra destacada por gráfico: a meta mais fraca (chama atenção) e
-  // a categoria de maior volume (mostra onde o esforço foi).
+  // Um destaque por gráfico. Regra fixa: "por meta" → a meta com MENOR
+  // % concluído (o débito). "Por categoria" → a de maior volume (onde
+  // o esforço foi). Ambos em accent-brand — âmbar é reservado a
+  // risco/atraso (StatusBadge, DeadlineText).
   const weakestProblem = React.useMemo(() => {
     if (byProblem.length === 0) return null;
     let index = 0;
     for (let i = 1; i < byProblem.length; i += 1) {
-      if (byProblem[i].total < byProblem[index].total) index = i;
+      if (byProblem[i].completionPercent < byProblem[index].completionPercent) {
+        index = i;
+      }
     }
     return index;
   }, [byProblem]);
@@ -753,7 +797,6 @@ export function NumerosBlock({
             <ActivitiesByProblemChart
               data={byProblem}
               highlightIndex={weakestProblem}
-              highlightTone="warning"
             />
           </div>
           <div className="md:col-span-2">

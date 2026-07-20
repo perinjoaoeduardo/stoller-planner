@@ -13,14 +13,18 @@ import { cn } from "@/lib/utils";
  *
  * Substitui o gráfico de barras azuis: densidade via alpha do
  * foreground (Constituição — azul não codifica volume), uma célula por
- * mês da safra. O mês corrente ganha ring de marca + rótulo "atual",
- * porque comparar um mês em curso com meses fechados engana.
+ * mês da safra INTEIRA (setembro a agosto). Os buracos são exatamente o
+ * insight (abandono, sazonalidade), então mês sem ação renderiza como
+ * célula vazia; mês futuro fica meio-transparente para dizer "ainda não
+ * aconteceu" sem sumir do gráfico.
  */
 
 export type HeatmapMonth = {
   /** "2026-07" */
   month: string;
   total: number;
+  /** Mês posterior ao corrente na safra atual. */
+  future?: boolean;
 };
 
 /** 5 níveis de densidade. Índice 0 = nenhuma ação. */
@@ -67,16 +71,17 @@ export function SeasonHeatmap({
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
-      {/* max-w por coluna: com poucos meses, aspect-square + flex-1
-          faria cada célula virar um quadrado gigante. */}
-      <div className="flex items-end gap-2">
+      {/* 12-col no desktop, 6-col em 2 linhas no mobile: cabe safra
+          inteira sem apertar a leitura. */}
+      <div className="grid grid-cols-6 items-end gap-2 md:grid-cols-12">
         {data.map((entry) => {
           const level = levelOf(entry.total);
           const isCurrent = entry.month === currentMonth;
+          const isFuture = !!entry.future;
           return (
             <div
               key={entry.month}
-              className="flex min-w-0 max-w-20 flex-1 flex-col items-center gap-1.5"
+              className="flex min-w-0 flex-col items-center gap-1.5"
             >
               <Tooltip>
                 <TooltipTrigger
@@ -85,6 +90,7 @@ export function SeasonHeatmap({
                       className={cn(
                         "flex aspect-square w-full items-center justify-center rounded-md",
                         LEVELS[level],
+                        isFuture && "opacity-40",
                         isCurrent && "ring-1 ring-accent-brand ring-offset-1"
                       )}
                     />
@@ -103,12 +109,20 @@ export function SeasonHeatmap({
                   ) : null}
                 </TooltipTrigger>
                 <TooltipContent>
-                  {monthLabel(entry.month)}: {entry.total}{" "}
-                  {entry.total === 1 ? "ação" : "ações"}
-                  {isCurrent ? " · mês em curso" : ""}
+                  {monthLabel(entry.month)}
+                  {isFuture
+                    ? " · ainda não iniciado"
+                    : `: ${entry.total} ${
+                        entry.total === 1 ? "ação" : "ações"
+                      }${isCurrent ? " · mês em curso" : ""}`}
                 </TooltipContent>
               </Tooltip>
-              <span className="truncate text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  "truncate text-xs text-muted-foreground",
+                  isFuture && "opacity-60"
+                )}
+              >
                 {monthLabel(entry.month)}
               </span>
               {isCurrent ? (
