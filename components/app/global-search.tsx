@@ -100,9 +100,8 @@ function detectStatusFilters(query: string): ActivityStatus[] {
   const hits: ActivityStatus[] = [];
   if (q.includes("atras")) hits.push("atrasada");
   if (q.includes("conclu")) hits.push("concluida");
-  if (q.includes("andamento")) hits.push("em_andamento");
   if (q.includes("planejad") || q.includes("pendente")) hits.push("planejada");
-  if (q.includes("nao feita") || q.includes("nao-feita"))
+  if (q.includes("cancel") || q.includes("nao feita"))
     hits.push("nao_feita");
   return hits;
 }
@@ -249,13 +248,11 @@ export function GlobalSearch({
   }
 
   function selectActivity(id: string) {
-    if (isField) {
-      saveRecent(trimmed);
-      setRecents(readRecents());
-      runAction(() => openActivity(id));
-    } else {
-      go(`/atividades/${id}`, true);
-    }
+    // Ver atividade = abrir o painel (modal), nunca a página cheia —
+    // vale pra todos os perfis (RTV, DSM, CX).
+    saveRecent(trimmed);
+    setRecents(readRecents());
+    runAction(() => openActivity(id));
   }
 
   // RTV navega para a visão de campo do canal, não para o cockpit.
@@ -267,7 +264,7 @@ export function GlobalSearch({
       <Button
         variant="outline"
         onClick={() => handleOpenChange(true)}
-        className="hidden h-9 w-full items-center justify-between gap-2 bg-muted/40 px-3 text-sm font-normal text-muted-foreground hover:bg-muted hover:text-foreground sm:flex"
+        className="hidden h-9 w-full items-center justify-between gap-2 border-border bg-card px-3 text-sm font-normal text-muted-foreground hover:border-border-hover hover:bg-card hover:text-foreground sm:flex"
       >
         <span className="flex items-center gap-2">
           <Search className="size-4" />

@@ -14,11 +14,7 @@ import { createClient } from "@/lib/supabase/server";
  * pelo escopo do usuário (user_links) — nunca consulte fora dele.
  */
 
-export const OPEN_STATUSES: ActivityStatus[] = [
-  "planejada",
-  "em_andamento",
-  "atrasada",
-];
+export const OPEN_STATUSES: ActivityStatus[] = ["planejada", "atrasada"];
 
 export type FieldActivity = {
   id: string;

@@ -54,7 +54,6 @@ import { cn } from "@/lib/utils";
 
 const PILL_COLORS: Record<ActivityStatus, string> = {
   planejada: "bg-muted text-foreground",
-  em_andamento: "bg-muted text-foreground",
   concluida:
     "bg-success-bg text-success-fg",
   atrasada:
@@ -63,8 +62,7 @@ const PILL_COLORS: Record<ActivityStatus, string> = {
 };
 
 const DOT_COLORS: Record<ActivityStatus, string> = {
-  planejada: "bg-foreground/50",
-  em_andamento: "bg-foreground",
+  planejada: "bg-accent-brand/50",
   concluida: "bg-success",
   atrasada: "bg-warning",
   nao_feita: "bg-muted-foreground/40",
@@ -107,9 +105,6 @@ function EventPill({
           />
         }
       >
-        {activity.status === "em_andamento" && (
-          <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
-        )}
         <Icon className="size-3 shrink-0" />
         <span
           className={cn(
@@ -276,9 +271,11 @@ export function CalendarView({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Filters row */}
+      {/* Barra única: toggle à esquerda, navegação ao centro, filtro à
+          direita (FIX Semana — sem segunda linha solta). */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* View toggle — segmented neutro (FIX 1) */}
+        {/* View toggle — segmented neutro: pill selecionada em bg-card
+            + text-foreground + shadow-sm (sem cor). */}
         <div className="flex rounded-lg bg-muted p-1">
           <button
             type="button"
@@ -308,6 +305,26 @@ export function CalendarView({
           </button>
         </div>
 
+        {/* Navegação centralizada */}
+        <div className="flex flex-1 items-center justify-center gap-2">
+          <Button variant="outline" size="icon-sm" onClick={goPrev}>
+            <ChevronLeft className="size-4" />
+            <span className="sr-only">Anterior</span>
+          </Button>
+          <h2 className="whitespace-nowrap text-base font-semibold">
+            {headerLabel}
+          </h2>
+          <Button variant="outline" size="icon-sm" onClick={goNext}>
+            <ChevronRight className="size-4" />
+            <span className="sr-only">Próximo</span>
+          </Button>
+          {showTodayButton && (
+            <Button variant="outline" size="sm" onClick={goToToday}>
+              Hoje
+            </Button>
+          )}
+        </div>
+
         {/* Channel filter */}
         {channels.length > 1 && (
           <SearchableSelect
@@ -317,24 +334,6 @@ export function CalendarView({
             placeholder="Todos os canais"
             className="h-9 min-w-48 border-input bg-card"
           />
-        )}
-      </div>
-
-      {/* Navigation */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="icon-sm" onClick={goPrev}>
-          <ChevronLeft className="size-4" />
-          <span className="sr-only">Anterior</span>
-        </Button>
-        <Button variant="outline" size="icon-sm" onClick={goNext}>
-          <ChevronRight className="size-4" />
-          <span className="sr-only">Próximo</span>
-        </Button>
-        <h2 className="text-xl font-semibold">{headerLabel}</h2>
-        {showTodayButton && (
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Hoje
-          </Button>
         )}
       </div>
 
@@ -356,6 +355,13 @@ export function CalendarView({
             channelFilter={channelFilter}
           />
         )
+      ) : isDesktop ? (
+        <WeekGrid
+          days={weekDays}
+          activityMap={activityMap}
+          channelFilter={channelFilter}
+          highlightId={highlightId}
+        />
       ) : (
         <WeekAgenda
           days={weekDays}
@@ -473,7 +479,7 @@ function DesktopGrid({
                     className={cn(
                       "relative flex min-h-[110px] cursor-pointer flex-col gap-1 border-b border-r border-hover-surface p-2 transition-colors hover:bg-subtle",
                       !inMonth && "bg-subtle",
-                      todayCell && "bg-muted"
+                      todayCell && "bg-primary/5"
                     )}
                   />
                 }
@@ -483,7 +489,7 @@ function DesktopGrid({
                   className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-full text-sm",
                     todayCell
-                      ? "bg-primary font-semibold text-primary-foreground"
+                      ? "bg-primary font-semibold text-primary-foreground shadow-sm ring-2 ring-primary/15"
                       : inMonth
                         ? "text-foreground"
                         : "text-muted-foreground/50"
@@ -532,7 +538,203 @@ function DesktopGrid({
   );
 }
 
-// ── Visão semanal como agenda (FIX 5) ─────────────────────────────────
+// ── Visão semanal desktop: 7 colunas lado a lado ──────────────────────
+
+/** Borda esquerda do mini-card por status (alarme único: âmbar atraso,
+ *  verde conclusão, resto neutro). */
+const EDGE_COLORS: Record<ActivityStatus, string> = {
+  planejada: "border-l-muted-foreground/30",
+  concluida: "border-l-success",
+  atrasada: "border-l-warning",
+  nao_feita: "border-l-muted-foreground/20",
+};
+
+const MAX_WEEK_CARDS = 3;
+
+/** Mini-card de atividade dentro da coluna do dia. */
+function WeekMiniCard({
+  activity,
+  highlighted,
+  onClick,
+}: {
+  activity: ActivityRow;
+  highlighted: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "w-full cursor-pointer rounded-md border-l-2 bg-subtle px-2 py-1.5 text-left transition-colors hover:bg-hover-surface",
+        EDGE_COLORS[activity.status],
+        highlighted && "animate-pulse"
+      )}
+    >
+      <span className="flex items-center gap-1.5">
+        <CategoryIconBox
+          category={activity.category}
+          size="sm"
+          className="size-5 rounded-md"
+          iconClassName="size-3"
+        />
+        <span
+          className={cn(
+            "min-w-0 flex-1 truncate text-xs font-medium text-foreground",
+            activity.status === "nao_feita" &&
+              "text-muted-foreground line-through"
+          )}
+        >
+          {activity.title}
+        </span>
+      </span>
+      <span className="mt-1 flex items-center gap-1.5 pl-0.5">
+        <span
+          aria-hidden
+          className={cn(
+            "size-1.5 shrink-0 rounded-full",
+            DOT_COLORS[activity.status]
+          )}
+        />
+        <span className="truncate text-[10px] text-muted-foreground">
+          {activity.channelName}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function WeekGrid({
+  days,
+  activityMap,
+  channelFilter,
+  highlightId,
+}: {
+  days: Date[];
+  activityMap: Map<string, ActivityRow[]>;
+  channelFilter: string | null;
+  highlightId: string | null;
+}) {
+  const { openActivity } = useActivityDrawer();
+
+  return (
+    <div className="grid min-h-[520px] grid-cols-7 gap-3">
+      {days.map((day, index) => {
+        const key = format(day, "yyyy-MM-dd");
+        const dayActivities = activityMap.get(key) ?? [];
+        const todayCell = isToday(day);
+        const overflow = dayActivities.length - MAX_WEEK_CARDS;
+        // Semana sempre começa na segunda (weekStartsOn: 1) — o índice
+        // bate com o array canônico de abreviações.
+        const weekdayShort = WEEKDAYS_SHORT[index].toUpperCase();
+
+        const popoverContent = (
+          <PopoverContent className="max-w-xs rounded-xl border-border p-4 shadow-lg">
+            <PopoverHeader className="p-0 pb-3">
+              <PopoverTitle className="text-sm font-semibold text-foreground">
+                {format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              </PopoverTitle>
+            </PopoverHeader>
+            <DayActivitiesList
+              day={day}
+              activities={dayActivities}
+              channelFilter={channelFilter}
+            />
+          </PopoverContent>
+        );
+
+        return (
+          <div
+            key={key}
+            className={cn(
+              "group flex flex-col overflow-hidden rounded-xl border border-border bg-card",
+              todayCell && "bg-subtle"
+            )}
+          >
+            {/* Header do dia — clicável (popover) + "+" no hover */}
+            <div className="flex items-start justify-between border-b border-border px-3 py-2.5">
+              <Popover>
+                <PopoverTrigger
+                  render={
+                    <button
+                      type="button"
+                      className="cursor-pointer text-left"
+                      aria-label={format(day, "EEEE, dd 'de' MMMM", {
+                        locale: ptBR,
+                      })}
+                    />
+                  }
+                >
+                  <span className="block text-xs uppercase tracking-wide text-muted-foreground">
+                    {weekdayShort}
+                  </span>
+                  <span
+                    className={cn(
+                      "block text-lg font-semibold leading-tight",
+                      todayCell ? "text-accent-brand" : "text-foreground"
+                    )}
+                  >
+                    {format(day, "d")}
+                  </span>
+                </PopoverTrigger>
+                {popoverContent}
+              </Popover>
+              <NewActivityButton
+                mode="agendar"
+                date={key}
+                channelId={channelFilter ?? undefined}
+                label=""
+                variant="ghost"
+                size="icon-sm"
+                className="h-6 w-6 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                icon={<Plus className="size-3.5" />}
+              />
+            </div>
+
+            {/* Corpo — mini-cards ou vazio */}
+            <div className="flex flex-1 flex-col gap-1.5 p-2">
+              {dayActivities.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center">
+                  <p className="text-xs italic text-muted-foreground/70">
+                    Sem atividades
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {dayActivities.slice(0, MAX_WEEK_CARDS).map((activity) => (
+                    <WeekMiniCard
+                      key={activity.id}
+                      activity={activity}
+                      highlighted={highlightId === activity.id}
+                      onClick={() => openActivity(activity.id)}
+                    />
+                  ))}
+                  {overflow > 0 && (
+                    <Popover>
+                      <PopoverTrigger
+                        render={
+                          <button
+                            type="button"
+                            className="mt-auto cursor-pointer rounded-md px-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-hover-surface hover:text-foreground"
+                          />
+                        }
+                      >
+                        +{overflow} mais
+                      </PopoverTrigger>
+                      {popoverContent}
+                    </Popover>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Visão semanal mobile: agenda vertical ─────────────────────────────
 
 function WeekAgenda({
   days,
@@ -548,83 +750,87 @@ function WeekAgenda({
   const { openActivity } = useActivityDrawer();
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {days.map((day) => {
         const key = format(day, "yyyy-MM-dd");
         const dayActivities = activityMap.get(key) ?? [];
         const todayCell = isToday(day);
         const weekday = format(day, "EEEE", { locale: ptBR });
         const capitalDay = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+        const dayLabel = `${capitalDay}, ${format(day, "d")} ${format(day, "MMM", { locale: ptBR })}`;
+        const hasActivities = dayActivities.length > 0;
 
+        const todayChip = todayCell ? (
+          <span className="shrink-0 rounded-full bg-accent-brand/10 px-2 py-0.5 text-xs font-medium text-accent-brand">
+            Hoje
+          </span>
+        ) : null;
+
+        const agendarBtn = (
+          <NewActivityButton
+            mode="agendar"
+            date={key}
+            channelId={channelFilter ?? undefined}
+            label=""
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto text-muted-foreground hover:text-foreground"
+            icon={<Plus className="size-4" />}
+          />
+        );
+
+        // Dia vazio = linha compacta, sem card wrapper.
+        if (!hasActivities) {
+          return (
+            <div key={key} className="flex items-center gap-2 px-1 py-2.5">
+              <p className="text-sm font-medium text-muted-foreground">
+                {dayLabel}
+              </p>
+              {todayChip}
+              {agendarBtn}
+            </div>
+          );
+        }
+
+        // Dia com atividades = card (sem borda de destaque; o chip
+        // "Hoje" já ancora o dia atual).
         return (
           <div
             key={key}
-            className={cn(
-              "rounded-xl border border-border p-4",
-              todayCell && "bg-subtle"
-            )}
+            className="rounded-xl border border-border bg-card p-4 shadow-card"
           >
-            {/* Header do dia — affordance única de agendar */}
             <div className="flex items-center gap-2">
-              <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                {capitalDay},{" "}
-                {todayCell ? (
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                    {format(day, "d")}
-                  </span>
-                ) : (
-                  format(day, "d")
-                )}{" "}
-                {format(day, "MMM", { locale: ptBR })}
+              <p className="text-sm font-semibold text-foreground">
+                {dayLabel}
               </p>
-              <span className="text-xs tabular-nums text-muted-foreground">
-                {dayActivities.length > 0
-                  ? `${dayActivities.length} ${dayActivities.length === 1 ? "atividade" : "atividades"}`
-                  : null}
-              </span>
-              <NewActivityButton
-                mode="agendar"
-                date={key}
-                channelId={channelFilter ?? undefined}
-                label="Agendar"
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-                icon={<Plus className="size-4" />}
-              />
+              {todayChip}
+              {agendarBtn}
             </div>
-
-            {dayActivities.length > 0 ? (
-              <div className="mt-3 flex flex-col gap-1">
-                {dayActivities.map((activity) => (
-                  <button
-                    key={activity.id}
-                    type="button"
-                    onClick={() => openActivity(activity.id)}
-                    className={cn(
-                      "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-muted",
-                      highlightId === activity.id && "animate-pulse"
-                    )}
-                  >
-                    <CategoryIconBox category={activity.category} size="sm" />
-                    <span className="min-w-0 flex-1 truncate font-medium">
-                      {activity.title}
-                    </span>
-                    <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-                      {activity.channelName}
-                    </span>
-                    <StatusBadge
-                      status={activity.status}
-                      className="shrink-0 text-[10px]"
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-sm italic text-muted-foreground">
-                Sem atividades
-              </p>
-            )}
+            <div className="mt-3 flex flex-col gap-1">
+              {dayActivities.map((activity) => (
+                <button
+                  key={activity.id}
+                  type="button"
+                  onClick={() => openActivity(activity.id)}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-left text-sm transition-colors hover:bg-hover-surface",
+                    highlightId === activity.id && "animate-pulse"
+                  )}
+                >
+                  <CategoryIconBox category={activity.category} size="md" />
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                    {activity.title}
+                  </span>
+                  <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+                    {activity.channelName}
+                  </span>
+                  <StatusBadge
+                    status={activity.status}
+                    className="shrink-0 text-[10px]"
+                  />
+                </button>
+              ))}
+            </div>
           </div>
         );
       })}

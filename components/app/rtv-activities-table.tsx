@@ -94,6 +94,7 @@ export function RtvActivitiesTable({
             openWizard({ mode: "registrar", activityId: activity.id })
           }
           deadlineFormat="relative"
+          showChannel
         />
       </div>
 

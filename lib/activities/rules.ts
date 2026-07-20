@@ -66,7 +66,7 @@ export function buildActivitySchema(plan: { problemCount: number }) {
     dueDate: z.string().nullable(),
     description: z.string(),
     status: z.enum(
-      ["planejada", "em_andamento", "concluida", "atrasada", "nao_feita"],
+      ["planejada", "concluida", "atrasada", "nao_feita"],
       "Selecione um status válido."
     ),
   });

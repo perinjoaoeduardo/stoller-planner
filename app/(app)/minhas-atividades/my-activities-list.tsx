@@ -48,11 +48,7 @@ import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 import { cn } from "@/lib/utils";
 
-const OPEN = new Set<ActivityStatus>([
-  "planejada",
-  "em_andamento",
-  "atrasada",
-]);
+const OPEN = new Set<ActivityStatus>(["planejada", "atrasada"]);
 
 type KpiFilter = "todos" | "abertas" | "atrasadas" | "concluidas";
 
@@ -80,7 +76,7 @@ export type InitialStatus = KpiFilter | "todas";
 function WizardEmptyButton() {
   const { openWizard } = useWizardProvider();
   return (
-    <Button onClick={() => openWizard()}>
+    <Button variant="brand" onClick={() => openWizard()}>
       <Plus className="size-4" />
       Nova atividade
     </Button>
@@ -225,9 +221,7 @@ export function MyActivitiesList({
   const filteredByKpi = React.useMemo(() => {
     if (kpiFilter === "todos") return activities;
     if (kpiFilter === "abertas") {
-      return activities.filter(
-        (a) => a.status === "planejada" || a.status === "em_andamento"
-      );
+      return activities.filter((a) => a.status === "planejada");
     }
     if (kpiFilter === "atrasadas") {
       return activities.filter((a) => a.status === "atrasada");

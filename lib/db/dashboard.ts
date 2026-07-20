@@ -22,11 +22,7 @@ export type DashboardData = {
   upcoming: UpcomingActivity[];
 };
 
-const PENDING_STATUSES: ActivityStatus[] = [
-  "planejada",
-  "em_andamento",
-  "atrasada",
-];
+const PENDING_STATUSES: ActivityStatus[] = ["planejada", "atrasada"];
 
 const EMPTY_DASHBOARD: DashboardData = {
   totalActivities: 0,

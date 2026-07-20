@@ -3,14 +3,12 @@ import { cn } from "@/lib/utils";
 
 export type ActivityStatus =
   | "planejada"
-  | "em_andamento"
   | "concluida"
   | "atrasada"
   | "nao_feita";
 
 export const ACTIVITY_STATUSES: ActivityStatus[] = [
   "planejada",
-  "em_andamento",
   "concluida",
   "atrasada",
   "nao_feita",
@@ -18,10 +16,9 @@ export const ACTIVITY_STATUSES: ActivityStatus[] = [
 
 export const STATUS_LABELS: Record<ActivityStatus, string> = {
   planejada: "Planejada",
-  em_andamento: "Em andamento",
   concluida: "Concluída",
   atrasada: "Atrasada",
-  nao_feita: "Não feita",
+  nao_feita: "Cancelada",
 };
 
 /**
@@ -34,7 +31,6 @@ const STATUS_STYLES: Record<
   { variant: React.ComponentProps<typeof Badge>["variant"]; className?: string }
 > = {
   planejada: { variant: "outline", className: "text-foreground" },
-  em_andamento: { variant: "outline", className: "text-foreground" },
   concluida: {
     variant: "outline",
     className: "border-transparent bg-success-bg text-success-fg",
@@ -57,9 +53,6 @@ export function StatusBadge({
 
   return (
     <Badge variant={config.variant} className={cn(config.className, className)}>
-      {status === "em_andamento" && (
-        <span className="size-1.5 shrink-0 rounded-full bg-foreground" />
-      )}
       {STATUS_LABELS[status]}
     </Badge>
   );

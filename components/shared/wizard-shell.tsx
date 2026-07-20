@@ -31,9 +31,9 @@ export function WizardStepper({
             className={cn(
               "h-1.5 flex-1 rounded-full transition-colors duration-300",
               i < current
-                ? "bg-foreground"
+                ? "bg-accent-brand"
                 : i === current
-                  ? "bg-foreground/45"
+                  ? "bg-accent-brand"
                   : "bg-border"
             )}
           />

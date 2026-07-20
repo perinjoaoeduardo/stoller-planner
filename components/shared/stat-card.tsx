@@ -11,9 +11,9 @@ import { cn } from "@/lib/utils";
 /**
  * Stat card ÚNICO do app (home, Minhas Atividades, Visão do Canal).
  * Anatomia: título sm/medium + ícone muted à direita, valor 3xl/bold,
- * sublabel xs/muted. `tone="warning"` pinta valor e ícone de âmbar
- * (quem consome decide, ex.: atrasadas > 0). `interactive` liga os 3
- * estados (padrão/hover/ativo); a lógica de filtro fica na tela.
+ * sublabel xs/muted. `tone="warning"` pinta valor e ícone de âmbar.
+ * `interactive` liga os 3 estados (padrão/hover/ativo); a lógica de
+ * filtro fica na tela.
  */
 export function StatCard({
   title,
@@ -36,6 +36,8 @@ export function StatCard({
   onClick?: () => void;
   href?: string;
 }) {
+  const accentClass = tone === "warning" ? "text-warning" : null;
+
   const body = (
     <>
       <div className="flex items-center gap-2">
@@ -43,14 +45,14 @@ export function StatCard({
         <Icon
           className={cn(
             "ml-auto size-4 shrink-0",
-            tone === "warning" ? "text-warning" : "text-muted-foreground"
+            accentClass ?? "text-muted-foreground"
           )}
         />
       </div>
       <p
         className={cn(
           "mt-2 text-3xl font-bold tracking-tight tabular-nums",
-          tone === "warning" ? "text-warning" : "text-foreground"
+          accentClass ?? "text-foreground"
         )}
       >
         {value}
@@ -63,18 +65,29 @@ export function StatCard({
     </>
   );
 
+  // Card do shadcn traz `shadow-xs` no base; precisamos do bang pra que
+  // nossos tokens shadow-card / shadow-elevated ganhem (Tailwind v4 gera
+  // essas utilities em ordem alfabética e xs sai depois de elevated).
+  // Hover canônico (igual ao ClickableCard / cards de Meus Canais):
+  // a borda escurece um passo e o card sobe (shadow-elevated). Sem
+  // troca de fundo — o "lift" é o sinal único de interação.
   const cardClass = cn(
-    "rounded-xl p-0 shadow-sm transition-all duration-150",
+    "rounded-xl p-0 shadow-card! transition-[background-color,border-color,box-shadow] duration-base ease-standard",
     interactive
       ? active
-        ? "border-2 border-border-active bg-subtle shadow-md"
-        : "border-border bg-card hover:border-border-hover hover:bg-hover-surface"
-      : "border-border bg-card"
+        ? "border border-primary/40 bg-subtle shadow-elevated!"
+        : "border border-border bg-card hover:border-border-hover hover:shadow-elevated!"
+      : "border border-border bg-card"
   );
 
   if (href) {
     return (
-      <Card className={cn(cardClass, "hover:bg-hover-surface")}>
+      <Card
+        className={cn(
+          cardClass,
+          "hover:border-border-hover hover:shadow-elevated!"
+        )}
+      >
         <Link href={href} className="block p-5">
           {body}
         </Link>

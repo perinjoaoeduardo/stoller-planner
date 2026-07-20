@@ -7,6 +7,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Camera,
+  ChevronRight,
   CircleCheckBig,
   ClipboardList,
   FileDown,
@@ -19,9 +20,12 @@ import { toast } from "sonner";
 
 import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
-import { CategoryBadge } from "@/components/app/category-badge";
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { MonthlyRegistrationsChart } from "@/components/app/monthly-registrations-chart";
 import { SearchableSelect } from "@/components/app/searchable-select";
+import { CategoryIconBox } from "@/components/shared/icon-box";
+import { DeadlineText } from "@/components/shared/deadline-text";
+import { TruncatedText } from "@/components/shared/truncated-text";
 import {
   ACTIVITY_STATUSES,
   StatusBadge,
@@ -131,57 +135,93 @@ function GalleryThumb({
   );
 }
 
-/** Linha de atividade dentro de uma seção do relatório. */
-function ActivityLine({ activity }: { activity: ReportActivity }) {
+/**
+ * Linha escaneável de atividade dentro de uma seção do relatório
+ * (FIX A). Uma linha por atividade: ícone da categoria, título, data de
+ * execução, status e seta. O relato completo, evidências, autor e
+ * timeline vivem no Activity Panel — clicar na linha o abre.
+ *
+ * `showResponsible` só é true quando o responsável varia entre as
+ * atividades da meta; se todas têm o mesmo, a informação some (vive no
+ * painel).
+ */
+function ActivityLine({
+  activity,
+  showResponsible,
+  onOpen,
+}: {
+  activity: ReportActivity;
+  showResponsible: boolean;
+  onOpen: (id: string) => void;
+}) {
+  // Num relatório de fechamento o que importa é QUANDO foi feito: a data
+  // do último registro de execução. Sem execução, cai no prazo.
+  const executedAt = activity.lastExecution?.createdAt ?? null;
+
   return (
-    <div
-      className="flex flex-col gap-1 py-3"
+    <button
+      type="button"
+      onClick={() => onOpen(activity.id)}
       style={{ breakInside: "avoid" }}
+      className="group flex w-full items-center gap-3 py-3 text-left transition-colors duration-base ease-standard hover:bg-hover-surface"
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="min-w-0 text-sm font-medium">{activity.title}</p>
-          {activity.category ? (
-            <CategoryBadge category={activity.category} />
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <span className="text-xs text-muted-foreground tabular-nums">
-            {formatDate(activity.dueDate)}
-          </span>
-          <StatusBadge status={activity.status} />
-        </div>
+      <CategoryIconBox
+        category={activity.category}
+        size="md"
+        withTooltip
+        className="self-center"
+      />
+      <div className="min-w-0 flex-1">
+        <TruncatedText
+          text={activity.title}
+          className="text-sm font-medium text-foreground"
+        />
+        {showResponsible ? (
+          <p className="truncate text-xs text-muted-foreground">
+            {activity.responsibleName ?? "Sem responsável"}
+            {activity.branchName ? ` · ${activity.branchName}` : ""}
+          </p>
+        ) : null}
       </div>
-      <p className="text-xs text-muted-foreground">
-        {activity.responsibleName ?? "Sem responsável"}
-        {activity.branchName ? ` · ${activity.branchName}` : ""}
-      </p>
-      {activity.lastExecution?.description ? (
-        <p className="mt-1 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-foreground/80">
-          {activity.lastExecution.description}
-          <span className="mt-0.5 block text-[11px] text-muted-foreground tabular-nums">
-            Registrado em {formatDate(activity.lastExecution.createdAt)}
-          </span>
-        </p>
-      ) : null}
-    </div>
+      {executedAt ? (
+        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+          {formatDate(executedAt)}
+        </span>
+      ) : (
+        <DeadlineText
+          dueDate={activity.dueDate}
+          status={activity.status}
+          format="date"
+          className="shrink-0 whitespace-nowrap text-xs"
+        />
+      )}
+      <StatusBadge status={activity.status} />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+    </button>
   );
 }
 
-/** Seção reutilizável: lista de atividades + progresso + galeria. */
+/** Seção reutilizável: cabeçalho + resultado (meta) + progresso + lista
+ *  escaneável + galeria. `isMeta` liga a linha de Resultado (FIX B). */
 function ActivitiesSection({
   title,
   description,
   activities,
   onOpenPhoto,
   index,
+  isMeta = false,
+  resultado = null,
 }: {
   title: string;
   description: string | null;
   activities: ReportActivity[];
   onOpenPhoto: (photo: ReportPhoto) => void;
   index?: number;
+  /** Card de meta: mostra a linha de Resultado protagonista. */
+  isMeta?: boolean;
+  resultado?: string | null;
 }) {
+  const { openActivity } = useActivityDrawer();
   const total = activities.length;
   const completed = activities.filter(
     (activity) => activity.status === "concluida"
@@ -189,12 +229,18 @@ function ActivitiesSection({
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
   const photos = activities.flatMap((activity) => activity.photos);
 
+  // Autor+filial só entram na lista quando VARIAM entre as atividades da
+  // meta (senão a repetição é ruído — o dado vive no painel).
+  const showResponsible =
+    new Set(activities.map((activity) => activity.responsibleName ?? "—"))
+      .size > 1;
+
   return (
-    <Card className="report-section">
-      <CardHeader style={{ breakAfter: "avoid" }}>
-        <CardTitle className="text-lg leading-snug">
+    <Card className="report-section gap-4">
+      <CardHeader className="gap-1" style={{ breakAfter: "avoid" }}>
+        <CardTitle className="text-base font-semibold leading-snug text-foreground">
           {typeof index === "number" ? (
-            <span className="mr-2 text-muted-foreground tabular-nums">
+            <span className="mr-2 text-sm font-semibold text-muted-foreground tabular-nums">
               {String(index + 1).padStart(2, "0")}
             </span>
           ) : null}
@@ -206,27 +252,54 @@ function ActivitiesSection({
           </CardDescription>
         ) : null}
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <Progress value={percent} className="gap-2">
+      <CardContent className="space-y-4">
+        {/* FIX B — Resultado da meta: o dado protagonista do card */}
+        {isMeta ? (
+          <div className="rounded-lg bg-subtle p-3">
+            <p className="text-xs text-muted-foreground">Resultado</p>
+            {resultado ? (
+              <p className="mt-0.5 text-sm font-medium text-foreground">
+                {resultado}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-sm italic text-muted-foreground">
+                Resultado não informado
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {/* Progresso de execução — rebaixado a contexto (barra fina, muted) */}
+        <Progress
+          value={percent}
+          className="gap-2 [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:bg-muted [&_[data-slot=progress-indicator]]:bg-foreground/70"
+        >
           <ProgressLabel className="text-xs text-muted-foreground">
             {completed} de {total}{" "}
             {total === 1 ? "atividade concluída" : "atividades concluídas"}
           </ProgressLabel>
-          <ProgressValue className="text-xs tabular-nums" />
+          <ProgressValue className="text-xs tabular-nums text-muted-foreground" />
         </Progress>
 
+        {/* FIX A — lista escaneável, uma linha por atividade */}
         {total === 0 ? (
           <p className="text-sm text-muted-foreground">
             Nenhuma atividade registrada para esta meta no recorte atual.
           </p>
         ) : (
-          <div className="flex flex-col divide-y">
+          <div className="flex flex-col divide-y divide-border/50">
             {activities.map((activity) => (
-              <ActivityLine key={activity.id} activity={activity} />
+              <ActivityLine
+                key={activity.id}
+                activity={activity}
+                showResponsible={showResponsible}
+                onOpen={openActivity}
+              />
             ))}
           </div>
         )}
 
+        {/* Evidências — inalterado */}
         {photos.length > 0 ? (
           <>
             <Separator />
@@ -594,6 +667,8 @@ export function ReportView({
               description={section.problem.description}
               activities={section.activities}
               onOpenPhoto={setLightbox}
+              isMeta
+              resultado={section.problem.resultado ?? null}
             />
           ))}
 

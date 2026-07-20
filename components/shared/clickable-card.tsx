@@ -12,13 +12,13 @@ import { cn } from "@/lib/utils";
  * quem consome define p-4 ou p-5.
  */
 export const clickableCardClass =
-  "group relative rounded-xl border border-border bg-card text-left shadow-sm transition-all dark:shadow-none hover:border-border-hover";
+  "group relative rounded-xl border border-border bg-card text-left shadow-card transition-[background-color,border-color,box-shadow] duration-base ease-standard hover:border-border-hover hover:shadow-elevated";
 
 export function CardArrow({ className }: { className?: string }) {
   return (
     <ArrowRight
       className={cn(
-        "size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5",
+        "size-4 shrink-0 text-muted-foreground transition-transform duration-slow ease-emphasized group-hover:translate-x-0.5",
         className
       )}
     />

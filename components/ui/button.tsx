@@ -9,6 +9,8 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary-hover",
+        brand:
+          "bg-accent-brand text-white hover:bg-[color-mix(in_oklch,var(--accent-brand),black_10%)] focus-visible:border-accent-brand focus-visible:ring-accent-brand/30",
         outline:
           "border-border bg-card hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:bg-transparent dark:hover:bg-input/30",
         secondary:

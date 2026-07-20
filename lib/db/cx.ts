@@ -262,7 +262,6 @@ export async function getCxMetrics(): Promise<CxMetrics> {
 export type RegionStatusDatum = {
   region: string;
   concluida: number;
-  em_andamento: number;
   planejada: number;
   atrasada: number;
   nao_feita: number;
@@ -278,7 +277,6 @@ export async function getRegionStatusData(): Promise<RegionStatusDatum[]> {
       entry = {
         region: channel.regionName.replace(/^Regional\s+/i, ""),
         concluida: 0,
-        em_andamento: 0,
         planejada: 0,
         atrasada: 0,
         nao_feita: 0,
@@ -534,11 +532,7 @@ export type DarkChannel = {
   summaryText: string;
 };
 
-const OPEN_STATUSES: ActivityStatus[] = [
-  "atrasada",
-  "em_andamento",
-  "planejada",
-];
+const OPEN_STATUSES: ActivityStatus[] = ["atrasada", "planejada"];
 
 function buildSummaryText(input: {
   firstName: string | null;
@@ -565,10 +559,9 @@ export async function getDarkChannels(): Promise<DarkChannel[]> {
   const snapshot = await getCxSnapshot();
   const statusOrder: Record<ActivityStatus, number> = {
     atrasada: 0,
-    em_andamento: 1,
-    planejada: 2,
-    concluida: 3,
-    nao_feita: 4,
+    planejada: 1,
+    concluida: 2,
+    nao_feita: 3,
   };
   return snapshot.channels
     .filter((channel) => isDark(channel.lastExecutionAt))

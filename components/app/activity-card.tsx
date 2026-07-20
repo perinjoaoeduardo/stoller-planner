@@ -39,11 +39,7 @@ export type ActivityCardData = {
   assignees: { id: string; name: string }[];
 };
 
-const OPEN_STATUSES: ActivityStatus[] = [
-  "planejada",
-  "em_andamento",
-  "atrasada",
-];
+const OPEN_STATUSES: ActivityStatus[] = ["planejada", "atrasada"];
 
 function getInitials(name: string) {
   return name

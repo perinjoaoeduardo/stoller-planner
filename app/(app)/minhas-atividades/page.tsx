@@ -43,7 +43,7 @@ export default async function MinhasAtividadesPage({
     <PageShell
       title="Minhas Atividades"
       description="Todas as atividades atribuídas a você."
-      actions={<NewActivityButton variant="outline" />}
+      actions={<NewActivityButton />}
     >
       <MyActivitiesList activities={mine} initialStatus={initialStatus} />
     </PageShell>

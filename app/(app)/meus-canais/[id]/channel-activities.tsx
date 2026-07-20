@@ -31,7 +31,7 @@ const CHIPS: { value: StatusChip; label: string }[] = [
   { value: "concluidas", label: "Concluídas" },
 ];
 
-const OPEN = new Set(["planejada", "em_andamento", "atrasada"]);
+const OPEN = new Set(["planejada", "atrasada"]);
 
 /** Atrasadas no topo, abertas por prazo, concluídas por último. */
 function sortActivities(activities: ActivityRow[]): ActivityRow[] {
@@ -65,7 +65,7 @@ function sortActivities(activities: ActivityRow[]): ActivityRow[] {
 function WizardButton() {
   const { openWizard } = useWizardProvider();
   return (
-    <Button onClick={() => openWizard()}>
+    <Button variant="brand" onClick={() => openWizard()}>
       <Plus className="size-4" />
       Nova atividade
     </Button>

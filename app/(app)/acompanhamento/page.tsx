@@ -3,6 +3,7 @@ import Link from "next/link";
 import { MoonStar, PartyPopper } from "lucide-react";
 
 import { ActivitiesTable } from "@/components/app/activities-table";
+import { ActivityLink } from "@/components/app/activity-link";
 import { CopySummaryMenu } from "@/components/app/copy-summary-menu";
 import { PageShell } from "@/components/app/page-shell";
 import { PendenciasView } from "@/components/app/pendencias-view";
@@ -67,14 +68,14 @@ function DarkChannelCard({ channel }: { channel: DarkChannel }) {
               Últimas atividades abertas
             </p>
             {channel.openActivities.map((activity) => (
-              <Link
+              <ActivityLink
                 key={activity.id}
-                href={`/atividades/${activity.id}`}
+                activityId={activity.id}
                 className="flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-sm transition-colors hover:bg-muted/60"
               >
                 <span className="truncate">{activity.title}</span>
                 <StatusBadge status={activity.status} className="shrink-0" />
-              </Link>
+              </ActivityLink>
             ))}
           </div>
         ) : (

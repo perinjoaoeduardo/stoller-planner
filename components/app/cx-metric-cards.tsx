@@ -36,18 +36,21 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
       value: metrics.channelsWithPlan.toString(),
       hint: `de ${metrics.totalChannels} canais`,
       icon: Store,
+      href: "/canais",
     },
     {
       label: "Atividades da safra",
       value: metrics.totalActivities.toString(),
       hint: "Planos ativos",
       icon: ClipboardList,
+      href: "/atividades",
     },
     {
       label: "Concluídas",
       value: `${metrics.completedPercent}%`,
       hint: `${metrics.completedCount} de ${metrics.totalActivities}`,
       icon: CircleCheckBig,
+      href: "/atividades",
     },
     {
       label: "Atrasadas",
@@ -55,6 +58,7 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
       hint: `${metrics.lateCount} atividades`,
       icon: CircleAlert,
       valueClass: lateTone,
+      href: "/acompanhamento?tab=atrasadas",
     },
   ];
 
@@ -63,25 +67,29 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
       {cards.map((card) => (
-        <Card key={card.label} className="gap-1.5 py-4">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 px-4">
-            <CardDescription className="text-xs">{card.label}</CardDescription>
-            <card.icon className="size-4 shrink-0 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-4">
-            <p
-              className={cn(
-                "text-2xl font-semibold tracking-tight tabular-nums",
-                card.valueClass
-              )}
-            >
-              {card.value}
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
-              {card.hint}
-            </p>
-          </CardContent>
-        </Card>
+        <Link key={card.label} href={card.href} className="group">
+          <Card className="h-full gap-1.5 py-4 shadow-card transition-[background-color,border-color,box-shadow] duration-base ease-standard group-hover:border-border-hover group-hover:shadow-elevated">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 px-4">
+              <CardDescription className="text-xs">
+                {card.label}
+              </CardDescription>
+              <card.icon className="size-4 shrink-0 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="px-4">
+              <p
+                className={cn(
+                  "text-2xl font-semibold tracking-tight tabular-nums",
+                  card.valueClass
+                )}
+              >
+                {card.value}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
+                {card.hint}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       ))}
 
       <Link
@@ -91,9 +99,9 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
       >
         <Card
           className={cn(
-            "h-full gap-1.5 py-4 transition-colors group-hover:border-primary/40 group-hover:bg-muted/40",
+            "h-full gap-1.5 py-4 shadow-card transition-[background-color,border-color,box-shadow] duration-base ease-standard group-hover:border-border-hover group-hover:shadow-elevated",
             dark > 0 &&
-              "border-red-500/40 bg-red-500/5 group-hover:border-red-500/60 group-hover:bg-red-500/10"
+              "border-red-500/40 bg-red-500/5 group-hover:border-red-500/60"
           )}
         >
           <CardHeader className="flex flex-row items-center justify-between gap-2 px-4">

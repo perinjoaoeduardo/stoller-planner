@@ -22,6 +22,7 @@ import {
   ActivityTable,
   type ActivityTableColumn,
 } from "@/components/shared/activity-table";
+import { ClickableCard } from "@/components/shared/clickable-card";
 import { DeadlineText } from "@/components/shared/deadline-text";
 import { StatCard } from "@/components/shared/stat-card";
 import { useWizardProvider } from "@/components/app/wizard-provider";
@@ -47,13 +48,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Switch } from "@/components/ui/switch";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type {
   ActivityRow,
   ChannelDetail,
@@ -61,12 +62,9 @@ import type {
 } from "@/lib/db/channels";
 import { isLateActivity, todayISO } from "@/lib/db/status";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
+import { cn } from "@/lib/utils";
 
-const PENDING = new Set<ActivityStatus>([
-  "planejada",
-  "em_andamento",
-  "atrasada",
-]);
+const PENDING = new Set<ActivityStatus>(["planejada", "atrasada"]);
 
 type KpiFilter = "todos" | "concluidas" | "atrasadas" | "vencendo";
 
@@ -108,6 +106,7 @@ export function MeuCanalView({
 }) {
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
+  const isMobile = useIsMobile();
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>("todos");
   const [search, setSearch] = React.useState("");
@@ -532,16 +531,39 @@ export function MeuCanalView({
         </>
       )}
 
-      {/* Sheet lateral de problemas */}
-      <Sheet open={problemsOpen} onOpenChange={setProblemsOpen}>
-        <SheetContent className="w-full sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Metas do plano</SheetTitle>
-            <SheetDescription>
-              As metas definidas no papel em branco desta safra.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 pb-6">
+      {/* Drawer flutuante de metas (mesmo container do wizard) */}
+      <Drawer
+        open={problemsOpen}
+        onOpenChange={setProblemsOpen}
+        modal
+        swipeDirection={isMobile ? "down" : "right"}
+      >
+        <DrawerContent
+          className={cn(
+            !isMobile && "data-[swipe-axis=x]:sm:[--drawer-content-width:28rem]"
+          )}
+        >
+          <DrawerTitle className="sr-only">Metas do plano</DrawerTitle>
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-6 py-4">
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-foreground">
+                Metas do plano
+              </p>
+              <DrawerDescription className="mt-0.5">
+                As metas definidas no papel em branco desta safra.
+              </DrawerDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setProblemsOpen(false)}
+              className="shrink-0"
+            >
+              <X className="size-4" />
+              <span className="sr-only">Fechar</span>
+            </Button>
+          </div>
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-6">
             {problems.length === 0 ? (
               <Empty className="py-10">
                 <EmptyHeader>
@@ -567,52 +589,47 @@ export function MeuCanalView({
                     ? Math.round((completed / linked.length) * 100)
                     : 0;
                 return (
-                  <Card
+                  <ClickableCard
                     key={problem.id}
-                    className="p-0 transition-colors hover:bg-muted/40"
+                    onClick={() => {
+                      setProblemFilter(problem);
+                      setProblemsOpen(false);
+                    }}
+                    className="flex flex-col gap-4 p-5"
                   >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProblemFilter(problem);
-                        setProblemsOpen(false);
-                      }}
-                      className="flex w-full flex-col gap-3 p-5 text-left"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="min-w-0 font-medium leading-snug">
-                          {problem.title}
-                        </p>
-                        <Badge
-                          variant="secondary"
-                          className="shrink-0 tabular-nums"
-                        >
-                          {linked.length}{" "}
-                          {linked.length === 1 ? "atividade" : "atividades"}
-                        </Badge>
-                      </div>
-                      {problem.description ? (
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {problem.description}
-                        </p>
-                      ) : null}
-                      <div className="flex items-center gap-3">
-                        <Progress
-                          value={percent}
-                          className="flex-1 [&_[data-slot=progress-track]]:h-2"
-                        />
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {percent}%
-                        </span>
-                      </div>
-                    </button>
-                  </Card>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="min-w-0 font-medium leading-snug">
+                        {problem.title}
+                      </p>
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 tabular-nums"
+                      >
+                        {linked.length}{" "}
+                        {linked.length === 1 ? "atividade" : "atividades"}
+                      </Badge>
+                    </div>
+                    {problem.description ? (
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {problem.description}
+                      </p>
+                    ) : null}
+                    <div className="flex items-center gap-3">
+                      <Progress
+                        value={percent}
+                        className="flex-1 [&_[data-slot=progress-track]]:h-2"
+                      />
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {percent}%
+                      </span>
+                    </div>
+                  </ClickableCard>
                 );
               })
             )}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DrawerContent>
+      </Drawer>
 
       {/* Botao para abrir o Sheet - controlado por state via portal invisível.
           O trigger visível vive no PageShell.actions (page.tsx) — expose um
@@ -623,7 +640,7 @@ export function MeuCanalView({
       <button
         type="button"
         onClick={() => openWizard({ channelId: channel.id })}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-foreground px-5 py-3.5 text-sm font-semibold text-background shadow-lg transition-opacity hover:opacity-90 active:opacity-80 md:hidden"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-accent-brand px-5 py-3.5 text-sm font-semibold text-white shadow-elevated transition-opacity duration-base ease-standard hover:opacity-90 active:opacity-80 md:hidden"
       >
         <Plus className="size-5" />
         Nova atividade

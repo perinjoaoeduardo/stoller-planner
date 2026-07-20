@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/chart";
 
 const chartConfig = {
-  total: { label: "Registros", color: "var(--chart-2)" },
+  total: { label: "Registros", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 /**

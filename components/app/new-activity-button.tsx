@@ -13,7 +13,7 @@ export function NewActivityButton({
   channelId,
   date,
   size = "default",
-  variant = "default",
+  variant = "brand",
   className,
   label = "Nova atividade",
   icon,
@@ -22,7 +22,7 @@ export function NewActivityButton({
   channelId?: string;
   date?: string;
   size?: "default" | "sm" | "lg" | "icon-sm";
-  variant?: "default" | "outline" | "ghost";
+  variant?: "default" | "brand" | "outline" | "ghost";
   className?: string;
   label?: string;
   icon?: ReactNode;

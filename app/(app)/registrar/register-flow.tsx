@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 import { AdhocForm } from "./adhoc-form";
 import { CompleteActivity } from "./complete-activity";
 
-const OPEN_RANK = new Set(["planejada", "em_andamento", "atrasada"]);
+const OPEN_RANK = new Set(["planejada", "atrasada"]);
 
 /**
  * Fluxo Registrar — lógica invertida: a atividade planejada já existe;
@@ -280,11 +280,13 @@ export function RegisterFlow({
       <button
         type="button"
         onClick={() => setAdhoc(true)}
-        className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-border-hover bg-subtle p-5 text-left transition-colors hover:border-border-active hover:bg-muted"
+        className="flex min-h-20 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 p-5 text-left transition-colors hover:border-accent-brand/60 hover:bg-accent-brand/10"
       >
-        <PenLine className="size-6 shrink-0 text-foreground/70" />
+        <PenLine className="size-6 shrink-0 text-accent-brand" />
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="font-medium">Registrar ação fora do plano</p>
+          <p className="font-medium text-accent-brand">
+            Registrar ação fora do plano
+          </p>
           <p className="text-sm text-muted-foreground">
             Realizou uma ação que não estava no plano? Registre aqui.
           </p>

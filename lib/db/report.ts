@@ -43,6 +43,14 @@ export type ReportProblem = {
   title: string;
   description: string | null;
   orderIndex: number;
+  /**
+   * Resultado da meta ao fim da safra (frase curta). A ORIGEM DO DADO
+   * ainda não foi definida pelo produto — a query não popula este campo,
+   * então hoje chega sempre undefined e a UI mostra "Resultado não
+   * informado". Quando o produto definir o campo/tabela de origem, é só
+   * preencher aqui em getSeasonReport.
+   */
+  resultado?: string | null;
 };
 
 export type SeasonReport = {

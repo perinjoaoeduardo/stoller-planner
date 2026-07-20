@@ -11,13 +11,15 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
+// Distribuição POR STATUS: cada barra na cor semântica do próprio
+// status (não na paleta genérica chart-1..5). Nada de azul saturado —
+// os abertos são neutros, concluída = verde, atrasada = âmbar.
 const chartConfig = {
   total: { label: "Atividades" },
-  planejada: { label: "Planejada", color: "var(--chart-1)" },
-  em_andamento: { label: "Em andamento", color: "var(--chart-2)" },
-  concluida: { label: "Concluída", color: "var(--chart-3)" },
-  atrasada: { label: "Atrasada", color: "var(--chart-4)" },
-  nao_feita: { label: "Não feita", color: "var(--chart-5)" },
+  planejada: { label: "Planejada", color: "var(--border-active)" },
+  concluida: { label: "Concluída", color: "var(--success)" },
+  atrasada: { label: "Atrasada", color: "var(--warning)" },
+  nao_feita: { label: "Cancelada", color: "var(--border-hover)" },
 } satisfies ChartConfig;
 
 export function ActivitiesStatusChart({

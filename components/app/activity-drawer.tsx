@@ -12,17 +12,17 @@ import { ptBR } from "date-fns/locale";
 import {
   Calendar,
   Camera,
+  Check,
   CheckCircle2,
+  ChevronDown,
   ClipboardCheck,
   ImageMinus,
   Link2,
   MessageSquare,
-  MoreHorizontal,
   Pencil,
   Plus,
   RefreshCw,
   RotateCcw,
-  Trash2,
   X as XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -32,9 +32,7 @@ import { ProblemEditor } from "@/app/(app)/atividades/[id]/problem-editor";
 import { IconBox } from "@/components/shared/icon-box";
 import { PhotoAttach } from "@/components/shared/photo-attach";
 import { categoryIcon } from "@/lib/category-icons";
-import { deadlineClass } from "@/lib/deadline";
 import {
-  ACTIVITY_STATUSES,
   STATUS_LABELS,
   StatusBadge,
   type ActivityStatus,
@@ -74,13 +72,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
@@ -93,7 +84,6 @@ import {
 } from "@/lib/actions/activity-drawer";
 import {
   changeActivityStatus,
-  deleteActivity,
   deleteActivityPhoto,
   registerActivityPhoto,
 } from "@/lib/actions/plan";
@@ -383,14 +373,15 @@ function DrawerBody({
   onClose: () => void;
 }) {
   const { openWizard } = useWizardProvider();
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [deleting, setDeleting] = React.useState(false);
-  const [statusDialog, setStatusDialog] = React.useState(false);
 
   const isOpen =
-    activity.status === "planejada" ||
-    activity.status === "em_andamento" ||
-    activity.status === "atrasada";
+    activity.status === "planejada" || activity.status === "atrasada";
+
+  // Execução já registrada? Então o CTA "Registrar execução" some — não
+  // faz sentido registrar de novo (o relato vive na linha do tempo).
+  const hasExecution = activity.events.some(
+    (event) => event.type === "execucao_registrada"
+  );
 
   const canChangeStatus = activity.canRegister || activity.canEdit;
   const canLinkMeta = activity.canRegister || activity.canEdit;
@@ -404,52 +395,23 @@ function DrawerBody({
     });
   }
 
-  async function handleDelete() {
-    setDeleting(true);
-    const result = await deleteActivity({ activityId: activity.id });
-    setDeleting(false);
-    if (!result.ok) {
-      toast.error(result.error);
-      return;
-    }
-    toast.success("Atividade excluída.");
-    setConfirmDelete(false);
-    onClose();
-  }
+  const creatorName =
+    activity.events.find((event) => event.type === "criada")?.profileName ??
+    activity.responsibleName;
 
   return (
     <>
       {/* ══ HEADER — container cinza único agrupando identidade + prazo ═ */}
       <div className="shrink-0 p-6 pt-8 md:pt-6">
-        <HeaderContainer activity={activity} />
+        <HeaderContainer
+          activity={activity}
+          canChangeStatus={canChangeStatus}
+          onChanged={onRefresh}
+        />
       </div>
 
       {/* Corpo com scroll */}
       <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6">
-        {/* ══ AÇÃO PRIMÁRIA — Registrar alinhado à esquerda, não full ═══ */}
-        {(isOpen && activity.canRegister) ||
-        activity.canEdit ||
-        canChangeStatus ? (
-          <div className="flex items-center gap-2">
-            {isOpen && activity.canRegister ? (
-              <Button
-                onClick={handleRegistrar}
-              >
-                <Camera className="size-4" />
-                Registrar execução
-              </Button>
-            ) : null}
-            {activity.canEdit || canChangeStatus ? (
-              <ActionMenu
-                canChangeStatus={canChangeStatus}
-                canDelete={activity.canEdit}
-                onChangeStatus={() => setStatusDialog(true)}
-                onDelete={() => setConfirmDelete(true)}
-              />
-            ) : null}
-          </div>
-        ) : null}
-
         {/* ══ DETALHE — 2 colunas quando há largura ══════════════════ */}
         <div className="grid gap-4 @xl/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @xl/abody:items-start">
           {/* Coluna A — Sobre */}
@@ -459,105 +421,76 @@ function DrawerBody({
             canLinkMeta={canLinkMeta}
           />
 
-          {/* Coluna B — Evidências + Linha do tempo */}
+          {/* Coluna B — Evidências + Linha do tempo. Numa aberta sem
+              execução, o próprio bloco de Evidências é o CTA de
+              registrar — sem botão primário solto no painel. */}
           <div className="flex flex-col gap-4">
             <EvidencesBlock
               activityId={activity.id}
               photos={activity.photos}
               canManage={activity.canRegister}
               onChanged={onRefresh}
+              onRegister={
+                isOpen && activity.canRegister && !hasExecution
+                  ? handleRegistrar
+                  : undefined
+              }
             />
             <TimelineCard activity={activity} />
           </div>
         </div>
-
-        {/* ══ RODAPÉ discreto — criação + autor ═════════════════════ */}
-        <div className="mt-2 border-t border-border pt-4">
-          <p className="text-xs tabular-nums text-muted-foreground">
-            Criada em {formatDate(activity.createdAt)}
-            {(() => {
-              const creator =
-                activity.events.find((event) => event.type === "criada")
-                  ?.profileName ?? activity.responsibleName;
-              return creator ? ` por ${creator}` : "";
-            })()}
-            {activity.completedAt
-              ? ` · Concluída em ${formatDate(activity.completedAt)}`
-              : ""}
-          </p>
-        </div>
       </div>
 
-      {/* Alterar status manualmente (via menu "...", ação secundária) */}
-      <StatusChangeDialog
-        open={statusDialog}
-        onOpenChange={setStatusDialog}
-        activityId={activity.id}
-        currentStatus={activity.status}
-        onChanged={onRefresh}
-      />
+      {/* ══ RODAPÉ sticky — criação + autor, sempre no bottom ══════════ */}
+      <div className="shrink-0 border-t border-border bg-card px-6 py-3">
+        <p className="text-xs tabular-nums text-muted-foreground">
+          Criada em {formatDate(activity.createdAt)}
+          {creatorName ? ` por ${creatorName}` : ""}
+          {activity.completedAt
+            ? ` · Concluída em ${formatDate(activity.completedAt)}`
+            : ""}
+        </p>
+      </div>
 
-      {/* Confirmação de exclusão (DSM/CX) */}
-      <AlertDialog
-        open={confirmDelete}
-        onOpenChange={(o) => !o && setConfirmDelete(false)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir atividade?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A atividade e suas evidências serão removidas do plano. Essa
-              ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={(event) => {
-                event.preventDefault();
-                void handleDelete();
-              }}
-              disabled={deleting}
-            >
-              {deleting ? "Excluindo..." : "Excluir atividade"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
 
-// ── Dialog "Alterar status" (ação secundária, fora do caminho) ────────
+// ── Seletor de status inline ─────────────────────────────────────────
+// Substitui o antigo dialog "Alterar status" (badge escondido → dialog →
+// select → confirmar), que tinha zero affordance. O status vira um
+// controle óbvio de select: pill com borda + chevron, clique abre o menu,
+// a escolha aplica na hora (toast). Não há "excluir" — cancelar é o
+// status "Cancelada"; tudo fica gravado.
 
-function StatusChangeDialog({
-  open,
-  onOpenChange,
+// Atrasada é derivada (planejada + prazo vencido), não se define à mão.
+const MANUAL_STATUSES: ActivityStatus[] = [
+  "planejada",
+  "concluida",
+  "nao_feita",
+];
+
+/** Qual opção manual representa o status atual (atrasada = planejada). */
+function manualKey(status: ActivityStatus): ActivityStatus {
+  if (status === "concluida") return "concluida";
+  if (status === "nao_feita") return "nao_feita";
+  return "planejada";
+}
+
+function StatusSelect({
   activityId,
   currentStatus,
   onChanged,
 }: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
   activityId: string;
   currentStatus: ActivityStatus;
   onChanged: () => void;
 }) {
-  const [selected, setSelected] = React.useState<ActivityStatus>(currentStatus);
   const [pending, startTransition] = React.useTransition();
+  const current = manualKey(currentStatus);
 
-  // Sincroniza o Select com a atividade atual sempre que o dialog abre —
-  // como estamos dentro de um dialog controlado, é seguro fazer no render
-  // guardando a versão anterior de `open`.
-  const [wasOpen, setWasOpen] = React.useState(open);
-  if (open !== wasOpen) {
-    setWasOpen(open);
-    if (open) setSelected(currentStatus);
-  }
-
-  function handleConfirm() {
-    const next = selected;
+  function apply(next: ActivityStatus) {
+    if (next === current || pending) return;
     startTransition(async () => {
       const result = await changeActivityStatus({ activityId, status: next });
       if (!result.ok) {
@@ -565,109 +498,45 @@ function StatusChangeDialog({
         return;
       }
       onChanged();
-      onOpenChange(false);
-      if (next === "concluida") {
-        toast.success("Atividade concluída.");
-      } else if (currentStatus === "concluida") {
+      if (next === "concluida") toast.success("Atividade concluída.");
+      else if (next === "nao_feita") toast.success("Atividade cancelada.");
+      else if (current === "concluida" || current === "nao_feita")
         toast.success("Atividade reaberta.");
-      } else {
-        toast.success(`Status alterado para "${STATUS_LABELS[next]}".`);
-      }
+      else toast.success(`Status alterado para "${STATUS_LABELS[next]}".`);
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Alterar status</DialogTitle>
-          <DialogDescription>
-            Mudança manual — só quando &ldquo;Registrar execução&rdquo; não é o caminho.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-2">
-          <Select
-            value={selected}
-            onValueChange={(value) => setSelected(value as ActivityStatus)}
-            items={ACTIVITY_STATUSES.map((item) => ({
-              value: item,
-              label: STATUS_LABELS[item],
-            }))}
-          >
-            <SelectTrigger className="w-full" aria-label="Novo status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACTIVITY_STATUSES.map((item) => (
-                <SelectItem key={item} value={item}>
-                  {STATUS_LABELS[item]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <DialogClose
-            render={
-              <Button variant="outline" disabled={pending}>
-                Cancelar
-              </Button>
-            }
-          />
-          <Button
-            onClick={handleConfirm}
-            disabled={pending || selected === currentStatus}
-          >
-            {pending ? (
-              <>
-                <Spinner />
-                Salvando...
-              </>
-            ) : (
-              "Confirmar mudança"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── Menu de ações secundárias (só DSM/CX — Excluir) ──────────────────
-
-function ActionMenu({
-  canChangeStatus,
-  canDelete,
-  onChangeStatus,
-  onDelete,
-}: {
-  canChangeStatus: boolean;
-  canDelete: boolean;
-  onChangeStatus: () => void;
-  onDelete: () => void;
-}) {
-  return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button variant="ghost" size="icon" aria-label="Mais ações" />
+          <button
+            type="button"
+            disabled={pending}
+            aria-label="Alterar status"
+            className="group inline-flex cursor-pointer items-center gap-1 rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-60"
+          />
         }
       >
-        <MoreHorizontal className="size-4" />
+        <StatusBadge
+          status={currentStatus}
+          className="px-3 py-1 text-sm"
+        />
+        {pending ? (
+          <Spinner className="size-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="size-4 text-muted-foreground opacity-70 transition-opacity group-hover:opacity-100" />
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {canChangeStatus ? (
-          <DropdownMenuItem onClick={onChangeStatus}>
-            <RefreshCw />
-            Alterar status
+      <DropdownMenuContent align="start" className="w-44">
+        {MANUAL_STATUSES.map((status) => (
+          <DropdownMenuItem key={status} onClick={() => apply(status)}>
+            {STATUS_LABELS[status]}
+            {status === current ? (
+              <Check className="ml-auto size-4 text-muted-foreground" />
+            ) : null}
           </DropdownMenuItem>
-        ) : null}
-        {canDelete ? (
-          <DropdownMenuItem variant="destructive" onClick={onDelete}>
-            <Trash2 />
-            Excluir atividade
-          </DropdownMenuItem>
-        ) : null}
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -678,69 +547,115 @@ function ActionMenu({
 // uma faixa interna com contexto do status + prazo. A faixa é clicável
 // pra abrir o dialog de alterar status quando o role pode mudar.
 
-function HeaderContainer({ activity }: { activity: DrawerActivity }) {
+function HeaderContainer({
+  activity,
+  canChangeStatus,
+  onChanged,
+}: {
+  activity: DrawerActivity;
+  canChangeStatus: boolean;
+  onChanged: () => void;
+}) {
   const headerContext = activity.branchName ?? "Canal geral";
-  const TypeIcon = activity.category ? categoryIcon(activity.category) : null;
-  const overdueDays =
-    activity.overdue && activity.dueDate
-      ? differenceInCalendarDays(new Date(), parseISO(activity.dueDate))
-      : 0;
+  const dueDate = activity.dueDate;
+  const completedAt = activity.completedAt;
+  const isOverdue =
+    activity.overdue && activity.status === "atrasada" && !!dueDate;
+
+  // "Mensagem" do rodapé do header (strip separado): conclusão, atraso ou
+  // vencimento. Só aparece quando há algo a dizer.
+  let message: string | null = null;
+  if (completedAt) {
+    message = `Concluída em ${formatDate(completedAt)}`;
+  } else if (isOverdue && dueDate) {
+    message = `Atrasada desde ${formatDate(dueDate)}`;
+  } else if (dueDate) {
+    const days = differenceInCalendarDays(parseISO(dueDate), new Date());
+    message =
+      days === 0
+        ? "Vence hoje"
+        : days === 1
+          ? "Vence amanhã"
+          : days > 1
+            ? `Vence em ${days} dias`
+            : null;
+  }
+  const showStrip = !!(dueDate || completedAt);
 
   return (
-    <div className="relative rounded-xl bg-subtle p-4 dark:bg-muted/20">
-      {/* Identidade agrupada — o vermelho aparece no máximo 1x (no prazo) */}
-      <PanelPrimitive.Title className="pr-9 text-lg font-semibold leading-snug text-foreground line-clamp-2">
-        {activity.title}
-      </PanelPrimitive.Title>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <StatusBadge status={activity.status} className="px-2.5 py-0.5" />
-        {activity.category && TypeIcon ? (
-          <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
-            <TypeIcon className="size-3.5 text-foreground/70" />
-            {CATEGORY_LABELS[activity.category]}
-          </span>
-        ) : null}
-      </div>
-
-      <PanelPrimitive.Description className="mt-3 text-sm">
-        <span className="font-medium text-foreground">
-          {activity.channelName}
-        </span>
-        <span className="text-muted-foreground"> · {headerContext}</span>
-      </PanelPrimitive.Description>
-
-      {/* Prazo compacto — sem barra dedicada de atraso */}
-      <div className="mt-2 flex items-center gap-1.5 text-sm">
-        <Calendar className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="text-muted-foreground">Prazo:</span>
-        <span
-          className={cn(
-            "tabular-nums",
-            deadlineClass(activity.dueDate, activity.status)
+    <div className="flex flex-col gap-2">
+      {/* Card de identidade */}
+      <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+        {/* Linha 1 — só o status à esquerda, fechar à direita */}
+        <div className="flex items-start justify-between gap-2">
+          {canChangeStatus ? (
+            <StatusSelect
+              activityId={activity.id}
+              currentStatus={activity.status}
+              onChanged={onChanged}
+            />
+          ) : (
+            <StatusBadge
+              status={activity.status}
+              className="px-3 py-1 text-sm"
+            />
           )}
-        >
-          {activity.dueDate ? formatDate(activity.dueDate) : "Sem prazo"}
-        </span>
-        {overdueDays > 0 ? (
-          <span className="text-xs text-destructive/80">
-            (há {overdueDays} {overdueDays === 1 ? "dia" : "dias"})
+          <PanelPrimitive.Close
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 rounded-full bg-secondary"
+              />
+            }
+          >
+            <XIcon />
+            <span className="sr-only">Fechar</span>
+          </PanelPrimitive.Close>
+        </div>
+
+        {/* Título */}
+        <PanelPrimitive.Title className="mt-2 text-lg font-semibold leading-snug text-foreground">
+          {activity.title}
+        </PanelPrimitive.Title>
+
+        {/* Canal · Filial (o tipo de ação já vive no card Sobre) */}
+        <PanelPrimitive.Description className="mt-1 text-sm">
+          <span className="font-medium text-foreground">
+            {activity.channelName}
           </span>
-        ) : null}
+          <span className="text-muted-foreground"> · {headerContext}</span>
+        </PanelPrimitive.Description>
       </div>
 
-      {/* Botão X — canto superior direito do painel */}
-      <PanelPrimitive.Close
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="absolute right-3 top-3 rounded-full bg-secondary"
-          />
-        }
-      >
-        <XIcon />
-        <span className="sr-only">Fechar</span>
-      </PanelPrimitive.Close>
+      {/* Bloco separado — mensagem de conclusão/atraso/vencimento + PRAZO */}
+      {showStrip ? (
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl bg-subtle px-4 py-3 text-sm">
+          <span
+            className={cn(
+              "tabular-nums",
+              isOverdue ? "font-medium text-destructive" : "text-muted-foreground"
+            )}
+          >
+            {message}
+          </span>
+          {dueDate ? (
+            <span className="tabular-nums">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Prazo{"  "}
+              </span>
+              <span
+                className={cn(
+                  "font-medium",
+                  isOverdue ? "text-destructive" : "text-foreground"
+                )}
+              >
+                {formatDate(dueDate)}
+              </span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -755,11 +670,15 @@ function EvidencesBlock({
   photos,
   canManage,
   onChanged,
+  onRegister,
 }: {
   activityId: string;
   photos: DrawerActivity["photos"];
   canManage: boolean;
   onChanged: () => void;
+  /** Aberta sem execução: o bloco vira o CTA de registrar (abre o
+   *  wizard) em vez do anexar-foto avulso. */
+  onRegister?: () => void;
 }) {
   const [uploading, setUploading] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState<
@@ -842,23 +761,42 @@ function EvidencesBlock({
             Fotos da execução
           </p>
         </CardHeader>
-        <CardContent>
-          <PhotoAttach
-            photos={photos.map((photo) => ({
-              id: photo.id,
-              url: photoPublicUrl(photo.storagePath),
-              caption: photo.caption,
-              createdAt: photo.createdAt,
-            }))}
-            onAdd={(files) => void handleAdd(files)}
-            onRemove={(id) => {
-              const photo = photos.find((item) => item.id === id);
-              if (photo) setConfirmDelete(photo);
-            }}
-            size="compact"
-            busy={uploading}
-            readOnly={!canManage}
-          />
+        <CardContent className="flex flex-col gap-3">
+          {onRegister ? (
+            // CTA único de registrar — mesmo tracejado do "Anexar foto",
+            // mas a ação é o wizard de execução (fotos + relato juntos).
+            <button
+              type="button"
+              onClick={onRegister}
+              className="flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 p-5 text-center transition-colors hover:border-accent-brand/60 hover:bg-accent-brand/10"
+            >
+              <Camera className="size-5 text-accent-brand" />
+              <span className="text-sm font-medium text-accent-brand">
+                Registrar execução
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Anexe fotos e o relato do que foi feito
+              </span>
+            </button>
+          ) : null}
+          {photos.length > 0 || !onRegister ? (
+            <PhotoAttach
+              photos={photos.map((photo) => ({
+                id: photo.id,
+                url: photoPublicUrl(photo.storagePath),
+                caption: photo.caption,
+                createdAt: photo.createdAt,
+              }))}
+              onAdd={(files) => void handleAdd(files)}
+              onRemove={(id) => {
+                const photo = photos.find((item) => item.id === id);
+                if (photo) setConfirmDelete(photo);
+              }}
+              size="compact"
+              busy={uploading}
+              readOnly={!canManage || !!onRegister}
+            />
+          ) : null}
         </CardContent>
       </Card>
 

@@ -16,10 +16,9 @@ import type { ActivityStatus } from "@/components/shared/status-badge";
  * de entregar para os componentes.
  */
 
-const PENDING_STATUSES: ActivityStatus[] = ["planejada", "em_andamento"];
-
 export type ActivityForStatus = {
-  status: ActivityStatus;
+  /** Status cru do banco (string) — pode conter o legado "em_andamento". */
+  status: string;
   dueDate: string | null;
 };
 
@@ -29,18 +28,26 @@ export function todayISO(): string {
 }
 
 /**
- * Status canônico para EXIBIÇÃO: pendente com prazo vencido vira
- * "atrasada"; os demais status passam direto.
+ * Status canônico para EXIBIÇÃO e ÚNICO ponto de normalização:
+ * - "em_andamento" foi removido do sistema — qualquer linha legada é
+ *   tratada como "planejada" aqui (robusto mesmo antes da migração).
+ * - planejada com prazo vencido vira "atrasada".
+ * - os demais passam direto.
  */
 export function getDisplayStatus(activity: ActivityForStatus): ActivityStatus {
+  const status: ActivityStatus =
+    activity.status === "em_andamento"
+      ? "planejada"
+      : (activity.status as ActivityStatus);
+
   if (
-    PENDING_STATUSES.includes(activity.status) &&
+    status === "planejada" &&
     activity.dueDate !== null &&
     activity.dueDate < todayISO()
   ) {
     return "atrasada";
   }
-  return activity.status;
+  return status;
 }
 
 /** Atalho: a atividade conta como atrasada (status cru ou derivado)? */

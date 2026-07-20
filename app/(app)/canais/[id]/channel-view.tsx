@@ -17,10 +17,12 @@ import {
 import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
 import { ActivitiesTable } from "@/components/app/activities-table";
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { ActivityForm } from "@/components/app/activity-form";
+import { MetaWizard } from "@/components/app/meta-wizard";
 import { PageShell } from "@/components/app/page-shell";
-import { ProblemForm } from "@/components/app/problem-form";
 import { ProblemsTab } from "@/components/app/problems-tab";
+import { useWizardProvider } from "@/components/app/wizard-provider";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import {
   ACTIVITY_STATUSES,
@@ -65,7 +67,7 @@ import type {
 } from "@/lib/db/channels";
 import { isLateActivity, todayISO } from "@/lib/db/status";
 
-const PENDING = new Set(["planejada", "em_andamento", "atrasada"]);
+const PENDING = new Set(["planejada", "atrasada"]);
 
 function addDaysISO(days: number) {
   const date = new Date();
@@ -92,9 +94,11 @@ export function ChannelView({
   canEdit: boolean;
   defaultTab?: string;
 }) {
+  const { openActivity } = useActivityDrawer();
+  const { openWizard } = useWizardProvider();
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [activityFormOpen, setActivityFormOpen] = React.useState(false);
-  const [problemFormOpen, setProblemFormOpen] = React.useState(false);
+  const [metaWizardOpen, setMetaWizardOpen] = React.useState(false);
   const [editingActivity, setEditingActivity] =
     React.useState<ActivityRow | null>(null);
 
@@ -165,9 +169,11 @@ export function ChannelView({
     [filtered]
   );
 
+  // Criar atividade usa o wizard canônico (mesma experiência do RTV,
+  // com a bifurcação Agendar × Registrar); o form antigo fica só para
+  // edição.
   function openCreateActivity() {
-    setEditingActivity(null);
-    setActivityFormOpen(true);
+    openWizard({ channelId: channel.id });
   }
 
   function openEditActivity(activity: ActivityRow) {
@@ -235,12 +241,12 @@ export function ChannelView({
                 variant="outline"
                 size="sm"
                 className="h-9"
-                onClick={() => setProblemFormOpen(true)}
+                onClick={() => setMetaWizardOpen(true)}
               >
                 <Plus />
                 Nova meta
               </Button>
-              <Button size="sm" className="h-9" onClick={openCreateActivity}>
+              <Button variant="brand" size="sm" className="h-9" onClick={openCreateActivity}>
                 <Plus />
                 Nova atividade
               </Button>
@@ -383,7 +389,11 @@ export function ChannelView({
                             <Item
                               size="sm"
                               render={
-                                <Link href={`/atividades/${activity.id}`} />
+                                <button
+                                  type="button"
+                                  onClick={() => openActivity(activity.id)}
+                                  className="w-full cursor-pointer text-left"
+                                />
                               }
                               className="hover:bg-muted/60"
                             >
@@ -431,6 +441,7 @@ export function ChannelView({
                 problems={problems}
                 activities={filtered}
                 canEdit={canEdit}
+                channelName={channel.name}
               />
             </TabsContent>
 
@@ -456,10 +467,11 @@ export function ChannelView({
             </TabsContent>
           </Tabs>
 
-          <ProblemForm
-            open={problemFormOpen}
-            onOpenChange={setProblemFormOpen}
+          <MetaWizard
+            open={metaWizardOpen}
+            onOpenChange={setMetaWizardOpen}
             planId={plan.id}
+            channelName={channel.name}
           />
 
           <ActivityForm

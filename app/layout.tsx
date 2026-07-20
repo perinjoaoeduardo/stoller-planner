@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Manrope, JetBrains_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/app/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const jetbrainsMonoHeading = JetBrains_Mono({subsets:['latin'],variable:'--font-heading'});
-
-const manrope = Manrope({subsets:['latin'],variable:'--font-sans'});
+// Manrope é a única fonte "de texto" do sistema — mesma variável pra
+// --font-sans e --font-heading (a fonte velha JetBrains Mono saiu do
+// sistema em jul/2026).
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +38,12 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       suppressHydrationWarning
-      className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", manrope.variable, jetbrainsMonoHeading.variable)}
+      className={cn(
+        "h-full antialiased font-sans",
+        geistSans.variable,
+        geistMono.variable,
+        manrope.variable
+      )}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider

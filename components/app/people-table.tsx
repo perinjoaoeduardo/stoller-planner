@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   flexRender,
   getCoreRowModel,
@@ -93,9 +94,12 @@ export function PeopleTable({
                 {getInitials(row.original.name)}
               </AvatarFallback>
             </Avatar>
-            <span className="whitespace-nowrap text-sm font-medium">
+            <Link
+              href={`/pessoas/${row.original.id}`}
+              className="whitespace-nowrap text-sm font-medium underline-offset-4 hover:underline"
+            >
               {row.original.name}
-            </span>
+            </Link>
             <Badge variant="outline" className="text-[10px]">
               {row.original.role as Role}
             </Badge>
@@ -211,7 +215,10 @@ export function PeopleTable({
         enableSorting: false,
         cell: ({ row }) => (
           <div className="flex justify-end">
-            <CopySummaryMenu summaryText={row.original.summaryText} />
+            <CopySummaryMenu
+              summaryText={row.original.summaryText}
+              profileHref={`/pessoas/${row.original.id}`}
+            />
           </div>
         ),
       },

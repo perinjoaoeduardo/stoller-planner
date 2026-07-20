@@ -322,9 +322,7 @@ export default async function AtividadePage({
   );
 
   const isOpen =
-    activity.status === "planejada" ||
-    activity.status === "em_andamento" ||
-    activity.status === "atrasada";
+    activity.status === "planejada" || activity.status === "atrasada";
 
   return (
     <PageShell

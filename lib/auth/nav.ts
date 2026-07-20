@@ -2,7 +2,6 @@ import {
   BrushCleaning,
   CalendarDays,
   ChartColumn,
-  ClipboardCheck,
   ClipboardList,
   FileText,
   Home,
@@ -36,14 +35,26 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
     { title: "Acompanhamento", href: "/acompanhamento", icon: Radar },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
+    {
+      title: "Nova atividade",
+      href: "#wizard",
+      icon: Plus,
+      action: "wizard",
+    },
   ],
   DSM: [
     { title: "Início", href: "/", icon: Home },
     { title: "Meus Canais", href: "/canais", icon: Store },
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
-    { title: "Registrar execução", href: "/registrar", icon: ClipboardCheck },
+    { title: "Calendário", href: "/calendario", icon: CalendarDays },
     { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
+    {
+      title: "Nova atividade",
+      href: "#wizard",
+      icon: Plus,
+      action: "wizard",
+    },
   ],
   RTV: [
     { title: "Início", href: "/", icon: Home },
@@ -54,6 +65,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       icon: ListTodo,
     },
     { title: "Calendário", href: "/calendario", icon: CalendarDays },
+    { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: FileText },
     {
       title: "Nova atividade",

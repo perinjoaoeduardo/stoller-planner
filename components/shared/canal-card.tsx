@@ -22,10 +22,30 @@ const HEALTH_LABEL_CLASS: Record<ChannelHealth, string> = {
   em_dia: "font-medium text-success-fg",
 };
 
+const PROGRESS_CLASS =
+  "flex-1 [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-primary [&_[data-slot=progress-track]]:h-1";
+
+function HealthMark({ health }: { health: ChannelHealth }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs">
+      <span
+        aria-hidden
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          HEALTH_CONFIG[health].dotClass
+        )}
+      />
+      <span className={HEALTH_LABEL_CLASS[health]}>
+        {HEALTH_CONFIG[health].label}
+      </span>
+    </span>
+  );
+}
+
 /**
- * Card de canal ÚNICO (home = compact, Meus Canais = full), com o DNA
- * do card de Relatórios: título contido, chips neutros de contexto,
- * barra+% numa linha e o status como único sinal de cor semântica.
+ * Card de canal ÚNICO — `compact` (home: 2 linhas densas, saúde inline
+ * no título) e `full` (Meus Canais: título+região, chips de contexto,
+ * barra e linha de saúde). O status é o único sinal de cor semântica.
  */
 export function CanalCard({
   canal,
@@ -36,61 +56,73 @@ export function CanalCard({
   variant?: "compact" | "full";
   href: string;
 }) {
-  const full = variant === "full";
+  const late =
+    canal.health !== "em_dia" && canal.lateCount > 0 ? canal.lateCount : 0;
 
+  // ── Compact (home) — duas linhas, sem seta, sem chips ────────────────
+  if (variant === "compact") {
+    return (
+      <ClickableCard href={href} className="flex flex-col gap-2.5 p-3.5">
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
+            {canal.name}
+          </p>
+          <HealthMark health={canal.health} />
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Progress value={canal.completedPercent} className={PROGRESS_CLASS} />
+          <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
+            {canal.completedPercent}%
+          </span>
+          {late > 0 ? (
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              · {late} {late === 1 ? "atrasada" : "atrasadas"}
+            </span>
+          ) : null}
+        </div>
+      </ClickableCard>
+    );
+  }
+
+  // ── Full (Meus Canais) ───────────────────────────────────────────────
   return (
     <ClickableCard href={href} showArrow className="flex flex-col gap-3 p-4">
       <div className="pr-8">
         <p className="truncate text-sm font-semibold text-foreground">
           {canal.name}
         </p>
-        {full && canal.region ? (
+        {canal.region ? (
           <p className="text-sm text-muted-foreground">{canal.region}</p>
         ) : null}
       </div>
 
-      {full ? (
-        <div className="flex flex-wrap items-center gap-1.5 pr-8">
-          <NeutralChip>
-            {canal.problemCount ?? 0}{" "}
-            {canal.problemCount === 1 ? "meta" : "metas"}
-          </NeutralChip>
-          <NeutralChip>
-            {canal.activityCount ?? 0}{" "}
-            {canal.activityCount === 1 ? "atividade" : "atividades"}
-          </NeutralChip>
-          <NeutralChip>
-            {canal.branchCount ?? 0}{" "}
-            {canal.branchCount === 1 ? "filial" : "filiais"}
-          </NeutralChip>
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-1.5 pr-8">
+        <NeutralChip>
+          {canal.problemCount ?? 0}{" "}
+          {canal.problemCount === 1 ? "meta" : "metas"}
+        </NeutralChip>
+        <NeutralChip>
+          {canal.activityCount ?? 0}{" "}
+          {canal.activityCount === 1 ? "atividade" : "atividades"}
+        </NeutralChip>
+        <NeutralChip>
+          {canal.branchCount ?? 0}{" "}
+          {canal.branchCount === 1 ? "filial" : "filiais"}
+        </NeutralChip>
+      </div>
 
       <div className="flex items-center gap-3 pr-8">
-        <Progress
-          value={canal.completedPercent}
-          className="flex-1 [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-foreground/70 [&_[data-slot=progress-track]]:h-1"
-        />
+        <Progress value={canal.completedPercent} className={PROGRESS_CLASS} />
         <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
           {canal.completedPercent}% concluídas
         </span>
       </div>
 
-      <div className="mt-0.5 flex items-center gap-2 text-xs">
-        <span
-          aria-hidden
-          className={cn(
-            "size-2 shrink-0 translate-y-[0.5px] rounded-full",
-            HEALTH_CONFIG[canal.health].dotClass
-          )}
-        />
-        <span className={HEALTH_LABEL_CLASS[canal.health]}>
-          {HEALTH_CONFIG[canal.health].label}
-        </span>
-        {canal.health !== "em_dia" && canal.lateCount > 0 ? (
-          <span className="text-muted-foreground">
-            · {canal.lateCount}{" "}
-            {canal.lateCount === 1 ? "atrasada" : "atrasadas"}
+      <div className="mt-0.5 flex items-center gap-2">
+        <HealthMark health={canal.health} />
+        {late > 0 ? (
+          <span className="text-xs text-muted-foreground">
+            · {late} {late === 1 ? "atrasada" : "atrasadas"}
           </span>
         ) : null}
       </div>

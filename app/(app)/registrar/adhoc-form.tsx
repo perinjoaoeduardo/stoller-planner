@@ -452,7 +452,7 @@ export function AdhocForm({
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-primary transition-colors hover:bg-primary/10 active:bg-primary/15"
+                    className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 p-6 text-accent-brand transition-colors hover:bg-accent-brand/10 active:bg-accent-brand/15"
                   >
                     <Camera className="size-8" />
                     <span className="text-sm font-semibold">

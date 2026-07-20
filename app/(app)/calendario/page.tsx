@@ -31,9 +31,7 @@ export default async function CalendarioPage() {
     <PageShell
       title="Calendário"
       description="Suas atividades ao longo da safra."
-      actions={
-        <NewActivityButton className="border-transparent bg-foreground text-background hover:bg-foreground/90" />
-      }
+      actions={<NewActivityButton />}
     >
       <CalendarView activities={mine} channels={channels} />
     </PageShell>

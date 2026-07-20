@@ -40,7 +40,7 @@ export async function getWizardChannels() {
 
   if (!channels) return [];
 
-  const OPEN = ["planejada", "em_andamento"];
+  const OPEN = ["planejada"];
   return channels.map((ch) => {
     const activities = ch.plans[0]?.activities ?? [];
     const openCount = activities.filter((a) => {
@@ -80,7 +80,7 @@ export type WizardChannelContext = {
   openActivities: WizardActivity[];
 };
 
-const OPEN_STATUSES = ["planejada", "em_andamento", "atrasada"];
+const OPEN_STATUSES = ["planejada", "atrasada"];
 
 export async function getWizardChannelContext(
   channelId: string
@@ -165,8 +165,7 @@ export async function getWizardChannelContext(
         (a.assignees?.some((aa) => aa.profile_id === profile.id) ?? false),
     }))
     .sort((a, b) => {
-      const rank = (s: string) =>
-        s === "atrasada" ? 0 : s === "em_andamento" ? 1 : 2;
+      const rank = (s: string) => (s === "atrasada" ? 0 : 1);
       if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
       if (a.isMine !== b.isMine) return a.isMine ? -1 : 1;
       const da = a.dueDate ?? "9999-12-31";

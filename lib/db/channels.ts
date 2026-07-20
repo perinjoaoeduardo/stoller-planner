@@ -63,8 +63,7 @@ export async function getChannelCards(
     ).length;
     const late = activities.filter(isLateActivity).length;
     const pending = activities.filter((activity) => {
-      const display = getDisplayStatus(activity);
-      return display === "planejada" || display === "em_andamento";
+      return getDisplayStatus(activity) === "planejada";
     }).length;
 
     return {

@@ -45,7 +45,7 @@ export function buildExecutiveSummary(input: SummaryInput): string {
     total > 0 ? Math.round((completed.length / total) * 100) : 0;
   const onTime = completed.filter(isOnTime).length;
   const open = input.activities.filter((activity) =>
-    ["planejada", "em_andamento", "atrasada"].includes(activity.status)
+    ["planejada", "atrasada"].includes(activity.status)
   ).length;
   const late = input.activities.filter(
     (activity) => activity.status === "atrasada"

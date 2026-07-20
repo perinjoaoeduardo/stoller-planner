@@ -223,10 +223,10 @@ function CategoryGrid({
             onClick={() => onChange(item)}
             aria-pressed={active}
             className={cn(
-              "flex min-h-14 cursor-pointer items-center gap-2.5 rounded-xl p-3 text-left transition-all",
+              "flex min-h-14 cursor-pointer items-center gap-2.5 rounded-xl border p-3 text-left transition-all",
               active
-                ? "border-2 border-foreground bg-subtle"
-                : "border border-border bg-card hover:border-border-hover hover:bg-muted"
+                ? "border-primary/40 bg-primary/5 ring-2 ring-primary/15"
+                : "border-border bg-card hover:border-border-hover hover:bg-muted"
             )}
           >
             <CategoryIconBox category={item} />
@@ -352,7 +352,12 @@ function BifurcationOption({
       onClick={onClick}
       className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition-all hover:border-border-hover hover:bg-muted"
     >
-      <IconBox icon={Icon} size="lg" className="size-11" />
+      <IconBox
+        icon={Icon}
+        size="lg"
+        className="size-11 bg-accent-brand/10"
+        iconClassName="text-accent-brand"
+      />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">{title}</p>
         <p className="text-sm text-muted-foreground">{description}</p>
@@ -523,20 +528,20 @@ function AgendarStep2() {
   const { branches, problems, responsibles } = channelCtx;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-8 p-6">
       <StepIntro
         question="Onde essa atividade se encaixa?"
         hint="Vincule a uma meta e defina local e responsáveis."
       />
 
       {problems.length > 0 && (
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-2 text-sm font-medium">
-            Meta do plano
-            <span className="text-xs font-normal text-muted-foreground">
-              opcional
-            </span>
-          </label>
+        <fieldset className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <label className="text-sm font-semibold text-foreground">
+              Meta do plano
+            </label>
+            <span className="text-xs text-muted-foreground">Opcional</span>
+          </div>
           <RadioGroup
             value={draft.problemId ?? "none"}
             onValueChange={(value) =>
@@ -544,20 +549,17 @@ function AgendarStep2() {
                 problemId: value === "none" ? null : String(value),
               })
             }
-            className="gap-1"
+            className="flex flex-col gap-1.5 rounded-xl border border-border bg-subtle p-1.5"
           >
             <label
               className={cn(
-                "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                 draft.problemId === null
-                  ? "bg-muted"
-                  : "hover:bg-subtle"
+                  ? "bg-card shadow-card! ring-1 ring-primary/20"
+                  : "hover:bg-card/60"
               )}
             >
-              <RadioGroupItem
-                value="none"
-                className="data-checked:bg-foreground dark:data-checked:bg-foreground"
-              />
+              <RadioGroupItem value="none" />
               <span className="italic text-muted-foreground">Sem vínculo</span>
             </label>
             {problems.map((p) => {
@@ -566,16 +568,13 @@ function AgendarStep2() {
                 <label
                   key={p.id}
                   className={cn(
-                    "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                    "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                     active
-                      ? "bg-muted"
-                      : "hover:bg-subtle"
+                      ? "bg-card shadow-card! ring-1 ring-primary/20"
+                      : "hover:bg-card/60"
                   )}
                 >
-                  <RadioGroupItem
-                    value={p.id}
-                    className="data-checked:bg-foreground dark:data-checked:bg-foreground"
-                  />
+                  <RadioGroupItem value={p.id} className="mt-0.5" />
                   <span className="leading-snug">{p.title}</span>
                 </label>
               );
@@ -585,8 +584,8 @@ function AgendarStep2() {
       )}
 
       {branches.length > 0 && (
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">Local</label>
+        <fieldset className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-foreground">Local</label>
           <div className="flex flex-wrap gap-2">
             {[
               { id: null as string | null, name: "Canal geral" },
@@ -602,7 +601,7 @@ function AgendarStep2() {
                   className={cn(
                     "h-9 cursor-pointer rounded-full border px-3 text-sm font-medium transition-colors",
                     active
-                      ? "border-foreground bg-foreground text-background"
+                      ? "border-primary/40 bg-primary text-primary-foreground"
                       : "border-border bg-card text-foreground hover:bg-muted"
                   )}
                 >
@@ -615,8 +614,10 @@ function AgendarStep2() {
       )}
 
       {responsibles.length > 0 && (
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">Responsáveis</label>
+        <fieldset className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-foreground">
+            Responsáveis
+          </label>
           <div className="flex flex-wrap gap-2">
             {responsibles.map((r) => {
               const active = draft.assigneeIds.includes(r.id);
@@ -633,10 +634,10 @@ function AgendarStep2() {
                   }
                   aria-pressed={active}
                   className={cn(
-                    "flex h-9 cursor-pointer items-center gap-2 rounded-full px-3 text-sm font-medium transition-colors",
+                    "flex h-9 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors",
                     active
-                      ? "border-2 border-foreground bg-muted"
-                      : "border border-border bg-card hover:bg-muted"
+                      ? "border-primary/40 bg-primary/5 text-primary ring-2 ring-primary/15"
+                      : "border-border bg-card hover:bg-muted"
                   )}
                 >
                   <span className="flex size-5 items-center justify-center rounded-full bg-border text-[9px] font-semibold text-foreground/70">
@@ -886,6 +887,7 @@ function AgendarFooter() {
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         {isReview ? (
           <Button
+            variant="brand"
             onClick={() => void submitAgendar()}
             disabled={submitting}
           >
@@ -903,6 +905,7 @@ function AgendarFooter() {
           </Button>
         ) : (
           <Button
+            variant="brand"
             disabled={!canContinue}
             onClick={() => setView(AGENDAR_STEPS[idx + 1].view)}
           >
@@ -974,11 +977,16 @@ function RegistrarPickStep() {
             photoDrafts.reset();
             setView("adhoc-1");
           }}
-          className="flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-border-hover bg-subtle p-4 text-left transition-all hover:border-border-active hover:bg-muted"
+          className="flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 p-4 text-left transition-all hover:border-accent-brand/60 hover:bg-accent-brand/10"
         >
-          <IconBox icon={PenLine} size="lg" iconClassName="size-4" />
+          <IconBox
+            icon={PenLine}
+            size="lg"
+            className="bg-accent-brand/10"
+            iconClassName="size-4 text-accent-brand"
+          />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-sm font-semibold text-accent-brand">
               Registrar ação fora do plano
             </p>
             <p className="text-sm text-muted-foreground">
@@ -1233,6 +1241,7 @@ function RegistrarCompleteStep() {
         backDisabled={submitting}
       >
         <Button
+          variant="brand"
           onClick={handleConclude}
           disabled={submitting}
         >
@@ -1309,6 +1318,7 @@ function AdhocStep1() {
         hint={canContinue ? null : "Descreva a ação e escolha o tipo"}
       >
         <Button
+          variant="brand"
           disabled={!canContinue}
           onClick={() => setView("adhoc-2")}
         >
@@ -1362,7 +1372,7 @@ function AdhocStep2() {
                     className={cn(
                       "h-9 cursor-pointer rounded-full border px-3 text-sm font-medium transition-colors",
                       active
-                        ? "border-foreground bg-foreground text-background"
+                        ? "border-primary bg-primary text-primary-foreground"
                         : "border-border bg-card text-foreground hover:bg-muted"
                     )}
                   >
@@ -1375,11 +1385,13 @@ function AdhocStep2() {
         )}
 
         {hasProblems && (
-          <fieldset className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">
-              Meta do plano <span className="text-destructive">*</span>
-            </label>
-            <div className="flex flex-col gap-1">
+          <fieldset className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <label className="text-sm font-semibold text-foreground">
+                Meta do plano <span className="text-destructive">*</span>
+              </label>
+            </div>
+            <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-subtle p-1.5">
               {problems.map((p) => {
                 const active = adhoc.problemChoice === p.id;
                 return (
@@ -1388,17 +1400,17 @@ function AdhocStep2() {
                     type="button"
                     onClick={() => updateAdhoc({ problemChoice: p.id })}
                     className={cn(
-                      "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
                       active
-                        ? "bg-muted"
-                        : "hover:bg-subtle"
+                        ? "bg-card shadow-card! ring-1 ring-primary/20"
+                        : "hover:bg-card/60"
                     )}
                   >
                     <span
                       className={cn(
-                        "flex size-4 shrink-0 items-center justify-center rounded-full border-2",
+                        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2",
                         active
-                          ? "border-foreground bg-foreground"
+                          ? "border-primary bg-primary"
                           : "border-muted-foreground/50"
                       )}
                     >
@@ -1414,13 +1426,13 @@ function AdhocStep2() {
                 type="button"
                 onClick={() => updateAdhoc({ problemChoice: "later" })}
                 className={cn(
-                  "mt-1 flex cursor-pointer items-center gap-2.5 rounded-lg border border-dashed border-border-hover p-3 text-left text-sm transition-colors",
+                  "mt-1 flex cursor-pointer items-start gap-3 rounded-lg border border-dashed p-3 text-left text-sm transition-colors",
                   adhoc.problemChoice === "later"
-                    ? "border-foreground/60 bg-muted"
-                    : "text-muted-foreground hover:bg-subtle"
+                    ? "border-primary/40 bg-card text-foreground ring-1 ring-primary/20"
+                    : "border-border-hover text-muted-foreground hover:bg-card/60"
                 )}
               >
-                <Link2 className="size-4 shrink-0 text-muted-foreground" />
+                <Link2 className="mt-0.5 size-4 shrink-0" />
                 <div>
                   <p className="font-medium leading-snug">Vincular depois</p>
                   <p className="text-xs italic text-muted-foreground">
@@ -1438,6 +1450,7 @@ function AdhocStep2() {
         hint={problemOk ? null : 'Escolha uma meta ou "Vincular depois"'}
       >
         <Button
+          variant="brand"
           disabled={!problemOk}
           onClick={() => setView("adhoc-3")}
         >
@@ -1539,6 +1552,7 @@ function AdhocStep3() {
 
       <WizardFooter onBack={() => setView("adhoc-2")} backDisabled={submitting}>
         <Button
+          variant="brand"
           onClick={handleRegister}
           disabled={submitting}
         >
@@ -1984,7 +1998,7 @@ export function ActionWizard({
         }}
       >
         <DialogContent className="gap-4 sm:max-w-md">
-          <DialogTitle className="text-base font-semibold">
+          <DialogTitle className="font-sans! text-base font-semibold">
             O que você quer fazer?
           </DialogTitle>
           <DialogDescription className="sr-only">

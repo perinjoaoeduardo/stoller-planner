@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { PageShell } from "@/components/app/page-shell";
 import { PendenciasView } from "@/components/app/pendencias-view";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getPendencies } from "@/lib/db/pendencias";
+import { isPendencyType } from "@/lib/pendencias-shared";
 
 export const dynamic = "force-dynamic";
 
@@ -23,19 +23,31 @@ export const metadata: Metadata = {
  *
  * Escopo: DSM vê seus canais; CX (se acessar direto) vê tudo.
  */
-export default async function PendenciasPage() {
+export default async function PendenciasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tipo?: string }>;
+}) {
   const profile = await getCurrentProfile();
-  if (profile.role !== "DSM" && profile.role !== "CX") notFound();
 
-  const channelIds = await getScopedChannelIds(profile);
+  const [channelIds, params] = await Promise.all([
+    getScopedChannelIds(profile),
+    searchParams,
+  ]);
   const pendencies = await getPendencies(channelIds);
+  const rawTipo = params.tipo ?? null;
+  const activeFilter = isPendencyType(rawTipo) ? rawTipo : null;
 
   return (
     <PageShell
       title="Pendências"
       description="Registros crus do campo que precisam de um acabamento: foto, vínculo com meta ou categoria. Clique para resolver."
     >
-      <PendenciasView data={pendencies} showDsm={profile.role === "CX"} />
+      <PendenciasView
+        data={pendencies}
+        showDsm={profile.role === "CX"}
+        activeFilter={activeFilter}
+      />
     </PageShell>
   );
 }

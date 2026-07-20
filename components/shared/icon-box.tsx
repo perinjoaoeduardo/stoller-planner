@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
-import { categoryIcon } from "@/lib/category-icons";
+import { categoryColors, categoryIcon } from "@/lib/category-icons";
 import { cn } from "@/lib/utils";
 
 type IconBoxSize = "sm" | "md" | "lg";
@@ -58,7 +58,11 @@ export function IconBox({
   );
 }
 
-/** Atalho: IconBox já resolvendo o ícone da categoria (mapa global). */
+/**
+ * Atalho: IconBox já resolvendo ícone E cor de pilar da categoria
+ * (mapas globais em lib/category-icons). Categoria nula cai no
+ * quadradinho neutro padrão.
+ */
 export function CategoryIconBox({
   category,
   size = "md",
@@ -72,6 +76,7 @@ export function CategoryIconBox({
   className?: string;
   iconClassName?: string;
 }) {
+  const colors = categoryColors(category);
   return (
     <IconBox
       icon={categoryIcon(category)}
@@ -79,8 +84,8 @@ export function CategoryIconBox({
       tooltip={
         withTooltip && category ? CATEGORY_LABELS[category] : undefined
       }
-      className={className}
-      iconClassName={iconClassName}
+      className={cn(colors.bg, className)}
+      iconClassName={cn(colors.fg, iconClassName)}
     />
   );
 }

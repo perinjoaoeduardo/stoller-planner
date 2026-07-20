@@ -83,7 +83,7 @@ export function PhotoAttach({
             disabled={busy}
             onClick={pick}
             className={cn(
-              "flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border-hover bg-subtle transition-colors hover:border-border-active hover:bg-muted disabled:opacity-60",
+              "flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 transition-colors hover:border-accent-brand/60 hover:bg-accent-brand/10 disabled:opacity-60",
               compact ? "p-4" : "p-6"
             )}
           >
@@ -92,12 +92,12 @@ export function PhotoAttach({
             ) : (
               <Camera
                 className={cn(
-                  "text-foreground/70",
+                  "text-accent-brand",
                   compact ? "size-5" : "size-6"
                 )}
               />
             )}
-            <span className="text-sm font-medium text-foreground">
+            <span className="text-sm font-medium text-accent-brand">
               {busy ? "Enviando…" : "Anexar foto (opcional)"}
             </span>
             <span className="text-xs text-muted-foreground">
@@ -146,7 +146,7 @@ export function PhotoAttach({
               disabled={busy}
               aria-label="Adicionar mais fotos"
               onClick={pick}
-              className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-border-hover text-muted-foreground transition-colors hover:border-border-active hover:bg-muted disabled:opacity-60"
+              className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 text-accent-brand transition-colors hover:border-accent-brand/60 hover:bg-accent-brand/10 disabled:opacity-60"
             >
               {busy ? <Spinner /> : <Plus className="size-5" />}
             </button>

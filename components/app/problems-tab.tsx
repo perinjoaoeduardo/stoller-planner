@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { MetaWizard } from "@/components/app/meta-wizard";
 import { ProblemForm } from "@/components/app/problem-form";
 import {
   AlertDialog,
@@ -53,20 +54,24 @@ export function ProblemsTab({
   problems,
   activities,
   canEdit,
+  channelName,
 }: {
   planId: string;
   problems: ProblemRow[];
   activities: ActivityRow[];
   canEdit: boolean;
+  channelName?: string | null;
 }) {
+  const [createOpen, setCreateOpen] = React.useState(false);
   const [formOpen, setFormOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ProblemRow | null>(null);
   const [deleting, setDeleting] = React.useState<ProblemRow | null>(null);
   const [pending, startTransition] = React.useTransition();
 
+  // Criação usa o MetaWizard (linguagem do wizard canônico); a edição
+  // segue no ProblemForm.
   function openCreate() {
-    setEditing(null);
-    setFormOpen(true);
+    setCreateOpen(true);
   }
 
   function openEdit(problem: ProblemRow) {
@@ -228,6 +233,13 @@ export function ProblemsTab({
           })}
         </div>
       )}
+
+      <MetaWizard
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        planId={planId}
+        channelName={channelName}
+      />
 
       <ProblemForm
         open={formOpen}

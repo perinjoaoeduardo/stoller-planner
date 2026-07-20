@@ -7,12 +7,17 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
-  CircleAlert,
   CircleCheckBig,
   ClipboardCheck,
   ClipboardList,
+  Clock,
   ListTodo,
   Store,
+  Target,
+  TriangleAlert,
+  User,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import {
   differenceInCalendarDays,
@@ -24,12 +29,17 @@ import {
 import { ptBR } from "date-fns/locale";
 
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
+import { ActivityLink } from "@/components/app/activity-link";
+import { DsmMyActivities } from "@/components/app/dsm-my-activities";
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
+import {
+  type ActivityTableRow,
+} from "@/components/shared/activity-table";
 import { CanalCard } from "@/components/shared/canal-card";
+import { IconBox } from "@/components/shared/icon-box";
 import { StatCard } from "@/components/shared/stat-card";
 import { RtvActivitiesTable } from "@/components/app/rtv-activities-table";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,31 +56,16 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemMedia,
-  ItemSeparator,
-  ItemTitle,
-} from "@/components/ui/item";
-import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelCards, type ChannelCard } from "@/lib/db/channels";
 import {
-  getChannelsSummary,
-  getDashboardData,
-  type DashboardData,
-} from "@/lib/db/dashboard";
+  getDsmHome,
+  type DsmException,
+  type DsmExceptionKind,
+  type DsmHome,
+  type DsmHomeChannel,
+  type DsmMyActivity,
+} from "@/lib/db/dsm-home";
 import {
   getFieldActivities,
   getMyRecentExecutions,
@@ -78,186 +73,392 @@ import {
   type FieldActivity,
   type RecentExecution,
 } from "@/lib/db/execution";
-import { HEALTH_CONFIG } from "@/lib/plan-utils";
+import { Progress } from "@/components/ui/progress";
+import { HEALTH_CONFIG, type ChannelHealth } from "@/lib/plan-utils";
 import { greetingByHour, greetingContextLine } from "@/lib/rtv/greeting";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-function formatDueDate(date: string | null) {
-  if (!date) return "—";
-  return format(parseISO(date), "dd MMM yyyy", { locale: ptBR });
+// ── Home do DSM (painel de gestão) ─────────────────────────────────────
+
+const EXCEPTION_ICONS: Record<DsmExceptionKind, LucideIcon> = {
+  canal_escuro: AlertCircle,
+  rtv_atrasadas: User,
+  meta_sem_atividade: Target,
+  atraso_critico: Clock,
+};
+
+const MAX_MY_ACTIVITIES = 5;
+/** Altura visível dos cards pareados (Meus canais / Precisa de atenção)
+ *  — ~6 linhas; o excedente entra no scroll interno. */
+const PAIRED_CARD = "flex h-full max-h-[26rem] flex-col gap-0 overflow-hidden py-0";
+/** Header canônico dos cards pareados: título + contagem + descrição +
+ *  ação, colado no corpo por um border-b. */
+const PAIRED_HEADER =
+  "shrink-0 border-b border-border px-4 py-4 sm:px-5 [.border-b]:pb-4";
+
+/** Contagem discreta ao lado do título dos cards pareados. */
+function TitleCount({ value }: { value: number }) {
+  return (
+    <span className="text-sm font-normal tabular-nums text-muted-foreground">
+      {value}
+    </span>
+  );
 }
 
-function MetricsGrid({
-  data,
-  scopeHint,
-}: {
-  data: DashboardData;
-  scopeHint: string;
-}) {
-  const metrics = [
-    {
-      label: "Total de atividades",
-      value: data.totalActivities.toString(),
-      hint: scopeHint,
-      icon: ClipboardList,
-    },
-    {
-      label: "Concluídas",
-      value: `${data.completedPercent}%`,
-      hint: `${data.completedCount} de ${data.totalActivities} atividades`,
-      icon: CircleCheckBig,
-    },
-    {
-      label: "Atrasadas",
-      value: data.overdueCount.toString(),
-      hint: "Exigem ação imediata",
-      icon: CircleAlert,
-    },
-    {
-      label: "Canais ativos",
-      value: data.activeChannels.toString(),
-      hint: "Com plano ativo na safra",
-      icon: Store,
-    },
-  ];
-
+/** FIX 1 — stat cards de gestão (não de execução). */
+function DsmStats({ stats }: { stats: DsmHome["stats"] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {metrics.map((metric) => (
-        <StatCard
-          key={metric.label}
-          title={metric.label}
-          value={metric.value}
-          sublabel={metric.hint}
-          icon={metric.icon}
-        />
-      ))}
+      <StatCard
+        title="Canais que acompanho"
+        value={stats.channelCount}
+        sublabel="na safra"
+        icon={Store}
+        href="/canais"
+      />
+      <StatCard
+        title="Canais em risco"
+        value={stats.atRiskCount}
+        sublabel="exigem acompanhamento"
+        icon={TriangleAlert}
+        tone={stats.atRiskCount > 0 ? "warning" : "neutral"}
+        href="/canais"
+      />
+      <StatCard
+        title="RTVs na equipe"
+        value={stats.rtvCount}
+        sublabel="ver equipe"
+        icon={Users}
+        href="/equipe"
+      />
+      <StatCard
+        title="Minhas pendências"
+        value={stats.myOpenCount}
+        sublabel="atribuídas a você"
+        icon={ClipboardCheck}
+        tone={stats.myHasOverdue ? "warning" : "neutral"}
+        href="/pendencias"
+      />
     </div>
   );
 }
 
-function StatusChartCard({ data }: { data: DashboardData }) {
+function DsmSectionHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle: string;
+  action?: React.ReactNode;
+}) {
   return (
-    <Card className="xl:col-span-3">
-      <CardHeader>
-        <CardTitle>Atividades por status</CardTitle>
-        <CardDescription>
-          Distribuição das atividades da safra em cada status.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ActivitiesStatusChart data={data.byStatus} />
-      </CardContent>
-    </Card>
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      </div>
+      {action}
+    </div>
   );
 }
 
-function UpcomingTableCard({ data }: { data: DashboardData }) {
+/** Rótulo de saúde colorido — mesma paleta do CanalCard canônico. */
+const HEALTH_LABEL_CLASS: Record<ChannelHealth, string> = {
+  critico: "font-medium text-destructive",
+  atencao: "font-medium text-warning",
+  em_dia: "font-medium text-success-fg",
+};
+
+const ROW_PROGRESS_CLASS =
+  "flex-1 [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-primary [&_[data-slot=progress-track]]:h-1";
+
+/** FIX 2 — Meus canais: linhas divididas (sem card-em-card), pior
+ *  primeiro, com scroll interno (coluna esquerda do par). */
+function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
   return (
-    <Card className="xl:col-span-4">
-      <CardHeader>
-        <CardTitle>Próximas do vencimento</CardTitle>
-        <CardDescription>
-          As 10 atividades pendentes com prazo mais próximo.
-        </CardDescription>
+    <Card className={PAIRED_CARD}>
+      <CardHeader className={PAIRED_HEADER}>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Store className="size-4 text-muted-foreground" />
+          Meus canais
+          <TitleCount value={channels.length} />
+        </CardTitle>
+        <CardDescription>Saúde do plano em cada canal.</CardDescription>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            nativeButton={false}
+            render={<Link href="/canais" />}
+          >
+            Ver todos
+            <ChevronRight className="size-4" />
+          </Button>
+        </CardAction>
       </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Atividade</TableHead>
-              <TableHead>Canal</TableHead>
-              <TableHead>Responsável</TableHead>
-              <TableHead>Prazo</TableHead>
-              <TableHead className="text-right">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.upcoming.map((activity) => (
-              <TableRow key={activity.id}>
-                <TableCell className="max-w-64 truncate font-medium">
-                  {activity.title}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {activity.channel}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {activity.responsible}
-                </TableCell>
-                <TableCell className="whitespace-nowrap tabular-nums">
-                  {formatDueDate(activity.dueDate)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <StatusBadge status={activity.status} />
-                </TableCell>
-              </TableRow>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {channels.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">
+            Nenhum canal sob sua gestão nesta safra.
+          </p>
+        ) : (
+          <div className="flex flex-col divide-y divide-border/60 px-2 py-1">
+            {channels.map((channel) => (
+              <Link
+                key={channel.id}
+                href={`/canais/${channel.id}`}
+                className="group flex flex-col gap-2 rounded-lg px-3 py-3.5 transition-colors hover:bg-hover-surface"
+              >
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                    {channel.name}
+                  </p>
+                  <span className="flex shrink-0 items-center gap-1.5 text-xs">
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        HEALTH_CONFIG[channel.health].dotClass
+                      )}
+                    />
+                    <span className={HEALTH_LABEL_CLASS[channel.health]}>
+                      {HEALTH_CONFIG[channel.health].label}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 transition-transform duration-slow ease-emphasized group-hover:translate-x-0.5" />
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <Progress
+                    value={channel.completedPercent}
+                    className={ROW_PROGRESS_CLASS}
+                  />
+                  <span className="shrink-0 text-xs font-medium tabular-nums text-foreground">
+                    {channel.completedPercent}%
+                  </span>
+                  {channel.lateCount > 0 ? (
+                    <span className="shrink-0 text-xs tabular-nums text-warning">
+                      · {channel.lateCount}{" "}
+                      {channel.lateCount === 1 ? "atrasada" : "atrasadas"}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** Tom do IconBox por tipo de exceção — âmbar é atraso/silêncio (a
+ *  regra de alarme único), lacuna de planejamento fica neutra. */
+const EXCEPTION_TONE: Record<
+  DsmExceptionKind,
+  { box: string; icon: string }
+> = {
+  canal_escuro: { box: "bg-warning-bg", icon: "text-warning-fg" },
+  rtv_atrasadas: { box: "bg-warning-bg", icon: "text-warning-fg" },
+  atraso_critico: { box: "bg-warning-bg", icon: "text-warning-fg" },
+  meta_sem_atividade: { box: "bg-muted", icon: "text-foreground/70" },
+};
+
+/** FIX 3 — "Precisa de atenção": todas as exceções, scroll interno
+ *  (coluna direita do par). */
+function ExceptionQueue({ exceptions }: { exceptions: DsmException[] }) {
+  return (
+    <Card className={PAIRED_CARD}>
+      <CardHeader className={PAIRED_HEADER}>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <TriangleAlert className="size-4 text-muted-foreground" />
+          Precisa de atenção
+          {exceptions.length > 0 ? (
+            <TitleCount value={exceptions.length} />
+          ) : null}
+        </CardTitle>
+        <CardDescription>
+          O que está travando a safra nos seus canais.
+        </CardDescription>
+      </CardHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {exceptions.length === 0 ? (
+          <div className="flex h-full flex-col items-center justify-center gap-2 py-8 text-center">
+            <CircleCheckBig className="size-8 text-success" />
+            <p className="text-sm font-medium text-foreground">
+              Tudo em dia por aqui.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Nenhuma exceção aberta nos seus canais.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col divide-y divide-border/60 px-2 py-1">
+            {exceptions.map((exception) => {
+              const Icon = EXCEPTION_ICONS[exception.kind];
+              const tone = EXCEPTION_TONE[exception.kind];
+              const rowClass =
+                "group flex items-center gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-hover-surface";
+              const body = (
+                <>
+                  <IconBox
+                    icon={Icon}
+                    size="sm"
+                    className={tone.box}
+                    iconClassName={tone.icon}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {exception.title}
+                    </p>
+                    {exception.context ? (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {exception.context}
+                      </p>
+                    ) : null}
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 transition-transform duration-slow ease-emphasized group-hover:translate-x-0.5" />
+                </>
+              );
+              // Exceção de atividade abre o painel; canal/meta navegam.
+              return exception.activityId ? (
+                <ActivityLink
+                  key={exception.key}
+                  activityId={exception.activityId}
+                  className={rowClass}
+                >
+                  {body}
+                </ActivityLink>
+              ) : (
+                <Link
+                  key={exception.key}
+                  href={exception.href}
+                  className={rowClass}
+                >
+                  {body}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+/** FIX 4 — minhas atividades (o DSM executor). */
+function MyActivitiesSection({
+  activities,
+  viewAllHref,
+}: {
+  activities: DsmMyActivity[];
+  viewAllHref: string;
+}) {
+  const rows: ActivityTableRow[] = activities
+    .slice(0, MAX_MY_ACTIVITIES)
+    .map((activity) => ({
+      id: activity.id,
+      title: activity.title,
+      category: activity.category,
+      status: activity.status,
+      dueDate: activity.dueDate,
+      branchName: activity.branchName,
+      channelName: activity.channelName,
+    }));
+
+  return (
+    <section className="flex flex-col gap-3">
+      <DsmSectionHeader
+        title="Minhas atividades"
+        subtitle="Suas reuniões e ações na safra."
+        action={
+          activities.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              nativeButton={false}
+              render={<Link href={viewAllHref} />}
+            >
+              Ver todas
+              <ChevronRight className="size-4" />
+            </Button>
+          ) : null
+        }
+      />
+      {rows.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-muted-foreground">
+            Nenhuma atividade sua em aberto.
+          </CardContent>
+        </Card>
+      ) : (
+        <DsmMyActivities activities={rows} />
+      )}
+    </section>
+  );
+}
+
+/** FIX 5 — panorama da safra (contexto de fundo, rodapé). */
+function PanoramaSection({ byStatus }: { byStatus: DsmHome["byStatus"] }) {
+  const total = byStatus.reduce((sum, row) => sum + row.total, 0);
+  const completed =
+    byStatus.find((row) => row.status === "concluida")?.total ?? 0;
+  const late = byStatus.find((row) => row.status === "atrasada")?.total ?? 0;
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <CardTitle className="text-base">Panorama da safra</CardTitle>
+          <CardDescription>
+            Distribuição das atividades dos seus canais.
+          </CardDescription>
+        </div>
+        <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          <span className="font-medium text-foreground">{percent}%</span>{" "}
+          concluídas ·{" "}
+          <span className="font-medium text-foreground">{late}</span>{" "}
+          {late === 1 ? "atrasada" : "atrasadas"}
+        </p>
+      </CardHeader>
+      <CardContent>
+        <ActivitiesStatusChart data={byStatus} />
       </CardContent>
     </Card>
   );
 }
 
-/** Home do DSM — métricas restritas aos canais linkados. */
+/** Home do DSM — painel de gestão híbrido (gestão protagonista, execução
+ *  própria reconhecida mas secundária). */
 async function DsmHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const [data, channels] = await Promise.all([
-    getDashboardData(channelIds),
-    getChannelsSummary(channelIds),
-  ]);
+  const home = await getDsmHome(profile, channelIds);
 
   return (
     <PageShell
       title="Início"
-      description="Execução comercial dos seus canais na safra 2025/26."
+      description="Panorama dos seus canais na safra 2025/26."
+      actions={<NewActivityButton />}
     >
-      <MetricsGrid data={data} scopeHint="Safra 2025/26, seus canais" />
-      <div className="grid gap-4 xl:grid-cols-7">
-        <div className="flex flex-col gap-4 xl:col-span-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>Meus canais</CardTitle>
-              <CardDescription>
-                Canais sob sua gestão nesta safra.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ItemGroup>
-                {channels.map((channel, index) => (
-                  <div key={channel.id}>
-                    {index > 0 ? <ItemSeparator /> : null}
-                    <Item
-                      size="sm"
-                      render={<Link href={`/canais/${channel.id}`} />}
-                      className="hover:bg-muted/60"
-                    >
-                      <ItemMedia variant="icon">
-                        <Store />
-                      </ItemMedia>
-                      <ItemContent>
-                        <ItemTitle>{channel.name}</ItemTitle>
-                        <ItemDescription>
-                          {channel.region} ·{" "}
-                          <span className="tabular-nums">
-                            {channel.branchCount}
-                          </span>{" "}
-                          filiais
-                        </ItemDescription>
-                      </ItemContent>
-                      <ChevronRight className="size-4 text-muted-foreground" />
-                    </Item>
-                  </div>
-                ))}
-              </ItemGroup>
-            </CardContent>
-          </Card>
-          <StatusChartCard data={data} />
-        </div>
-        <UpcomingTableCard data={data} />
+      <DsmStats stats={home.stats} />
+
+      <div className="grid items-stretch gap-6 lg:grid-cols-2">
+        <MeusCanaisCard channels={home.channels} />
+        <ExceptionQueue exceptions={home.exceptions} />
       </div>
+
+      <MyActivitiesSection
+        activities={home.myActivities}
+        viewAllHref={`/atividades?responsavel=${profile.id}`}
+      />
+
+      <PanoramaSection byStatus={home.byStatus} />
     </PageShell>
   );
 }
@@ -434,9 +635,9 @@ function RecentExecutionsCard({
               .filter(Boolean)
               .join(" · ");
             return (
-              <Link
+              <ActivityLink
                 key={execution.id}
-                href={`/atividades/${execution.activityId}`}
+                activityId={execution.activityId}
                 className="group flex flex-col gap-3 rounded-xl border bg-card p-3 shadow-xs transition-colors hover:bg-muted/40"
               >
                 <div className="relative aspect-video overflow-hidden rounded-md bg-muted">
@@ -471,7 +672,7 @@ function RecentExecutionsCard({
                     })}
                   </p>
                 </div>
-              </Link>
+              </ActivityLink>
             );
           })}
         </div>
@@ -521,8 +722,8 @@ async function FieldHome() {
 
   // Ordem: atrasadas (por dias de atraso desc = prazo mais antigo primeiro)
   // > vencendo em 7 dias > outras abertas > planejadas por prazo asc. Sem
-  // prazo por último. "abertas" = não concluídas (planejada, em_andamento,
-  // atrasada, nao_feita) — a tabela lista todas, não só as próximas.
+  // prazo por último. "abertas" = não concluídas (planejada, atrasada,
+  // nao_feita) — a tabela lista todas, não só as próximas.
   const openForTable = mine.filter(
     (activity) => activity.status !== "concluida"
   );

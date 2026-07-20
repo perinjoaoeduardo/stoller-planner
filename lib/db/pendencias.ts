@@ -1,7 +1,17 @@
 import type { ActivityStatus } from "@/components/shared/status-badge";
 import type { ActivityCategory } from "@/lib/config";
 import { getDisplayStatus } from "@/lib/db/status";
+import {
+  PENDENCY_LABELS,
+  PENDENCY_TYPES,
+  type PendencyType,
+} from "@/lib/pendencias-shared";
 import { createClient } from "@/lib/supabase/server";
+
+// Re-exportados para não quebrar imports existentes de "@/lib/db/pendencias".
+// Novos client components devem importar direto de "@/lib/pendencias-shared".
+export { PENDENCY_LABELS, PENDENCY_TYPES };
+export type { PendencyType };
 
 /**
  * Camada de faxina (pendências): transforma registro cru do campo em
@@ -16,20 +26,6 @@ import { createClient } from "@/lib/supabase/server";
  * O chamador é responsável pelo escopo (getScopedChannelIds): DSM vê os
  * seus canais, CX vê tudo.
  */
-
-export const PENDENCY_TYPES = [
-  "sem_foto",
-  "sem_problema",
-  "sem_categoria",
-] as const;
-
-export type PendencyType = (typeof PENDENCY_TYPES)[number];
-
-export const PENDENCY_LABELS: Record<PendencyType, string> = {
-  sem_foto: "Sem foto",
-  sem_problema: "Sem meta vinculada",
-  sem_categoria: "Sem categoria",
-};
 
 export type PendencyActivity = {
   id: string;

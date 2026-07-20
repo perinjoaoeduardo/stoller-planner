@@ -14,7 +14,8 @@ export const metadata: Metadata = {
 /**
  * Versão global da tabela de atividades: cruza todos os canais do escopo
  * do usuário, com a coluna extra "Canal". Edição acontece na página do
- * canal ou no detalhe da atividade.
+ * canal ou no detalhe da atividade. Usa o variant "global" da
+ * ActivitiesTable — StatCards clicáveis + linha de controle enxuta.
  */
 export default async function AtividadesPage() {
   const profile = await getCurrentProfile();
@@ -29,33 +30,33 @@ export default async function AtividadesPage() {
     return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
   };
 
-  const problems = dedupe(
-    activities
-      .filter((activity) => activity.problemId && activity.problemTitle)
-      .map((activity) => ({
-        value: activity.problemId!,
-        label: activity.problemTitle!,
-      }))
+  const channels = dedupe(
+    activities.map((activity) => ({
+      value: activity.channelId,
+      label: activity.channelName,
+    }))
   );
-  const hasBranchless = activities.some((activity) => !activity.branchId);
-  const branches = [
-    ...(hasBranchless ? [{ value: "canal-geral", label: "Canal geral" }] : []),
-    ...dedupe(
-      activities
-        .filter((activity) => activity.branchId && activity.branchName)
-        .map((activity) => ({
-          value: activity.branchId!,
-          label: activity.branchName!,
-        }))
-    ),
-  ];
-  const responsibles = dedupe(
-    activities
-      .filter((activity) => activity.responsibleId && activity.responsibleName)
-      .map((activity) => ({
-        value: activity.responsibleId!,
-        label: activity.responsibleName!,
-      }))
+  // Responsáveis: união de responsibleId + assignees (o toggle "Só minhas"
+  // e o filtro consideram ambos).
+  const responsibleMap = new Map<string, SelectOption>();
+  for (const activity of activities) {
+    if (activity.responsibleId && activity.responsibleName) {
+      responsibleMap.set(activity.responsibleId, {
+        value: activity.responsibleId,
+        label: activity.responsibleName,
+      });
+    }
+    for (const assignee of activity.assignees) {
+      if (!responsibleMap.has(assignee.id)) {
+        responsibleMap.set(assignee.id, {
+          value: assignee.id,
+          label: assignee.name,
+        });
+      }
+    }
+  }
+  const responsibles = [...responsibleMap.values()].sort((a, b) =>
+    a.label.localeCompare(b.label)
   );
 
   const isField = profile.role === "RTV";
@@ -71,11 +72,14 @@ export default async function AtividadesPage() {
     >
       <ActivitiesTable
         data={activities}
-        problems={problems}
-        branches={branches}
+        problems={[]}
+        branches={[]}
         responsibles={responsibles}
+        channels={channels}
+        currentUserId={profile.id}
         canEdit={false}
         showChannel
+        variant="global"
       />
     </PageShell>
   );

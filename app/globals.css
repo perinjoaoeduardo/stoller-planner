@@ -9,7 +9,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-heading);
+  /* `font-heading` aponta pra Manrope — a "font velha" (JetBrains Mono)
+     saiu do sistema. Fica como alias pra sobreviver a usos legados nos
+     wrappers do shadcn (dialog, drawer, sheet, alert-dialog, empty). */
+  --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,6 +55,25 @@
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
   --color-success-fg: var(--success-fg);
+  /* Pilares (categorias de atividade) — identidade por tom pastel.
+     bg suave + fg escuro; nunca competem com os alarmes semânticos. */
+  --color-cat-reuniao-bg: var(--cat-reuniao-bg);
+  --color-cat-reuniao-fg: var(--cat-reuniao-fg);
+  --color-cat-treinamento-bg: var(--cat-treinamento-bg);
+  --color-cat-treinamento-fg: var(--cat-treinamento-fg);
+  --color-cat-rodada-bg: var(--cat-rodada-bg);
+  --color-cat-rodada-fg: var(--cat-rodada-fg);
+  --color-cat-demanda-bg: var(--cat-demanda-bg);
+  --color-cat-demanda-fg: var(--cat-demanda-fg);
+  /* Sombras — profundidade sutil no light; dark = none (camadas fazem
+     o trabalho). Bind pra classes shadow-card / shadow-elevated. */
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-elevated);
+  /* Motion — easings do design system viram classes ease-standard e
+     ease-emphasized (namespace --ease-* do Tailwind v4). As durações
+     não têm namespace equivalente e ficam em @utility abaixo. */
+  --ease-standard: var(--ease-standard);
+  --ease-emphasized: var(--ease-emphasized);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -78,35 +100,36 @@
   --blue-200: #9bccff;
   --blue-100: #cfe6ff;
 
-  /* ── Camadas de cinza (light) — profundidade sem linhas ─────────────
+  /* ── Camadas de cinza-azulado (light) — profundidade sem linhas ─────
      Camada 0 canvas > 1 card > 2 sub-container > 3 interativo. Nunca
-     duas camadas iguais encostadas. */
-  --background: #f5f5f5; /* camada 0 — canvas da página */
+     duas camadas iguais encostadas. Cinzas na família slate (matiz azul
+     ~215°): a Corteva é azul, então até o neutro esfria pro azul. */
+  --background: #eef2f7; /* camada 0 — canvas da página (um passo mais escuro) */
   --card: #ffffff; /* camada 1 — card */
   --card-foreground: var(--blue-black);
-  --subtle: #fafafa; /* camada 2 — sub-container dentro do card */
-  --muted: #f4f4f5; /* camada 3 — inputs, chips, quadradinhos */
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --hover-surface: #f0f0f0; /* hover de card branco */
-  --border: #e4e4e7;
-  --border-hover: #d4d4d8;
-  --border-active: #a1a1aa; /* ring/borda de estado ativo */
+  --subtle: #f1f5f9; /* camada 2 — sub-container dentro do card */
+  --muted: #e4ebf3; /* camada 3 — inputs, chips, quadradinhos (mais separada) */
+  --muted-foreground: #4b5c72; /* slate-600 — texto meta com mais contraste */
+  --hover-surface: #e2e8f0; /* hover de card branco */
+  --border: #d5dde8; /* mais visível sobre o canvas azulado */
+  --border-hover: #b8c3d1;
+  --border-active: #8494a8; /* ring/borda de estado ativo */
 
   --foreground: var(--blue-black);
   --popover: #ffffff;
   --popover-foreground: var(--blue-black);
-  --primary: var(--blue-black); /* primária escura */
+  --primary: var(--blue-800); /* primária = azul Corteva profundo */
   --primary-foreground: #ffffff;
-  --primary-hover: var(--blue-950); /* hover da primária: um passo acima */
+  --primary-hover: var(--blue-700); /* hover da primária: um passo acima */
   --secondary: var(--muted);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --secondary-foreground: var(--blue-900);
   --accent: var(--muted);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  --accent-foreground: var(--blue-900);
   /* Acento de marca orçamentado — NÃO é o --accent neutro do shadcn */
   --accent-brand: var(--blue-500);
   --destructive: oklch(0.577 0.245 27.325);
   --input: var(--border);
-  --ring: var(--border-active);
+  --ring: var(--blue-400); /* foco azul Corteva */
 
   /* ── Semânticas (âmbar = atraso; verde = conclusão) ────────────────── */
   --warning: #d97706; /* amber-600 — texto de atenção */
@@ -116,11 +139,31 @@
   --success-bg: #dcfce7; /* green-100 — fundo do badge Concluída */
   --success-fg: #166534; /* green-800 — texto sobre o badge */
 
-  --chart-1: oklch(0.7 0.1 240);
-  --chart-2: oklch(0.58 0.13 248);
-  --chart-3: oklch(0.44 0.14 248);
-  --chart-4: oklch(0.36 0.11 248);
-  --chart-5: oklch(0.78 0.17 140);
+  /* ── Pilares — cor de identidade dos 4 tipos de ação ────────────────
+     Temporariamente TODOS iguais no mesmo azul-neutro clarinho (sky):
+     o usuário achou as 4 cores distintas ruidosas. Quando produto
+     validar o agrupamento por cor, é só reverter aos matizes por pilar
+     (violet/indigo/sky/fuchsia) — a estrutura por token continua igual. */
+  --cat-reuniao-bg: #e0f2fe; /* sky-100 */
+  --cat-reuniao-fg: #0369a1; /* sky-700 */
+  --cat-treinamento-bg: #e0f2fe;
+  --cat-treinamento-fg: #0369a1;
+  --cat-rodada-bg: #e0f2fe;
+  --cat-rodada-fg: #0369a1;
+  --cat-demanda-bg: #e0f2fe;
+  --cat-demanda-fg: #0369a1;
+
+  /* ── Gráficos — paleta semântica com identidade de marca ─────────────
+     Ordem calibrada para os charts de status (planejada → em andamento
+     → concluída → atrasada → não feita): vai do azul claro até o azul
+     vibrant da Corteva, atravessa pro verde Stoller (sucesso), sobe pro
+     âmbar (atenção) e termina em neutro (inerte). Séries únicas usam
+     chart-1 — o azul Corteva primário, cor de "dado" do produto. */
+  --chart-1: var(--blue-500); /* Azul Corteva 500 — planejada / série única */
+  --chart-2: var(--blue-700); /* Azul Corteva 700 — em andamento (deeper) */
+  --chart-3: #96cb40;         /* Verde Stoller — concluída (sucesso) */
+  --chart-4: #f59e0b;         /* Âmbar 500 — atrasada (atenção) */
+  --chart-5: #94a3b8;         /* Slate 400 — não feita (inerte) */
 
   /* Radius base: card = rounded-xl (0.75rem via escala), sub-container
      = rounded-lg, chips/inputs = rounded-md, pills/barras = rounded-full.
@@ -128,48 +171,70 @@
      interno de card: space-y-5 entre campos, label > valor mt-1.5. */
   --radius: 0.75rem;
 
+  /* ── Sombras (light) — profundidade sutil, nunca dramática ──────────
+     Cards vivem em `shadow-card`. Elementos que sobem em hover ou saem
+     do plano (popover, dropdown, modal em card) vão pra `shadow-elevated`. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.02);
+  --shadow-elevated:
+    0 4px 12px rgb(0 0 0 / 0.06), 0 1px 3px rgb(0 0 0 / 0.04);
+
+  /* ── Motion — 3 durações + 2 easings ───────────────────────────────
+     standard = ease padrão (bg, color, border, opacity).
+     emphasized = spring-like p/ movimento decorativo (translate, scale,
+     seta que desliza no hover de card). */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+
   /* Sidebar sempre escura (padrão shadcn/create) — mesmo tom nos dois
-     temas. Fundo #2B2B35 pra ficar um pouco mais suave que preto puro
-     e destacar dos separadores/hover.  Accent = hover ficando +Δ0.06L
-     acima do fundo pra manter contraste sutil (o texto permanece #FFF,
-     WCAG AAA). Border sutil (8% branco) só nos separadores estruturais. */
-  --sidebar: oklch(0.245 0.011 285);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.6 0.13 240);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.305 0.011 285);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+     temas. Azul-noite da família Corteva em HEX (o oklch com chroma
+     baixo estava fazendo drift no gamut sRGB, dando ar amarelado em
+     alguns monitores). Accent = hover um passo mais claro (texto
+     permanece #FFF, WCAG AAA). Border sutil (8% branco) só nos
+     separadores estruturais. */
+  --sidebar: #101724; /* azul-noite deep (entre blue-950 e slate-900) */
+  --sidebar-foreground: #f3f6fa;
+  --sidebar-primary: var(--blue-500);
+  --sidebar-primary-foreground: #f3f6fa;
+  --sidebar-accent: #1a2434; /* hover/ativo: um passo mais claro */
+  --sidebar-accent-foreground: #f3f6fa;
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.6 0.13 240);
+  --sidebar-ring: var(--blue-400);
 }
 
-.dark {
-  /* Camadas recalibradas com passos maiores — profundidade sem shadow */
-  --background: #0b0b0e; /* camada 0 */
-  --card: #17171b; /* camada 1 */
-  --card-foreground: #fafafa;
-  --subtle: #1e1e23; /* camada 2 */
-  --muted: #27272c; /* camada 3 */
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --hover-surface: #212126;
-  --border: #2e2e34;
-  --border-hover: #3f3f46;
-  --border-active: #52525b;
+/* `:root.dark` (especificidade 0,1,1) em vez de `.dark` (0,1,0) para
+   ganhar do preset `shadcn/tailwind.css`, que injeta um bloco `.dark`
+   depois no bundle compilado sobrescrevendo variáveis de tema. */
+:root.dark {
+  /* Camadas azul-noite recalibradas com passos maiores — profundidade
+     sem shadow. Mesmo matiz ~215-245° do light. */
+  --background: #080b10; /* camada 0 (mais preto pra abrir espaço) */
+  --card: #141b25; /* camada 1 */
+  --card-foreground: #f3f6fa;
+  --subtle: #1c2632; /* camada 2 (mais separada da 1) */
+  --muted: #253140; /* camada 3 (mais separada da 2) */
+  --muted-foreground: #a8bbd0; /* slate azulado mais claro (mais contraste) */
+  --hover-surface: #1f2937;
+  --border: #2f3d50;
+  --border-hover: #435368;
+  --border-active: #5c6f88;
 
-  --foreground: #fafafa;
-  --popover: #17171b;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa; /* primária invertida (padrão shadcn dark) */
+  --foreground: #f3f6fa;
+  --popover: #131a22;
+  --popover-foreground: #f3f6fa;
+  --primary: var(--blue-200); /* primária clara azulada no dark */
   --primary-foreground: var(--blue-black);
-  --primary-hover: #d4d4d8;
+  --primary-hover: var(--blue-100);
   --secondary: var(--muted);
-  --secondary-foreground: #fafafa;
+  --secondary-foreground: #f3f6fa;
   --accent: var(--muted);
-  --accent-foreground: #fafafa;
+  --accent-foreground: #f3f6fa;
   --accent-brand: var(--blue-400); /* um passo mais luminoso no dark */
   --destructive: oklch(0.704 0.191 22.216);
   --input: var(--border);
-  --ring: var(--border-active);
+  --ring: var(--blue-400);
 
   --warning: #fbbf24; /* amber-400 */
   --warning-bg: rgba(245, 158, 11, 0.15);
@@ -178,20 +243,33 @@
   --success-bg: rgba(34, 197, 94, 0.15);
   --success-fg: #86efac; /* green-300 */
 
-  --chart-1: oklch(0.7 0.1 240);
-  --chart-2: oklch(0.58 0.13 248);
-  --chart-3: oklch(0.5 0.14 248);
-  --chart-4: oklch(0.44 0.14 248);
-  --chart-5: oklch(0.78 0.17 140);
+  /* Pilares no dark — TODOS no mesmo sky-alpha (idem light). */
+  --cat-reuniao-bg: rgba(14, 165, 233, 0.16);
+  --cat-reuniao-fg: #7dd3fc; /* sky-300 */
+  --cat-treinamento-bg: rgba(14, 165, 233, 0.16);
+  --cat-treinamento-fg: #7dd3fc;
+  --cat-rodada-bg: rgba(14, 165, 233, 0.16);
+  --cat-rodada-fg: #7dd3fc;
+  --cat-demanda-bg: rgba(14, 165, 233, 0.16);
+  --cat-demanda-fg: #7dd3fc;
 
-  --sidebar: oklch(0.245 0.011 285);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.6 0.13 240);
-  --sidebar-primary-foreground: oklch(0.15 0.01 248);
-  --sidebar-accent: oklch(0.305 0.011 285);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.6 0.13 240);
+  /* Dark: profundidade só por camadas — sem shadow em card, sombra
+     mínima só para elementos que saem do plano (popover, dropdown). */
+  --shadow-card: none;
+  --shadow-elevated: 0 8px 24px rgb(0 0 0 / 0.5);
+
+  /* Gráficos no dark — um passo mais luminoso para manter contraste
+     sobre a camada 1 (#17171b). Verde Stoller e âmbar ganham brilho,
+     azul vai pro Corteva 400, neutro pro zinc 500. */
+  --chart-1: var(--blue-400); /* Azul Corteva 400 — planejada / série única */
+  --chart-2: var(--blue-500); /* Azul Corteva 500 — em andamento */
+  --chart-3: #a8db55;         /* Verde Stoller +Δ luminosidade */
+  --chart-4: #fbbf24;         /* Âmbar 400 */
+  --chart-5: #64748b;         /* Slate 500 */
+
+  /* Sidebar dark = mesmos tokens do light (a sidebar já é escura nos
+     dois temas, não precisa de override). Se algum dia quisermos uma
+     variação mais escura no dark, é aqui. */
 }
 
 @layer base {
@@ -204,6 +282,18 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Durações do design system como utilities (Tailwind v4 não tem
+   namespace --duration-*; classes duration-N esperam ms cru). */
+@utility duration-fast {
+  transition-duration: var(--duration-fast);
+}
+@utility duration-base {
+  transition-duration: var(--duration-base);
+}
+@utility duration-slow {
+  transition-duration: var(--duration-slow);
 }
 
 /* ── Impressão (Relatório de Safra → "Exportar PDF") ─────────────────

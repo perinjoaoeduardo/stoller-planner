@@ -47,6 +47,7 @@ export type ActivityTableRow = {
   status: ActivityStatus;
   dueDate: string | null;
   branchName?: string | null;
+  channelName?: string | null;
   problemTitle?: string | null;
   assignees?: { id: string; name: string }[];
 };
@@ -59,11 +60,7 @@ export type ActivityTableColumn =
   | "status"
   | "acao";
 
-const OPEN_STATUSES = new Set<ActivityStatus>([
-  "planejada",
-  "em_andamento",
-  "atrasada",
-]);
+const OPEN_STATUSES = new Set<ActivityStatus>(["planejada", "atrasada"]);
 
 type SortKey = "prazo" | "status";
 
@@ -91,6 +88,7 @@ export function ActivityTable({
   rowAction = "menu",
   onRegister,
   deadlineFormat = "date",
+  showChannel = false,
   sort,
 }: {
   activities: ActivityTableRow[];
@@ -99,6 +97,9 @@ export function ActivityTable({
   rowAction?: "registrar" | "menu";
   onRegister?: (activity: ActivityTableRow) => void;
   deadlineFormat?: DeadlineFormat;
+  /** Mostra "Canal · Filial" na 2ª linha (listas que misturam canais,
+   *  ex.: home do RTV). Sem isso, mostra só a filial / "Canal geral". */
+  showChannel?: boolean;
   sort?: {
     key: SortKey;
     dir: "asc" | "desc";
@@ -176,8 +177,15 @@ export function ActivityTable({
               <div className="min-w-0">
                 <TruncatedText text={activity.title} className="font-medium" />
                 <p className="truncate text-xs text-muted-foreground">
-                  {activity.branchName ?? (
-                    <span className="italic">Canal geral</span>
+                  {showChannel && activity.channelName ? (
+                    <>
+                      {activity.channelName}
+                      {activity.branchName ? ` · ${activity.branchName}` : ""}
+                    </>
+                  ) : (
+                    activity.branchName ?? (
+                      <span className="italic">Canal geral</span>
+                    )
                   )}
                 </p>
               </div>

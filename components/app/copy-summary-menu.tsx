@@ -1,6 +1,7 @@
 "use client";
 
-import { Copy, MoreHorizontal } from "lucide-react";
+import Link from "next/link";
+import { Copy, MoreHorizontal, User } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * Menu "..." das linhas de acompanhamento: copia o resumo de cobrança
- * pronto para colar no WhatsApp/Teams. O texto vem pronto do servidor
- * (nome, canal, dias e nº de atrasadas já resolvidos).
+ * Menu "..." das linhas de acompanhamento: abre o perfil da pessoa
+ * (quando `profileHref` é passado) e copia o resumo de cobrança pronto
+ * para colar no WhatsApp/Teams. O texto vem pronto do servidor.
  */
-export function CopySummaryMenu({ summaryText }: { summaryText: string }) {
+export function CopySummaryMenu({
+  summaryText,
+  profileHref,
+}: {
+  summaryText: string;
+  profileHref?: string;
+}) {
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(summaryText);
@@ -41,6 +48,16 @@ export function CopySummaryMenu({ summaryText }: { summaryText: string }) {
         }
       />
       <DropdownMenuContent align="end">
+        {profileHref ? (
+          <DropdownMenuItem
+            render={
+              <Link href={profileHref}>
+                <User />
+                Ver perfil
+              </Link>
+            }
+          />
+        ) : null}
         <DropdownMenuItem onClick={handleCopy}>
           <Copy />
           Copiar resumo
