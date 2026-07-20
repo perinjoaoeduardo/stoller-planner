@@ -6,6 +6,8 @@ import type { ActivityStatus } from "@/components/shared/status-badge";
  * cenário (zero problemas, zero atividades, zero fotos etc).
  */
 
+export type ReportMode = "interno" | "externo";
+
 export type SummaryInput = {
   channelName: string;
   harvest: string | null;
@@ -17,6 +19,13 @@ export type SummaryInput = {
     problemId: string | null;
   }[];
   photoCount: number;
+  /**
+   * "interno" (padrão) fala de execução: % concluídas, o que segue em
+   * aberto, o que atrasou. "externo" é o relatório que vai para o canal
+   * — conta o trabalho ENTREGUE, sem expor pendência interna. Regra:
+   * nada de "atrasada", "em aberto" ou % de conclusão no externo.
+   */
+  mode?: ReportMode;
 };
 
 function plural(n: number, singular: string, pluralForm: string) {
@@ -30,12 +39,74 @@ function isOnTime(activity: SummaryInput["activities"][number]) {
   return activity.completedAt.slice(0, 10) <= activity.dueDate;
 }
 
+/**
+ * Versão para o canal: 2-3 frases sobre o que foi ENTREGUE. Conta ações
+ * realizadas (não planejadas), metas endereçadas e evidências — nunca
+ * percentual de conclusão nem pendências.
+ */
+function buildExternalSummary(
+  input: SummaryInput,
+  total: number,
+  harvestLabel: string
+): string {
+  const done = input.activities.filter(
+    (activity) => activity.status === "concluida"
+  ).length;
+  const sentences: string[] = [];
+
+  if (done > 0 && input.problemCount > 0) {
+    sentences.push(
+      `${done} ${plural(done, "ação realizada", "ações realizadas")} em ${
+        input.channelName
+      }${harvestLabel}, ${plural(
+        done,
+        "endereçando",
+        "endereçando"
+      )} ${input.problemCount} ${plural(
+        input.problemCount,
+        "meta trabalhada em conjunto",
+        "metas trabalhadas em conjunto"
+      )}.`
+    );
+  } else if (done > 0) {
+    sentences.push(
+      `${done} ${plural(done, "ação realizada", "ações realizadas")} em ${
+        input.channelName
+      }${harvestLabel}.`
+    );
+  } else {
+    sentences.push(
+      `O trabalho em ${input.channelName}${harvestLabel} está em andamento, com ${total} ${plural(
+        total,
+        "ação no plano conjunto",
+        "ações no plano conjunto"
+      )}.`
+    );
+  }
+
+  if (input.photoCount > 0) {
+    sentences.push(
+      `O trabalho está documentado com ${input.photoCount} ${plural(
+        input.photoCount,
+        "registro fotográfico",
+        "registros fotográficos"
+      )} em campo.`
+    );
+  }
+
+  return sentences.join(" ");
+}
+
 export function buildExecutiveSummary(input: SummaryInput): string {
   const total = input.activities.length;
   const harvestLabel = input.harvest ? ` na ${input.harvest}` : " nesta safra";
 
   if (total === 0 && input.problemCount === 0) {
     return `O plano de ${input.channelName}${harvestLabel} ainda não tem problemas mapeados nem atividades registradas. Este relatório será preenchido conforme o trabalho em conjunto avançar.`;
+  }
+
+  if (input.mode === "externo") {
+    return buildExternalSummary(input, total, harvestLabel);
   }
 
   const completed = input.activities.filter(

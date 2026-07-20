@@ -44,13 +44,11 @@ export type ReportProblem = {
   description: string | null;
   orderIndex: number;
   /**
-   * Resultado da meta ao fim da safra (frase curta). A ORIGEM DO DADO
-   * ainda não foi definida pelo produto — a query não popula este campo,
-   * então hoje chega sempre undefined e a UI mostra "Resultado não
-   * informado". Quando o produto definir o campo/tabela de origem, é só
-   * preencher aqui em getSeasonReport.
+   * Resultado da meta ao fim da safra (frase curta), escrito pelo
+   * DSM/RTV. Origem: coluna `problems.resultado`. É o dado protagonista
+   * do bloco de meta no Relatório de Safra.
    */
-  resultado?: string | null;
+  resultado: string | null;
 };
 
 export type SeasonReport = {
@@ -107,7 +105,7 @@ export async function getSeasonReport(
   const [problemsRes, activitiesRes] = await Promise.all([
     supabase
       .from("problems")
-      .select("id, title, description, order_index")
+      .select("id, title, description, order_index, resultado")
       .eq("plan_id", plan.id)
       .order("order_index"),
     supabase
@@ -174,6 +172,7 @@ export async function getSeasonReport(
       title: problem.title,
       description: problem.description,
       orderIndex: problem.order_index,
+      resultado: problem.resultado,
     })),
     activities,
   };

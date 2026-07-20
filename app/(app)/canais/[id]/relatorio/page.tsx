@@ -13,7 +13,11 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
+import {
+  canEditPlan,
+  getCurrentProfile,
+  getScopedChannelIds,
+} from "@/lib/auth/scope";
 import { getSeasonReport } from "@/lib/db/report";
 
 import { ReportView } from "./report-view";
@@ -74,5 +78,11 @@ export default async function RelatorioPage({
   const report = await getSeasonReport(id);
   if (!report) return <ReportNotFound />;
 
-  return <ReportView report={report} role={profile.role} />;
+  // O CTA "Registrar resultado" só aparece para quem a action aceitaria —
+  // senão o convite existe mas o salvar sempre falha.
+  const canEdit = await canEditPlan(profile, id);
+
+  return (
+    <ReportView report={report} role={profile.role} canEdit={canEdit} />
+  );
 }

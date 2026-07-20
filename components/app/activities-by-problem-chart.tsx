@@ -1,6 +1,6 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts";
 
 import {
   ChartContainer,
@@ -20,15 +20,26 @@ export type ProblemChartDatum = {
 };
 
 /**
- * Barras horizontais de atividades por problema. A categoria
- * "Sem problema vinculado" entra sempre que existir débito de vínculo.
+ * Barras horizontais de atividades por problema/categoria.
+ *
+ * Cor não é decoração: por padrão TODAS as barras são neutras e apenas
+ * uma recebe destaque (`highlight`) — pintar seis barras da mesma cor
+ * não informa nada. `highlightTone="warning"` serve para apontar o item
+ * que precisa de atenção (menor execução) em vez do maior volume.
  */
 export function ActivitiesByProblemChart({
   data,
+  highlightIndex = null,
+  highlightTone = "brand",
 }: {
   data: ProblemChartDatum[];
+  /** Índice da única barra destacada. null = todas neutras. */
+  highlightIndex?: number | null;
+  highlightTone?: "brand" | "warning";
 }) {
   const height = Math.max(160, data.length * 44);
+  const highlightColor =
+    highlightTone === "warning" ? "var(--warning)" : "var(--accent-brand)";
 
   return (
     <ChartContainer
@@ -59,7 +70,19 @@ export function ActivitiesByProblemChart({
           cursor={false}
           content={<ChartTooltipContent hideLabel={false} />}
         />
-        <Bar dataKey="total" fill="var(--color-total)" radius={6} />
+        <Bar dataKey="total" radius={6}>
+          {data.map((entry, index) => (
+            <Cell
+              key={entry.label}
+              fill={
+                index === highlightIndex
+                  ? highlightColor
+                  : "var(--muted-foreground)"
+              }
+              fillOpacity={index === highlightIndex ? 1 : 0.5}
+            />
+          ))}
+        </Bar>
       </BarChart>
     </ChartContainer>
   );

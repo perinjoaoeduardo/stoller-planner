@@ -1,35 +1,19 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Camera,
-  ChevronRight,
-  CircleCheckBig,
+  CalendarRange,
   ClipboardList,
   FileDown,
-  ImageOff,
   Link2,
-  ListChecks,
-  Sprout,
+  Play,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
-import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
-import { useActivityDrawer } from "@/components/app/activity-drawer";
-import { MonthlyRegistrationsChart } from "@/components/app/monthly-registrations-chart";
 import { SearchableSelect } from "@/components/app/searchable-select";
-import { CategoryIconBox } from "@/components/shared/icon-box";
-import { DeadlineText } from "@/components/shared/deadline-text";
-import { TruncatedText } from "@/components/shared/truncated-text";
-import {
-  ACTIVITY_STATUSES,
-  StatusBadge,
-} from "@/components/shared/status-badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -39,13 +23,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -60,292 +38,115 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Progress,
-  ProgressLabel,
-  ProgressValue,
-} from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   ACTIVITY_CATEGORIES,
   CATEGORY_LABELS,
   type ActivityCategory,
 } from "@/lib/config";
+import { ACTIVITY_STATUSES } from "@/components/shared/status-badge";
 import type { Role } from "@/lib/auth/nav";
-import type {
-  ReportActivity,
-  ReportPhoto,
-  SeasonReport,
-} from "@/lib/db/report";
+import type { ReportPhoto, SeasonReport } from "@/lib/db/report";
 import { buildExecutiveSummary } from "@/lib/reports/summary";
+import { cn } from "@/lib/utils";
 
-function photoUrl(storagePath: string) {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
-}
+import { PresentMode, type Slide } from "./present-mode";
+import {
+  ChannelAvatar,
+  MetaBlock,
+  MetasSemPlanoBlock,
+  NumerosBlock,
+  PanoramaBlock,
+  ReportFooter,
+  RitmoBlock,
+  formatLongDate,
+  photoUrl,
+  type PanoramaStats,
+  type ReportMode,
+} from "./report-blocks";
 
-function formatDate(value: string | null, pattern = "dd MMM yyyy") {
-  if (!value) return "—";
-  return format(parseISO(value), pattern, { locale: ptBR });
-}
+const MODE_STORAGE_KEY = "corteva:report-mode";
 
-function formatLongDate(value: string) {
-  return format(parseISO(value), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-}
+const PERIOD_PRESETS = [
+  { value: "safra", label: "Safra completa" },
+  { value: "30", label: "Últimos 30 dias" },
+  { value: "60", label: "Últimos 60 dias" },
+  { value: "90", label: "Últimos 90 dias" },
+] as const;
 
-/** Miniatura da galeria com fallback para arquivo indisponível. */
-function GalleryThumb({
-  photo,
-  onClick,
-}: {
-  photo: ReportPhoto;
-  onClick: () => void;
-}) {
-  const [broken, setBroken] = React.useState(false);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative aspect-square overflow-hidden rounded-xl border bg-muted break-inside-avoid"
-      style={{ breakInside: "avoid" }}
-    >
-      {broken ? (
-        <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
-          <ImageOff className="size-5" />
-          <span className="px-2 text-center text-[10px] leading-tight">
-            Arquivo indisponível
-          </span>
-        </span>
-      ) : (
-        <Image
-          src={photoUrl(photo.storagePath)}
-          alt={photo.caption ?? photo.activityTitle}
-          fill
-          sizes="(max-width: 640px) 33vw, 160px"
-          className="object-cover transition-transform group-hover:scale-105"
-          onError={() => setBroken(true)}
-        />
-      )}
-      {photo.caption ? (
-        <span className="absolute inset-x-0 bottom-0 truncate bg-foreground/55 px-2 py-1 text-left text-[11px] text-white">
-          {photo.caption}
-        </span>
-      ) : null}
-    </button>
-  );
-}
+type PeriodValue = (typeof PERIOD_PRESETS)[number]["value"] | "custom";
 
 /**
- * Linha escaneável de atividade dentro de uma seção do relatório
- * (FIX A). Uma linha por atividade: ícone da categoria, título, data de
- * execução, status e seta. O relato completo, evidências, autor e
- * timeline vivem no Activity Panel — clicar na linha o abre.
+ * Relatório de Safra — página longa e narrativa montada como BLOCOS
+ * autônomos. Os mesmos blocos alimentam a tela empilhada e o modo
+ * Apresentar (um por slide), então não existe versão "de apresentação"
+ * paralela para sair de sincronia.
  *
- * `showResponsible` só é true quando o responsável varia entre as
- * atividades da meta; se todas têm o mesmo, a informação some (vive no
- * painel).
- */
-function ActivityLine({
-  activity,
-  showResponsible,
-  onOpen,
-}: {
-  activity: ReportActivity;
-  showResponsible: boolean;
-  onOpen: (id: string) => void;
-}) {
-  // Num relatório de fechamento o que importa é QUANDO foi feito: a data
-  // do último registro de execução. Sem execução, cai no prazo.
-  const executedAt = activity.lastExecution?.createdAt ?? null;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(activity.id)}
-      style={{ breakInside: "avoid" }}
-      className="group flex w-full items-center gap-3 py-3 text-left transition-colors duration-base ease-standard hover:bg-hover-surface"
-    >
-      <CategoryIconBox
-        category={activity.category}
-        size="md"
-        withTooltip
-        className="self-center"
-      />
-      <div className="min-w-0 flex-1">
-        <TruncatedText
-          text={activity.title}
-          className="text-sm font-medium text-foreground"
-        />
-        {showResponsible ? (
-          <p className="truncate text-xs text-muted-foreground">
-            {activity.responsibleName ?? "Sem responsável"}
-            {activity.branchName ? ` · ${activity.branchName}` : ""}
-          </p>
-        ) : null}
-      </div>
-      {executedAt ? (
-        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-          {formatDate(executedAt)}
-        </span>
-      ) : (
-        <DeadlineText
-          dueDate={activity.dueDate}
-          status={activity.status}
-          format="date"
-          className="shrink-0 whitespace-nowrap text-xs"
-        />
-      )}
-      <StatusBadge status={activity.status} />
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-    </button>
-  );
-}
-
-/** Seção reutilizável: cabeçalho + resultado (meta) + progresso + lista
- *  escaneável + galeria. `isMeta` liga a linha de Resultado (FIX B). */
-function ActivitiesSection({
-  title,
-  description,
-  activities,
-  onOpenPhoto,
-  index,
-  isMeta = false,
-  resultado = null,
-}: {
-  title: string;
-  description: string | null;
-  activities: ReportActivity[];
-  onOpenPhoto: (photo: ReportPhoto) => void;
-  index?: number;
-  /** Card de meta: mostra a linha de Resultado protagonista. */
-  isMeta?: boolean;
-  resultado?: string | null;
-}) {
-  const { openActivity } = useActivityDrawer();
-  const total = activities.length;
-  const completed = activities.filter(
-    (activity) => activity.status === "concluida"
-  ).length;
-  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-  const photos = activities.flatMap((activity) => activity.photos);
-
-  // Autor+filial só entram na lista quando VARIAM entre as atividades da
-  // meta (senão a repetição é ruído — o dado vive no painel).
-  const showResponsible =
-    new Set(activities.map((activity) => activity.responsibleName ?? "—"))
-      .size > 1;
-
-  return (
-    <Card className="report-section gap-4">
-      <CardHeader className="gap-1" style={{ breakAfter: "avoid" }}>
-        <CardTitle className="text-base font-semibold leading-snug text-foreground">
-          {typeof index === "number" ? (
-            <span className="mr-2 text-sm font-semibold text-muted-foreground tabular-nums">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-          ) : null}
-          {title}
-        </CardTitle>
-        {description ? (
-          <CardDescription className="leading-relaxed">
-            {description}
-          </CardDescription>
-        ) : null}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* FIX B — Resultado da meta: o dado protagonista do card */}
-        {isMeta ? (
-          <div className="rounded-lg bg-subtle p-3">
-            <p className="text-xs text-muted-foreground">Resultado</p>
-            {resultado ? (
-              <p className="mt-0.5 text-sm font-medium text-foreground">
-                {resultado}
-              </p>
-            ) : (
-              <p className="mt-0.5 text-sm italic text-muted-foreground">
-                Resultado não informado
-              </p>
-            )}
-          </div>
-        ) : null}
-
-        {/* Progresso de execução — rebaixado a contexto (barra fina, muted) */}
-        <Progress
-          value={percent}
-          className="gap-2 [&_[data-slot=progress-track]]:h-1 [&_[data-slot=progress-track]]:bg-muted [&_[data-slot=progress-indicator]]:bg-foreground/70"
-        >
-          <ProgressLabel className="text-xs text-muted-foreground">
-            {completed} de {total}{" "}
-            {total === 1 ? "atividade concluída" : "atividades concluídas"}
-          </ProgressLabel>
-          <ProgressValue className="text-xs tabular-nums text-muted-foreground" />
-        </Progress>
-
-        {/* FIX A — lista escaneável, uma linha por atividade */}
-        {total === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Nenhuma atividade registrada para esta meta no recorte atual.
-          </p>
-        ) : (
-          <div className="flex flex-col divide-y divide-border/50">
-            {activities.map((activity) => (
-              <ActivityLine
-                key={activity.id}
-                activity={activity}
-                showResponsible={showResponsible}
-                onOpen={openActivity}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Evidências — inalterado */}
-        {photos.length > 0 ? (
-          <>
-            <Separator />
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">
-                Evidências ({photos.length})
-              </p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                {photos.map((photo) => (
-                  <GalleryThumb
-                    key={photo.id}
-                    photo={photo}
-                    onClick={() => onOpenPhoto(photo)}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        ) : null}
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
- * Relatório de Safra — página longa e narrativa: capa, resumo
- * executivo, seções por problema, ações fora do plano e números.
- * Tudo recalcula quando o filtro de filial muda.
+ * O toggle Interno/Externo é a decisão central: interno fala de
+ * execução (%, atrasos, pendências), externo é o que vai para o canal e
+ * conta só o trabalho entregue.
  */
 export function ReportView({
   report,
   role = "DSM",
+  canEdit = false,
 }: {
   report: SeasonReport;
   role?: Role;
+  /** Resolvido no servidor (canEditPlan): libera o CTA de resultado. */
+  canEdit?: boolean;
 }) {
   const isField = role === "RTV";
+
+  const [mode, setMode] = React.useState<ReportMode>("interno");
+  const [period, setPeriod] = React.useState<PeriodValue>("safra");
+  const [customFrom, setCustomFrom] = React.useState("");
+  const [customTo, setCustomTo] = React.useState("");
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
     null
   );
   const [lightbox, setLightbox] = React.useState<ReportPhoto | null>(null);
+  const [presenting, setPresenting] = React.useState(false);
 
   const generatedAt = React.useMemo(() => new Date().toISOString(), []);
+  const currentMonth = React.useMemo(
+    () => new Date().toISOString().slice(0, 7),
+    []
+  );
 
-  const hasFilters = !!branchFilter || !!categoryFilter;
+  // Preferência de modo por usuário. Lida no efeito (não na inicialização
+  // do state) para o HTML do servidor bater com o do cliente.
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem(MODE_STORAGE_KEY);
+    if (saved === "interno" || saved === "externo") setMode(saved);
+  }, []);
+
+  function changeMode(next: ReportMode) {
+    setMode(next);
+    window.localStorage.setItem(MODE_STORAGE_KEY, next);
+  }
+
+  /** Recorte de datas ativo (null = safra completa). */
+  const range = React.useMemo(() => {
+    if (period === "safra") return null;
+    if (period === "custom") {
+      if (!customFrom && !customTo) return null;
+      return { from: customFrom || null, to: customTo || null };
+    }
+    return {
+      from: format(subDays(new Date(), Number(period)), "yyyy-MM-dd"),
+      to: null,
+    };
+  }, [period, customFrom, customTo]);
+
+  const hasFilters = !!branchFilter || !!categoryFilter || !!range;
 
   const filtered = React.useMemo(
     () =>
@@ -354,9 +155,25 @@ export function ReportView({
         if (categoryFilter && activity.category !== categoryFilter) {
           return false;
         }
+        if (range) {
+          // Uma atividade entra no recorte se QUALQUER data sua cai nele.
+          // Sem data nenhuma, entra sempre (senão sumiria do relatório).
+          const dates = [
+            activity.dueDate,
+            ...activity.executionDates.map((date) => date.slice(0, 10)),
+          ].filter((date): date is string => !!date);
+          if (dates.length > 0) {
+            const inside = dates.some(
+              (date) =>
+                (!range.from || date >= range.from) &&
+                (!range.to || date <= range.to)
+            );
+            if (!inside) return false;
+          }
+        }
         return true;
       }),
-    [report.activities, branchFilter, categoryFilter]
+    [report.activities, branchFilter, categoryFilter, range]
   );
 
   const photoCount = React.useMemo(
@@ -364,19 +181,7 @@ export function ReportView({
     [filtered]
   );
 
-  const metrics = React.useMemo(() => {
-    const total = filtered.length;
-    const completed = filtered.filter(
-      (activity) => activity.status === "concluida"
-    ).length;
-    return {
-      total,
-      completed,
-      completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
-    };
-  }, [filtered]);
-
-  /** Problemas com pelo menos 1 atividade no recorte, ou todos sem filtro. */
+  /** Metas com pelo menos 1 atividade no recorte (ou todas sem filtro). */
   const problemSections = React.useMemo(
     () =>
       report.problems
@@ -395,47 +200,103 @@ export function ReportView({
     [filtered]
   );
 
-  const workedProblems = problemSections.filter(
+  const workedSections = problemSections.filter(
     (section) => section.activities.length > 0
-  ).length;
+  );
+
+  /** FIX 3 — metas mapeadas que não geraram nenhuma ação. */
+  const metasSemPlano = React.useMemo(
+    () =>
+      report.problems
+        .filter(
+          (problem) =>
+            !report.activities.some(
+              (activity) => activity.problemId === problem.id
+            )
+        )
+        .map((problem) => ({ id: problem.id, title: problem.title })),
+    [report.problems, report.activities]
+  );
+
+  const stats: PanoramaStats = React.useMemo(() => {
+    const planned = filtered.length;
+    const done = filtered.filter(
+      (activity) => activity.status === "concluida"
+    ).length;
+    const late = filtered.filter(
+      (activity) => activity.status === "atrasada"
+    ).length;
+    const onTime = filtered.filter((activity) => {
+      if (activity.status !== "concluida") return false;
+      if (!activity.dueDate || !activity.completedAt) return true;
+      return activity.completedAt.slice(0, 10) <= activity.dueDate;
+    }).length;
+
+    const months = new Set(
+      filtered.flatMap((activity) =>
+        activity.executionDates.map((date) => date.slice(0, 7))
+      )
+    );
+    const sortedMonths = [...months].sort();
+    const periodLabel =
+      sortedMonths.length > 0
+        ? `de ${monthShort(sortedMonths[0])} a ${monthShort(
+            sortedMonths[sortedMonths.length - 1]
+          )}`
+        : "sem registros";
+
+    return {
+      done,
+      planned,
+      completedPercent: planned > 0 ? Math.round((done / planned) * 100) : 0,
+      onTime,
+      workedProblems: workedSections.length,
+      totalProblems: report.problems.length,
+      photoCount,
+      activeMonths: months.size,
+      periodLabel,
+      // "No ritmo" = nada atrasado e nenhuma meta órfã.
+      healthy: late === 0 && metasSemPlano.length === 0,
+    };
+  }, [
+    filtered,
+    workedSections.length,
+    report.problems.length,
+    photoCount,
+    metasSemPlano.length,
+  ]);
 
   const summary = React.useMemo(
     () =>
       buildExecutiveSummary({
         channelName: report.channel.name,
         harvest: report.plan?.harvest ?? null,
-        problemCount: workedProblems,
+        problemCount: workedSections.length,
         activities: filtered,
         photoCount,
+        mode,
       }),
-    [report.channel.name, report.plan, workedProblems, filtered, photoCount]
+    [
+      report.channel.name,
+      report.plan,
+      workedSections.length,
+      filtered,
+      photoCount,
+      mode,
+    ]
   );
-
-  /** Período coberto: primeira data conhecida → hoje. */
-  const period = React.useMemo(() => {
-    const dates = filtered
-      .flatMap((activity) => [
-        activity.dueDate,
-        activity.completedAt?.slice(0, 10) ?? null,
-        ...activity.executionDates.map((date) => date.slice(0, 10)),
-      ])
-      .filter((date): date is string => !!date)
-      .sort();
-    return dates[0] ?? null;
-  }, [filtered]);
 
   const byStatus = React.useMemo(
     () =>
       ACTIVITY_STATUSES.map((status) => ({
         status,
-        total: filtered.filter((activity) => activity.status === status)
-          .length,
+        total: filtered.filter((activity) => activity.status === status).length,
       })),
     [filtered]
   );
 
   const byProblem = React.useMemo(() => {
-    const rows = problemSections.map((section) => ({
+    const rows = workedSections.map((section) => ({
       label: section.problem.title,
       total: section.activities.length,
     }));
@@ -443,14 +304,14 @@ export function ReportView({
       rows.push({ label: "Fora do plano inicial", total: unplanned.length });
     }
     return rows;
-  }, [problemSections, unplanned]);
+  }, [workedSections, unplanned]);
 
   const byCategory = React.useMemo(() => {
     const rows = ACTIVITY_CATEGORIES.map((category) => ({
       label: CATEGORY_LABELS[category],
       total: filtered.filter((activity) => activity.category === category)
         .length,
-    }));
+    })).filter((row) => row.total > 0);
     const uncategorized = filtered.filter(
       (activity) => activity.category === null
     ).length;
@@ -460,6 +321,7 @@ export function ReportView({
     return rows;
   }, [filtered]);
 
+  /** FIX 5 — série mensal de execuções para o heatmap. */
   const monthly = React.useMemo(() => {
     const map = new Map<string, number>();
     for (const activity of filtered) {
@@ -468,25 +330,28 @@ export function ReportView({
         map.set(month, (map.get(month) ?? 0) + 1);
       }
     }
-    return [...map.entries()]
-      .map(([month, total]) => ({ month, total }))
-      .sort((a, b) => a.month.localeCompare(b.month));
+    if (map.size === 0) return [];
+    // Preenche os buracos: um mês sem ação é informação, não ausência.
+    const sorted = [...map.keys()].sort();
+    const out: { month: string; total: number }[] = [];
+    const cursor = parseISO(`${sorted[0]}-01`);
+    const last = parseISO(`${sorted[sorted.length - 1]}-01`);
+    while (cursor <= last) {
+      const key = format(cursor, "yyyy-MM");
+      out.push({ month: key, total: map.get(key) ?? 0 });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    return out;
   }, [filtered]);
 
-  const heroNumbers = [
-    { label: "Atividades", value: metrics.total.toString(), icon: ClipboardList },
-    {
-      label: "Concluídas",
-      value: `${metrics.completedPercent}%`,
-      icon: CircleCheckBig,
-    },
-    {
-      label: "Metas trabalhadas",
-      value: workedProblems.toString(),
-      icon: ListChecks,
-    },
-    { label: "Fotos registradas", value: photoCount.toString(), icon: Camera },
-  ];
+  const adjustments = React.useMemo(
+    () =>
+      filtered.filter(
+        (activity) =>
+          activity.status === "atrasada" || activity.status === "nao_feita"
+      ).length,
+    [filtered]
+  );
 
   function handleCopyLink() {
     navigator.clipboard
@@ -496,28 +361,193 @@ export function ReportView({
   }
 
   const branchName = branchFilter
-    ? report.channel.branches.find((branch) => branch.id === branchFilter)
-        ?.name
+    ? report.channel.branches.find((branch) => branch.id === branchFilter)?.name
     : null;
-
   const categoryName = categoryFilter
     ? CATEGORY_LABELS[categoryFilter as ActivityCategory]
     : null;
+
+  const periodLabel =
+    period === "custom"
+      ? customFrom || customTo
+        ? `${customFrom || "início"} → ${customTo || "hoje"}`
+        : "personalizado"
+      : PERIOD_PRESETS.find((preset) => preset.value === period)?.label ??
+        "Safra completa";
+
+  const isEmpty = workedSections.length === 0 && unplanned.length === 0;
+
+  // ── Blocos → slides. A tela empilha; o Apresentar mostra um por vez.
+  const slides: Slide[] = React.useMemo(() => {
+    const list: Slide[] = [];
+
+    list.push({
+      id: "panorama",
+      title: "Panorama",
+      node: <PanoramaBlock mode={mode} stats={stats} />,
+    });
+
+    list.push({
+      id: "resumo",
+      title: "Resumo executivo",
+      node: (
+        <Card className="report-section">
+          <CardContent className="pt-6">
+            <p className="text-base leading-relaxed">{summary}</p>
+          </CardContent>
+        </Card>
+      ),
+    });
+
+    if (mode === "interno" && metasSemPlano.length > 0) {
+      list.push({
+        id: "sem-plano",
+        title: "Metas sem plano",
+        node: (
+          <MetasSemPlanoBlock
+            problems={metasSemPlano}
+            channelHref={`${isField ? "/meus-canais" : "/canais"}/${report.channel.id}`}
+          />
+        ),
+      });
+    }
+
+    workedSections.forEach((section, index) => {
+      list.push({
+        id: section.problem.id,
+        title: section.problem.title,
+        node: (
+          <MetaBlock
+            index={index}
+            title={section.problem.title}
+            description={section.problem.description}
+            activities={section.activities}
+            mode={mode}
+            onOpenPhoto={setLightbox}
+            isMeta
+            problemId={section.problem.id}
+            resultado={section.problem.resultado}
+            canEdit={canEdit}
+          />
+        ),
+      });
+    });
+
+    if (unplanned.length > 0) {
+      list.push({
+        id: "fora-do-plano",
+        title: "Ações fora do plano inicial",
+        node: (
+          <MetaBlock
+            title="Ações fora do plano inicial"
+            description="Oportunidades e demandas que surgiram durante a safra e foram atendidas além do plano original."
+            activities={unplanned}
+            mode={mode}
+            onOpenPhoto={setLightbox}
+          />
+        ),
+      });
+    }
+
+    if (monthly.length > 0) {
+      list.push({
+        id: "ritmo",
+        title: "Ritmo da safra",
+        node: <RitmoBlock data={monthly} currentMonth={currentMonth} />,
+      });
+    }
+
+    if (mode === "interno") {
+      list.push({
+        id: "numeros",
+        title: "Números da safra",
+        node: (
+          <NumerosBlock
+            byStatus={byStatus}
+            byProblem={byProblem}
+            byCategory={byCategory}
+          />
+        ),
+      });
+    }
+
+    return list;
+  }, [
+    mode,
+    stats,
+    summary,
+    metasSemPlano,
+    workedSections,
+    unplanned,
+    monthly,
+    currentMonth,
+    byStatus,
+    byProblem,
+    byCategory,
+    isField,
+    report.channel.id,
+    canEdit,
+  ]);
+
+  if (presenting) {
+    return (
+      <PresentMode
+        slides={[
+          {
+            id: "capa",
+            title: report.channel.name,
+            node: (
+              <div className="flex flex-col items-center gap-4 py-16 text-center">
+                <ChannelAvatar name={report.channel.name} />
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Relatório de safra
+                </p>
+                <h1 className="text-4xl font-semibold tracking-tight">
+                  {report.channel.name}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {report.channel.region}
+                  {report.plan ? ` · ${report.plan.harvest}` : ""}
+                </p>
+              </div>
+            ),
+          },
+          ...slides,
+          {
+            id: "encerramento",
+            title: "Encerramento",
+            node: (
+              <div className="py-16 text-center">
+                <p className="text-2xl font-semibold tracking-tight">
+                  Obrigado.
+                </p>
+                <ReportFooter
+                  channelName={report.channel.name}
+                  harvest={report.plan?.harvest ?? null}
+                  generatedAt={generatedAt}
+                  mode={mode}
+                  adjustments={adjustments}
+                />
+              </div>
+            ),
+          },
+        ]}
+        onClose={() => setPresenting(false)}
+      />
+    );
+  }
 
   return (
     <div
       className="report-root mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 md:p-6"
       style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
     >
-      {/* Toolbar — some na impressão */}
-      <header className="flex flex-col gap-3 print:hidden">
+      <div className="print:hidden">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink
-                render={
-                  <Link href={isField ? "/meus-canais" : "/canais"} />
-                }
+                render={<Link href={isField ? "/meus-canais" : "/canais"} />}
               >
                 {isField ? "Meus Canais" : "Canais"}
               </BreadcrumbLink>
@@ -540,106 +570,168 @@ export function ReportView({
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <SearchableSelect
-              options={report.channel.branches.map((branch) => ({
-                value: branch.id,
-                label: branch.name,
-              }))}
-              value={branchFilter}
-              onValueChange={setBranchFilter}
-              placeholder="Todas as filiais"
-              className="w-56"
-            />
-            <SearchableSelect
-              options={ACTIVITY_CATEGORIES.map((category) => ({
-                value: category,
-                label: CATEGORY_LABELS[category],
-              }))}
-              value={categoryFilter}
-              onValueChange={setCategoryFilter}
-              placeholder="Todas as categorias"
-              className="w-56"
-            />
+      </div>
+
+      {/* FIX 1 — Header */}
+      <Card className="rounded-xl border border-border bg-card p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <ChannelAvatar name={report.channel.name} />
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Relatório de safra
+            </p>
+            <h1 className="truncate text-2xl font-semibold tracking-tight">
+              {report.channel.name}
+            </h1>
+            <p className="truncate text-sm text-muted-foreground">
+              {report.channel.region}
+              {report.plan ? ` · ${report.plan.harvest}` : ""}
+              {branchName ? ` · ${branchName}` : ""}
+              {categoryName ? ` · ${categoryName}` : ""}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleCopyLink}>
-              <Link2 />
-              Copiar link
+          <span className="ml-auto text-sm font-semibold text-foreground/70">
+            Corteva Planner
+          </span>
+        </div>
+
+        {/* Controles */}
+        <div className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button variant="outline" size="sm" className="h-9">
+                  <CalendarRange className="size-4" />
+                  Período: {periodLabel}
+                </Button>
+              }
+            />
+            <PopoverContent align="start" className="w-64 p-2">
+              <div className="flex flex-col">
+                {PERIOD_PRESETS.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => setPeriod(preset.value)}
+                    className={cn(
+                      "cursor-pointer rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-hover-surface",
+                      period === preset.value
+                        ? "bg-subtle font-medium text-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <div className="mt-2 border-t border-border pt-2">
+                  <p className="px-2 pb-1.5 text-xs text-muted-foreground">
+                    Período personalizado
+                  </p>
+                  <div className="flex flex-col gap-2 px-2 pb-1">
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="periodo-de" className="text-xs">
+                        De
+                      </Label>
+                      <Input
+                        id="periodo-de"
+                        type="date"
+                        value={customFrom}
+                        onChange={(event) => {
+                          setCustomFrom(event.target.value);
+                          setPeriod("custom");
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="periodo-ate" className="text-xs">
+                        Até
+                      </Label>
+                      <Input
+                        id="periodo-ate"
+                        type="date"
+                        value={customTo}
+                        onChange={(event) => {
+                          setCustomTo(event.target.value);
+                          setPeriod("custom");
+                        }}
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <SearchableSelect
+            options={report.channel.branches.map((branch) => ({
+              value: branch.id,
+              label: branch.name,
+            }))}
+            value={branchFilter}
+            onValueChange={setBranchFilter}
+            placeholder="Todas as filiais"
+            className="w-44"
+          />
+          <SearchableSelect
+            options={ACTIVITY_CATEGORIES.map((category) => ({
+              value: category,
+              label: CATEGORY_LABELS[category],
+            }))}
+            value={categoryFilter}
+            onValueChange={setCategoryFilter}
+            placeholder="Todos os tipos"
+            className="w-44"
+          />
+
+          <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+
+          {/* FIX 9 — Interno / Externo */}
+          <div className="flex rounded-lg bg-muted p-1">
+            {(["interno", "externo"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => changeMode(option)}
+                aria-pressed={mode === option}
+                className={cn(
+                  "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                  mode === option
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleCopyLink}>
+              <Link2 className="size-4" />
+              <span className="hidden sm:inline">Copiar link</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPresenting(true)}
+            >
+              <Play className="size-4" />
+              Apresentar
             </Button>
             {!isField && (
               <Button size="sm" onClick={() => window.print()}>
-                <FileDown />
+                <FileDown className="size-4" />
                 Exportar PDF
               </Button>
             )}
           </div>
         </div>
-      </header>
-
-      {/* Capa / hero */}
-      <Card className="report-hero border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card">
-        <CardContent className="flex flex-col gap-6 pt-2">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-primary">
-                <Sprout className="size-3.5" />
-                Relatório de safra
-              </p>
-              <h1 className="text-3xl font-semibold tracking-tight">
-                {report.channel.name}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {report.channel.region}
-                {report.plan ? ` · ${report.plan.harvest}` : ""}
-                {branchName ? ` · ${branchName}` : ""}
-                {categoryName ? ` · ${categoryName}` : ""}
-              </p>
-            </div>
-            <div className="text-right text-xs text-muted-foreground">
-              <p>Período coberto</p>
-              <p className="font-medium text-foreground tabular-nums">
-                {period ? `${formatDate(period)} — hoje` : "—"}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {heroNumbers.map((metric) => (
-              <div
-                key={metric.label}
-                className="rounded-xl border bg-card/70 p-3"
-              >
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <metric.icon className="size-3.5 shrink-0" />
-                  {metric.label}
-                </p>
-                <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-                  {metric.value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Gerado pelo Corteva Planner em {formatLongDate(generatedAt)}
-          </p>
-        </CardContent>
       </Card>
 
-      {/* Resumo executivo */}
-      <Card className="report-section">
-        <CardHeader>
-          <CardTitle>Resumo executivo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm leading-relaxed md:text-base">{summary}</p>
-        </CardContent>
-      </Card>
-
-      {/* Seções por problema */}
-      {problemSections.length === 0 && unplanned.length === 0 ? (
+      {/* Blocos */}
+      {isEmpty ? (
         <Card>
           <CardContent>
             <Empty>
@@ -658,81 +750,18 @@ export function ReportView({
           </CardContent>
         </Card>
       ) : (
-        <>
-          {problemSections.map((section, index) => (
-            <ActivitiesSection
-              key={section.problem.id}
-              index={index}
-              title={section.problem.title}
-              description={section.problem.description}
-              activities={section.activities}
-              onOpenPhoto={setLightbox}
-              isMeta
-              resultado={section.problem.resultado ?? null}
-            />
-          ))}
-
-          {unplanned.length > 0 ? (
-            <ActivitiesSection
-              title="Ações fora do plano inicial"
-              description="Oportunidades e demandas que surgiram durante a safra e foram atendidas além do plano original."
-              activities={unplanned}
-              onOpenPhoto={setLightbox}
-            />
-          ) : null}
-
-          {/* Números da safra */}
-          <Card className="report-section">
-            <CardHeader>
-              <CardTitle>Números da safra</CardTitle>
-              <CardDescription>
-                A execução do plano em quatro visões: status, meta,
-                categoria e ritmo de registros.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-6">
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <p className="mb-2 text-sm font-medium">
-                    Atividades por status
-                  </p>
-                  <ActivitiesStatusChart data={byStatus} />
-                </div>
-                <div>
-                  <p className="mb-2 text-sm font-medium">
-                    Atividades por meta
-                  </p>
-                  <ActivitiesByProblemChart data={byProblem} />
-                </div>
-                <div className="lg:col-span-2">
-                  <p className="mb-2 text-sm font-medium">
-                    Atividades por categoria
-                  </p>
-                  <ActivitiesByProblemChart data={byCategory} />
-                </div>
-              </div>
-              <div>
-                <p className="mb-2 text-sm font-medium">
-                  Registros de execução por mês
-                </p>
-                {monthly.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhum registro de execução no recorte atual.
-                  </p>
-                ) : (
-                  <MonthlyRegistrationsChart data={monthly} />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </>
+        slides.map((slide) => (
+          <React.Fragment key={slide.id}>{slide.node}</React.Fragment>
+        ))
       )}
 
-      <p className="pb-2 text-center text-xs text-muted-foreground">
-        Corteva Planner · {report.channel.name}
-        {report.plan ? ` · ${report.plan.harvest}` : ""} · gerado em{" "}
-        {formatLongDate(generatedAt)}
-      </p>
+      <ReportFooter
+        channelName={report.channel.name}
+        harvest={report.plan?.harvest ?? null}
+        generatedAt={generatedAt}
+        mode={mode}
+        adjustments={adjustments}
+      />
 
       {/* Lightbox */}
       <Dialog
@@ -762,5 +791,12 @@ export function ReportView({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function monthShort(month: string) {
+  return format(parseISO(`${month}-01`), "MMM yy", { locale: ptBR }).replace(
+    ".",
+    ""
   );
 }

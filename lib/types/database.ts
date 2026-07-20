@@ -353,6 +353,7 @@ export type Database = {
           id: string
           order_index: number
           plan_id: string
+          resultado: string | null
           title: string
         }
         Insert: {
@@ -361,6 +362,7 @@ export type Database = {
           id?: string
           order_index?: number
           plan_id: string
+          resultado?: string | null
           title: string
         }
         Update: {
@@ -369,6 +371,7 @@ export type Database = {
           id?: string
           order_index?: number
           plan_id?: string
+          resultado?: string | null
           title?: string
         }
         Relationships: [

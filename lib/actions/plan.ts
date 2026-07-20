@@ -117,6 +117,36 @@ export async function updateProblem(input: {
 }
 
 /**
+ * Resultado da meta ao fim da safra — escrito direto do Relatório de
+ * Safra, onde o dado é protagonista. Separado de updateProblem porque o
+ * relatório edita só este campo (não mexe em título/descrição do plano).
+ */
+export async function setProblemResultado(input: {
+  problemId: string;
+  resultado: string;
+}): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { data: problem } = await supabase
+    .from("problems")
+    .select("plan_id")
+    .eq("id", input.problemId)
+    .maybeSingle();
+  if (!problem) return { ok: false, error: "Meta não encontrada." };
+
+  const auth = await requirePlanEditor(problem.plan_id);
+  if (!auth) return { ok: false, error: "Você não pode editar este plano." };
+
+  const { error } = await supabase
+    .from("problems")
+    .update({ resultado: input.resultado.trim() || null })
+    .eq("id", input.problemId);
+  if (error) return { ok: false, error: GENERIC_ERROR };
+
+  revalidatePlanPages(auth.channelId);
+  return { ok: true };
+}
+
+/**
  * Exclui o problema desvinculando as atividades (problem_id = null) —
  * atividades nunca são apagadas junto.
  */
