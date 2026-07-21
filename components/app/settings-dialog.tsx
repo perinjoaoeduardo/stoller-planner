@@ -317,6 +317,12 @@ const THEMES = [
   { value: "system", label: "Sistema", icon: Monitor },
 ] as const;
 
+/**
+ * Miniatura dos temas. ÚNICO lugar do app onde cor crua é correta: estas
+ * células representam o tema QUE NÃO ESTÁ ATIVO (o preview do dark
+ * precisa ficar escuro enquanto você está no light). Trocar por token
+ * faria as três miniaturas ficarem idênticas ao tema atual.
+ */
 function ThemePreview({ theme }: { theme: "light" | "dark" | "system" }) {
   const half = theme === "system";
   const dark = theme === "dark";

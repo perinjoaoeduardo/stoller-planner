@@ -37,6 +37,8 @@ export default function AuthLayout({
         />
         {/* Overlay sutil com o azul Corteva + frase de marca */}
         <div className="absolute inset-0 bg-gradient-to-t from-accent-brand/70 via-transparent to-transparent" />
+        {/* text-white fixo de propósito: o texto vive sobre a foto, não
+            sobre o fundo do app — com token ele sumiria no tema escuro. */}
         <div className="absolute bottom-8 left-8 right-8 text-white">
           <p className="text-lg font-semibold tracking-tight">
             Planejamento e execução comercial

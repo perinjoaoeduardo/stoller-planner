@@ -98,7 +98,7 @@ export function StatusCard({
               className={cn(
                 "text-sm",
                 status === "atrasada"
-                  ? "font-medium text-red-600 dark:text-red-400"
+                  ? "font-medium text-destructive"
                   : "text-muted-foreground"
               )}
             >

@@ -72,6 +72,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
@@ -265,10 +267,10 @@ function DrawerSkeleton() {
           <PanelPrimitive.Title className="sr-only">
             Carregando atividade
           </PanelPrimitive.Title>
-          <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-5 w-40 animate-pulse rounded bg-muted" />
-          <div className="mt-3 h-4 w-1/2 animate-pulse rounded bg-muted" />
-          <div className="mt-3 h-10 w-full animate-pulse rounded-lg bg-muted/60" />
+          <Skeleton className="h-6 w-3/4 rounded" />
+          <Skeleton className="mt-2 h-5 w-40 rounded" />
+          <Skeleton className="mt-3 h-4 w-1/2 rounded" />
+          <Skeleton className="mt-3 h-10 w-full rounded-lg" />
           <PanelPrimitive.Close
             render={
               <Button
@@ -285,9 +287,9 @@ function DrawerSkeleton() {
       </div>
       {/* Corpo skeleton */}
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 md:px-4 md:pb-4">
-        <div className="h-11 w-56 animate-pulse rounded-lg bg-muted" />
-        <div className="h-40 w-full animate-pulse rounded-lg bg-muted" />
-        <div className="h-52 w-full animate-pulse rounded-lg bg-muted" />
+        <Skeleton className="h-11 w-56 rounded-lg" />
+        <Skeleton className="h-40 w-full rounded-lg" />
+        <Skeleton className="h-52 w-full rounded-lg" />
       </div>
     </>
   );
@@ -885,10 +887,13 @@ function SobreCard({
         {/* Tipo de ação — chip neutro */}
         <SobreField label="Tipo de ação">
           {activity.category && TypeIcon ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-foreground">
+            <Badge
+              variant="secondary"
+              className="gap-1.5 rounded-md px-2 py-1 text-sm font-normal text-foreground"
+            >
               <TypeIcon className="size-3.5 text-foreground/70" />
               {CATEGORY_LABELS[activity.category]}
-            </span>
+            </Badge>
           ) : (
             <span className="text-sm text-muted-foreground">—</span>
           )}

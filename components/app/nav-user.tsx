@@ -47,7 +47,7 @@ export function NavUser({ user }: { user: SettingsUser }) {
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <Avatar className="size-8 rounded-lg border border-white/15">
+                <Avatar className="size-8 rounded-lg border border-sidebar-border">
                   {user.avatarUrl ? (
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
                   ) : null}

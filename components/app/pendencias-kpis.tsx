@@ -18,17 +18,17 @@ const ISSUE_META: Record<
 > = {
   sem_foto: {
     icon: CameraOff,
-    activeClass: "border-red-500/60 bg-red-500/5 dark:bg-red-500/10",
+    activeClass: "border-destructive/60 bg-destructive/5 dark:bg-destructive/10",
     description: "Atividades concluídas sem nenhuma foto de evidência.",
   },
   sem_problema: {
     icon: Unlink,
-    activeClass: "border-amber-500/60 bg-amber-500/5 dark:bg-amber-500/10",
+    activeClass: "border-warning/60 bg-warning/5 dark:bg-warning/10",
     description: "Atividades concluídas sem vínculo com uma meta do plano.",
   },
   sem_categoria: {
     icon: Tag,
-    activeClass: "border-slate-400/60 bg-slate-500/5 dark:bg-slate-500/10",
+    activeClass: "border-muted-foreground/60 bg-muted-foreground/5 dark:bg-muted-foreground/10",
     description: "Atividades sem categoria definida.",
   },
 };

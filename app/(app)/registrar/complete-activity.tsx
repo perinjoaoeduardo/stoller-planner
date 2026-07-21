@@ -173,7 +173,7 @@ export function CompleteActivity({
                   <span
                     className={cn(
                       overdue &&
-                        "font-medium text-red-600 dark:text-red-400"
+                        "font-medium text-destructive"
                     )}
                   >
                     {formatRelativeDue(activity.dueDate)}
@@ -292,7 +292,7 @@ export function CompleteActivity({
                         type="button"
                         onClick={() => removePhoto(photo.id)}
                         aria-label="Remover foto"
-                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-foreground/60 text-white active:bg-foreground/80"
+                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-foreground/60 text-background active:bg-foreground/80"
                       >
                         <X className="size-4" />
                       </button>
@@ -378,7 +378,7 @@ export function CompleteActivity({
           {showTip ? (
             <Card className="border-dashed bg-muted/30">
               <CardContent className="flex items-start gap-3 py-4">
-                <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning" />
                 <p className="text-sm text-muted-foreground">
                   Uma foto e um comentário curto ajudam nas reuniões com o
                   canal.

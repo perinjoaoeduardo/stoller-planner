@@ -7,6 +7,7 @@ import { MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -160,9 +161,12 @@ export function NoteCard({
             <span className="text-sm font-medium text-foreground">
               {note.author.name}
             </span>
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+            <Badge
+              variant="secondary"
+              className="rounded-full px-1.5 py-0.5 font-normal text-muted-foreground"
+            >
               {note.author.role}
-            </span>
+            </Badge>
           </div>
           <Tooltip>
             <TooltipTrigger

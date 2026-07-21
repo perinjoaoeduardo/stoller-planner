@@ -637,14 +637,14 @@ export function MeuCanalView({
       <ProblemsSheetOpener onClick={() => setProblemsOpen(true)} />
 
       {/* FAB mobile — Nova atividade */}
-      <button
-        type="button"
+      <Button
+        variant="brand"
         onClick={() => openWizard({ channelId: channel.id })}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full bg-accent-brand px-5 py-3.5 text-sm font-semibold text-white shadow-elevated transition-opacity duration-base ease-standard hover:opacity-90 active:opacity-80 md:hidden"
+        className="fixed right-6 bottom-6 z-50 h-auto rounded-full px-5 py-3.5 text-sm font-semibold shadow-elevated md:hidden"
       >
         <Plus className="size-5" />
         Nova atividade
-      </button>
+      </Button>
     </>
   );
 }

@@ -279,7 +279,7 @@ export default async function AtividadePage({
         <span
           className={
             overdue
-              ? "font-medium text-red-600 tabular-nums dark:text-red-400"
+              ? "font-medium text-destructive tabular-nums"
               : "tabular-nums"
           }
         >

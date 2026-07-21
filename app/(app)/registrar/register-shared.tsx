@@ -228,7 +228,7 @@ export function SuccessScreen({
     <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6 text-center">
       <div className="flex size-24 items-center justify-center rounded-full bg-success-bg duration-500 animate-in zoom-in-50 fade-in">
         <div className="flex size-16 items-center justify-center rounded-full bg-success delay-150 duration-500 animate-in zoom-in-50 fill-mode-backwards">
-          <Check className="size-9 text-white" strokeWidth={3} />
+          <Check className="size-9 text-background" strokeWidth={3} />
         </div>
       </div>
       <div className="space-y-2 delay-200 duration-500 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards">

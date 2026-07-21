@@ -35,7 +35,7 @@ export const dynamic = "force-dynamic";
 
 function DarkChannelCard({ channel }: { channel: DarkChannel }) {
   return (
-    <Card className="gap-3 border-red-500/30 py-4">
+    <Card className="gap-3 border-destructive/30 py-4">
       <CardHeader className="flex flex-row items-start justify-between gap-2 px-4">
         <div className="min-w-0 space-y-0.5">
           <Link
@@ -53,7 +53,7 @@ function DarkChannelCard({ channel }: { channel: DarkChannel }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3 px-4">
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-semibold tracking-tight text-red-600 tabular-nums dark:text-red-400">
+          <span className="text-4xl font-semibold tracking-tight text-destructive tabular-nums">
             {channel.daysSinceExecution ?? "∞"}
           </span>
           <span className="text-sm text-muted-foreground">
@@ -218,7 +218,7 @@ export default async function AcompanhamentoPage({
           ) : (
             <div className="flex flex-col gap-4">
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MoonStar className="size-4 text-red-600 dark:text-red-400" />
+                <MoonStar className="size-4 text-destructive" />
                 {darkChannels.length === 1
                   ? "1 canal está"
                   : `${darkChannels.length} canais estão`}{" "}

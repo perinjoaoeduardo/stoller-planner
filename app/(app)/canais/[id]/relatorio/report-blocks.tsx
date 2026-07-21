@@ -29,6 +29,7 @@ import { SeasonHeatmap, type HeatmapMonth } from "@/components/shared/season-hea
 import { StatCard } from "@/components/shared/stat-card";
 import { TruncatedText } from "@/components/shared/truncated-text";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -90,9 +91,11 @@ export function getInitials(name: string) {
 /** Avatar do canal com iniciais — mesmo padrão de Meus Canais. */
 export function ChannelAvatar({ name }: { name: string }) {
   return (
-    <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-muted text-lg font-semibold text-foreground/70">
-      {getInitials(name)}
-    </span>
+    <Avatar className="size-14 shrink-0 rounded-lg">
+      <AvatarFallback className="rounded-lg bg-muted text-lg font-semibold text-foreground/70">
+        {getInitials(name)}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -500,14 +503,14 @@ function ResultadoCard({
     );
   }
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
       onClick={() => setEditing(true)}
-      className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground transition-colors hover:border-border-hover hover:bg-hover-surface hover:text-foreground"
+      className="h-auto w-full justify-start gap-2 rounded-lg border-dashed p-4 text-sm font-normal text-muted-foreground hover:border-border-hover hover:bg-hover-surface hover:text-foreground"
     >
       <Plus className="size-4" />
       Registrar resultado
-    </button>
+    </Button>
   );
 }
 

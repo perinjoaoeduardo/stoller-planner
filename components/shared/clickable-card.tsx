@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
@@ -77,14 +78,15 @@ export function NeutralChip({
   children: React.ReactNode;
 }) {
   return (
-    <span
+    <Badge
+      variant="secondary"
       className={cn(
-        "inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs tabular-nums text-foreground",
-        emphasis && "border border-border-hover font-medium",
+        "rounded-md px-2 py-0.5 font-normal tabular-nums text-foreground",
+        emphasis && "border-border-hover font-medium",
         className
       )}
     >
       {children}
-    </span>
+    </Badge>
   );
 }

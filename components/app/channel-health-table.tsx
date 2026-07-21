@@ -61,7 +61,7 @@ function LastExecutionCell({ row }: { row: ChannelHealthRow }) {
       className={cn(
         "whitespace-nowrap text-sm tabular-nums",
         overLimit
-          ? "font-medium text-red-600 dark:text-red-400"
+          ? "font-medium text-destructive"
           : "text-muted-foreground"
       )}
     >
@@ -225,7 +225,7 @@ export function ChannelHealthTable({
             className={cn(
               "text-sm tabular-nums",
               row.original.lateCount > 0
-                ? "font-medium text-amber-600 dark:text-amber-400"
+                ? "font-medium text-warning"
                 : "text-muted-foreground"
             )}
           >

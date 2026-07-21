@@ -38,11 +38,11 @@ import { cn } from "@/lib/utils";
  */
 
 const ISSUE_BADGE_CLASS: Record<PendencyType, string> = {
-  sem_foto: "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400",
+  sem_foto: "border-destructive/40 bg-destructive/10 text-destructive",
   sem_problema:
-    "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+    "border-warning/40 bg-warning/10 text-warning-fg",
   sem_categoria:
-    "border-slate-500/40 bg-slate-500/10 text-slate-700 dark:text-slate-400",
+    "border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground",
 };
 
 const ISSUE_ICON: Record<PendencyType, typeof CameraOff> = {

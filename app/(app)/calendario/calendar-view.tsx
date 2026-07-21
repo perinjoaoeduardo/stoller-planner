@@ -305,8 +305,9 @@ export function CalendarView({
           </button>
         </div>
 
-        {/* Navegação centralizada */}
-        <div className="flex flex-1 items-center justify-center gap-2">
+        {/* Navegação encostada à esquerda; o filtro de canais é o que
+            ganha o `ml-auto` e vai para a direita. */}
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="icon-sm" onClick={goPrev}>
             <ChevronLeft className="size-4" />
             <span className="sr-only">Anterior</span>
@@ -325,14 +326,14 @@ export function CalendarView({
           )}
         </div>
 
-        {/* Channel filter */}
+        {/* Channel filter — encostado à direita da linha. */}
         {channels.length > 1 && (
           <SearchableSelect
             options={channels.map((ch) => ({ value: ch.id, label: ch.name }))}
             value={channelFilter}
             onValueChange={setChannelFilter}
             placeholder="Todos os canais"
-            className="h-9 min-w-48 border-input bg-card"
+            className="ml-auto h-9 min-w-48 border-input bg-card"
           />
         )}
       </div>

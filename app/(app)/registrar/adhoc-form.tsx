@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Card,
   CardContent,
@@ -309,38 +310,41 @@ export function AdhocForm({
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant={branchId === null ? "default" : "outline"}
+                    size="lg"
+                    aria-pressed={branchId === null}
                     onClick={() => {
                       setBranchId(null);
                       setProblemChoice(null);
                     }}
                     className={cn(
-                      "h-10 rounded-full border px-4 text-sm font-medium transition-colors",
-                      branchId === null
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted/50"
+                      "h-10 rounded-full px-4 font-medium",
+                      branchId !== null &&
+                        "border-dashed border-muted-foreground/40 bg-transparent text-muted-foreground hover:bg-muted/50"
                     )}
                   >
                     Canal geral
-                  </button>
+                  </Button>
                   {branches.map((branch) => (
-                    <button
+                    <Button
                       key={branch.id}
                       type="button"
+                      variant={branchId === branch.id ? "default" : "outline"}
+                      size="lg"
+                      aria-pressed={branchId === branch.id}
                       onClick={() => {
                         setBranchId(branch.id);
                         setProblemChoice(null);
                       }}
                       className={cn(
-                        "h-10 rounded-full border px-4 text-sm font-medium transition-colors",
-                        branchId === branch.id
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "bg-card text-muted-foreground hover:bg-muted"
+                        "h-10 rounded-full px-4 font-medium",
+                        branchId !== branch.id && "text-muted-foreground"
                       )}
                     >
                       {branch.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </CardContent>
@@ -357,34 +361,24 @@ export function AdhocForm({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-col gap-2">
+                <RadioGroup
+                  value={problemChoice ?? ""}
+                  onValueChange={(value) => setProblemChoice(String(value))}
+                  className="flex flex-col gap-2"
+                >
                   {planProblems.map((problem) => {
                     const active = problemChoice === problem.id;
                     return (
-                      <button
+                      <label
                         key={problem.id}
-                        type="button"
-                        onClick={() => setProblemChoice(problem.id)}
-                        aria-pressed={active}
                         className={cn(
-                          "flex w-full items-start gap-3 rounded-xl border p-4 text-left transition-colors",
+                          "flex w-full cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors",
                           active
                             ? "border-primary bg-primary/10"
                             : "bg-card hover:bg-muted/60"
                         )}
                       >
-                        <span
-                          className={cn(
-                            "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-                            active
-                              ? "border-primary bg-primary"
-                              : "border-muted-foreground/50"
-                          )}
-                        >
-                          {active ? (
-                            <span className="size-1.5 rounded-full bg-primary-foreground" />
-                          ) : null}
-                        </span>
+                        <RadioGroupItem value={problem.id} className="mt-0.5" />
                         <div className="min-w-0 flex-1">
                           <p
                             className={cn(
@@ -395,20 +389,18 @@ export function AdhocForm({
                             {problem.title}
                           </p>
                         </div>
-                      </button>
+                      </label>
                     );
                   })}
-                  <button
-                    type="button"
-                    onClick={() => setProblemChoice("later")}
-                    aria-pressed={problemChoice === "later"}
+                  <label
                     className={cn(
-                      "flex w-full items-start gap-3 rounded-xl border-2 border-dashed p-4 text-left transition-colors",
+                      "flex w-full cursor-pointer items-start gap-3 rounded-xl border-2 border-dashed p-4 transition-colors",
                       problemChoice === "later"
                         ? "border-primary/60 bg-primary/5"
                         : "text-muted-foreground hover:bg-muted/50"
                     )}
                   >
+                    <RadioGroupItem value="later" className="mt-0.5" />
                     <Link2 className="mt-0.5 size-4 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium leading-snug">
@@ -418,8 +410,8 @@ export function AdhocForm({
                         Fica como pendência para o DSM ajustar.
                       </p>
                     </div>
-                  </button>
-                </div>
+                  </label>
+                </RadioGroup>
               </CardContent>
             </Card>
           ) : null}
@@ -480,7 +472,7 @@ export function AdhocForm({
                         type="button"
                         onClick={() => removePhoto(photo.id)}
                         aria-label="Remover foto"
-                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-foreground/60 text-white active:bg-foreground/80"
+                        className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-foreground/60 text-background active:bg-foreground/80"
                       >
                         <X className="size-4" />
                       </button>
@@ -569,7 +561,7 @@ export function AdhocForm({
           {showTip ? (
             <Card className="border-dashed bg-muted/30">
               <CardContent className="flex items-start gap-3 py-4">
-                <Lightbulb className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning" />
                 <p className="text-sm text-muted-foreground">
                   Uma foto fortalece o registro nas reuniões com o canal.
                 </p>

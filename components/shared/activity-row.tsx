@@ -189,9 +189,11 @@ export function ActivityRow({
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground ring-2 ring-card">
-                        +{assignees.length - 1}
-                      </span>
+                      <Avatar className="size-6 ring-2 ring-card">
+                        <AvatarFallback className="text-[10px] font-medium text-muted-foreground">
+                          +{assignees.length - 1}
+                        </AvatarFallback>
+                      </Avatar>
                     }
                   />
                   <TooltipContent>

@@ -25,9 +25,9 @@ import { cn } from "@/lib/utils";
 export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
   const lateTone =
     metrics.latePercent > 30
-      ? "text-red-600 dark:text-red-400"
+      ? "text-destructive"
       : metrics.latePercent > 10
-        ? "text-amber-600 dark:text-amber-400"
+        ? "text-warning"
         : undefined;
 
   const cards = [
@@ -101,14 +101,14 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
           className={cn(
             "h-full gap-1.5 py-4 shadow-card transition-[background-color,border-color,box-shadow] duration-base ease-standard group-hover:border-border-hover group-hover:shadow-elevated",
             dark > 0 &&
-              "border-red-500/40 bg-red-500/5 group-hover:border-red-500/60"
+              "border-destructive/40 bg-destructive/5 group-hover:border-destructive/60"
           )}
         >
           <CardHeader className="flex flex-row items-center justify-between gap-2 px-4">
             <CardDescription
               className={cn(
                 "text-xs",
-                dark > 0 && "font-medium text-red-600 dark:text-red-400"
+                dark > 0 && "font-medium text-destructive"
               )}
             >
               Canais no escuro
@@ -116,7 +116,7 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
             <MoonStar
               className={cn(
                 "size-4 shrink-0 text-muted-foreground",
-                dark > 0 && "text-red-600 dark:text-red-400"
+                dark > 0 && "text-destructive"
               )}
             />
           </CardHeader>
@@ -124,7 +124,7 @@ export function CxMetricCards({ metrics }: { metrics: CxMetrics }) {
             <p
               className={cn(
                 "text-2xl font-semibold tracking-tight tabular-nums",
-                dark > 0 && "text-red-600 dark:text-red-400"
+                dark > 0 && "text-destructive"
               )}
             >
               {dark}

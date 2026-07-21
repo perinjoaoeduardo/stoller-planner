@@ -50,6 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -458,9 +459,12 @@ function ChannelPickerStep({ channels }: { channels: ChannelOption[] }) {
               </p>
             </div>
             {ch.openActivityCount > 0 && (
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-foreground">
+              <Badge
+                variant="secondary"
+                className="shrink-0 rounded-full px-2 py-0.5 font-normal tabular-nums text-foreground"
+              >
                 {ch.openActivityCount}
-              </span>
+              </Badge>
             )}
             <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
           </button>
@@ -622,7 +626,7 @@ function AgendarStep2() {
             {responsibles.map((r) => {
               const active = draft.assigneeIds.includes(r.id);
               return (
-                <button
+                <Button
                   key={r.id}
                   type="button"
                   onClick={() =>
@@ -633,19 +637,21 @@ function AgendarStep2() {
                     })
                   }
                   aria-pressed={active}
+                  variant="outline"
                   className={cn(
-                    "flex h-9 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm font-medium transition-colors",
-                    active
-                      ? "border-primary/40 bg-primary/5 text-primary ring-2 ring-primary/15"
-                      : "border-border bg-card hover:bg-muted"
+                    "gap-2 rounded-full font-medium",
+                    active &&
+                      "border-primary/40 bg-primary/5 text-primary ring-2 ring-primary/15 hover:bg-primary/5 hover:text-primary"
                   )}
                 >
-                  <span className="flex size-5 items-center justify-center rounded-full bg-border text-[9px] font-semibold text-foreground/70">
-                    {initials(r.name)}
-                  </span>
+                  <Avatar className="size-5">
+                    <AvatarFallback className="bg-border text-[9px] font-semibold text-foreground/70">
+                      {initials(r.name)}
+                    </AvatarFallback>
+                  </Avatar>
                   {r.name}
                   {active && <Check className="size-3" />}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -684,16 +690,18 @@ function AgendarStep3() {
         </label>
         <div className="flex flex-wrap gap-2 pb-1">
           {DUE_SHORTCUTS.map((s) => (
-            <button
+            <Button
               key={s.label}
               type="button"
+              variant="outline"
+              size="xs"
               onClick={() =>
                 updateDraft({ dueDate: format(s.resolve(), "yyyy-MM-dd") })
               }
-              className="h-7 cursor-pointer rounded-full border border-border bg-card px-2.5 text-xs transition-colors hover:bg-muted"
+              className="h-7 rounded-full px-2.5 font-normal"
             >
               {s.label}
-            </button>
+            </Button>
           ))}
         </div>
         <DatePicker
@@ -796,10 +804,13 @@ function AgendarReviewStep() {
         <div className="flex flex-col gap-3 p-4">
           <ReviewRow label="Canal">{channelName}</ReviewRow>
           <ReviewRow label="Tipo" editView="agendar-1">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1">
+            <Badge
+              variant="secondary"
+              className="gap-1.5 rounded-md px-2 py-1 font-normal text-foreground"
+            >
               <TypeIcon className="size-3.5 text-foreground/70" />
               {CATEGORY_LABELS[category]}
-            </span>
+            </Badge>
           </ReviewRow>
           <ReviewRow label="Meta" editView="agendar-2">
             {problemName ?? (
@@ -1156,10 +1167,13 @@ function RegistrarCompleteStep() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={activity.status} />
             {activity.category && TypeIcon && (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-xs text-foreground">
+              <Badge
+                variant="secondary"
+                className="gap-1.5 rounded-md px-2 py-1 font-normal text-foreground"
+              >
                 <TypeIcon className="size-3.5 text-foreground/70" />
                 {CATEGORY_LABELS[activity.category]}
-              </span>
+              </Badge>
             )}
           </div>
           <div className="grid grid-cols-2 gap-2 border-t border-border pt-3 text-sm">
@@ -1362,22 +1376,18 @@ function AdhocStep2() {
               ].map((b) => {
                 const active = adhoc.branchId === b.id;
                 return (
-                  <button
+                  <Button
                     key={b.id ?? "geral"}
                     type="button"
+                    variant={active ? "default" : "outline"}
                     onClick={() =>
                       updateAdhoc({ branchId: b.id, problemChoice: null })
                     }
                     aria-pressed={active}
-                    className={cn(
-                      "h-9 cursor-pointer rounded-full border px-3 text-sm font-medium transition-colors",
-                      active
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-foreground hover:bg-muted"
-                    )}
+                    className="rounded-full font-medium"
                   >
                     {b.name}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -1391,47 +1401,39 @@ function AdhocStep2() {
                 Meta do plano <span className="text-destructive">*</span>
               </label>
             </div>
-            <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-subtle p-1.5">
+            <RadioGroup
+              value={adhoc.problemChoice ?? ""}
+              onValueChange={(value) =>
+                updateAdhoc({ problemChoice: String(value) })
+              }
+              className="flex flex-col gap-1.5 rounded-xl border border-border bg-subtle p-1.5"
+            >
               {problems.map((p) => {
                 const active = adhoc.problemChoice === p.id;
                 return (
-                  <button
+                  <label
                     key={p.id}
-                    type="button"
-                    onClick={() => updateAdhoc({ problemChoice: p.id })}
                     className={cn(
-                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                       active
                         ? "bg-card shadow-card! ring-1 ring-primary/20"
                         : "hover:bg-card/60"
                     )}
                   >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-2",
-                        active
-                          ? "border-primary bg-primary"
-                          : "border-muted-foreground/50"
-                      )}
-                    >
-                      {active && (
-                        <span className="size-1.5 rounded-full bg-card" />
-                      )}
-                    </span>
+                    <RadioGroupItem value={p.id} className="mt-0.5" />
                     <span className="leading-snug">{p.title}</span>
-                  </button>
+                  </label>
                 );
               })}
-              <button
-                type="button"
-                onClick={() => updateAdhoc({ problemChoice: "later" })}
+              <label
                 className={cn(
-                  "mt-1 flex cursor-pointer items-start gap-3 rounded-lg border border-dashed p-3 text-left text-sm transition-colors",
+                  "mt-1 flex cursor-pointer items-start gap-3 rounded-lg border border-dashed p-3 text-sm transition-colors",
                   adhoc.problemChoice === "later"
                     ? "border-primary/40 bg-card text-foreground ring-1 ring-primary/20"
                     : "border-border-hover text-muted-foreground hover:bg-card/60"
                 )}
               >
+                <RadioGroupItem value="later" className="mt-0.5" />
                 <Link2 className="mt-0.5 size-4 shrink-0" />
                 <div>
                   <p className="font-medium leading-snug">Vincular depois</p>
@@ -1439,8 +1441,8 @@ function AdhocStep2() {
                     Fica como pendência.
                   </p>
                 </div>
-              </button>
-            </div>
+              </label>
+            </RadioGroup>
           </fieldset>
         )}
       </div>

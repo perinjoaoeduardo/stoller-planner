@@ -22,6 +22,7 @@ import {
 } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 /**
  * Design System interno — snapshot vivo da Constituição Visual. Rota
@@ -282,26 +283,28 @@ function TypographySection() {
       title="Tipografia"
       hint="4 tamanhos operacionais (xs/sm/base-lg/2xl-3xl). Hierarquia por peso e cor, não por diferença de tamanho. Uppercase só em header de tabela."
     >
-      <div className="rounded-xl border border-border bg-card shadow-card">
-        <table className="w-full text-left">
-          <tbody>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+        <Table>
+          <TableBody>
             {scale.map((row) => (
-              <tr key={row.cls} className="border-b border-border last:border-b-0">
-                <td className={`${row.cls} px-4 py-3 font-medium tracking-tight`}>
+              <TableRow key={row.cls} className="last:border-b-0">
+                <TableCell
+                  className={`${row.cls} px-4 py-3 font-medium tracking-tight`}
+                >
                   Aa
-                </td>
-                <td className="w-32 px-4 py-3">
+                </TableCell>
+                <TableCell className="w-32 px-4 py-3">
                   <code className="text-xs tabular-nums text-muted-foreground">
                     {row.label}
                   </code>
-                </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
+                </TableCell>
+                <TableCell className="px-4 py-3 text-xs text-muted-foreground">
                   {row.note}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </Section>
   );

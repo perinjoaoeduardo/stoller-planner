@@ -67,7 +67,7 @@ function RegionCardItem({ region }: { region: RegionCard }) {
               <p
                 className={cn(
                   "text-xl font-semibold tabular-nums",
-                  region.lateCount > 0 && "text-amber-600 dark:text-amber-400"
+                  region.lateCount > 0 && "text-warning"
                 )}
               >
                 {region.lateCount}
@@ -81,7 +81,7 @@ function RegionCardItem({ region }: { region: RegionCard }) {
             aria-label={`${region.completedPercent}% de atividades concluídas`}
           />
           {region.darkChannelCount > 0 ? (
-            <p className="text-xs font-medium text-red-600 dark:text-red-400">
+            <p className="text-xs font-medium text-destructive">
               {region.darkChannelCount}{" "}
               {region.darkChannelCount === 1
                 ? "canal no escuro"

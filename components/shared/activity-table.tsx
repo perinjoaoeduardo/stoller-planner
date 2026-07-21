@@ -16,6 +16,7 @@ import {
   type ActivityStatus,
 } from "@/components/shared/status-badge";
 import { TruncatedText } from "@/components/shared/truncated-text";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -212,17 +213,21 @@ export function ActivityTable({
                   render={<span className="flex w-fit -space-x-2" />}
                 >
                   {assignees.slice(0, 3).map((assignee) => (
-                    <span
+                    <Avatar
                       key={assignee.id}
-                      className="flex size-7 items-center justify-center rounded-full border-2 border-card bg-muted text-xs font-medium text-foreground"
+                      className="size-7 border-2 border-card"
                     >
-                      {getInitials(assignee.name)}
-                    </span>
+                      <AvatarFallback className="text-xs font-medium text-foreground">
+                        {getInitials(assignee.name)}
+                      </AvatarFallback>
+                    </Avatar>
                   ))}
                   {assignees.length > 3 ? (
-                    <span className="flex size-7 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-medium text-muted-foreground">
-                      +{assignees.length - 3}
-                    </span>
+                    <Avatar className="size-7 border-2 border-card">
+                      <AvatarFallback className="text-[10px] font-medium text-muted-foreground">
+                        +{assignees.length - 3}
+                      </AvatarFallback>
+                    </Avatar>
                   ) : null}
                 </TooltipTrigger>
                 <TooltipContent>

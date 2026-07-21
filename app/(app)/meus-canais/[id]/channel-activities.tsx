@@ -166,19 +166,19 @@ export function ChannelActivities({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="-my-1 flex gap-2 overflow-x-auto py-1">
           {CHIPS.map((item) => (
-            <button
+            <Button
               key={item.value}
               type="button"
+              variant={chip === item.value ? "default" : "outline"}
+              aria-pressed={chip === item.value}
               onClick={() => setChip(item.value)}
               className={cn(
-                "h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
-                chip === item.value
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "bg-card text-muted-foreground hover:bg-muted"
+                "h-11 shrink-0 rounded-full px-4 font-medium",
+                chip !== item.value && "text-muted-foreground"
               )}
             >
               {item.label}
-            </button>
+            </Button>
           ))}
         </div>
         {showBranchFilter ? (
