@@ -62,6 +62,7 @@ import {
   NumerosBlock,
   PanoramaBlock,
   ReportFooter,
+  ReportPrintDocument,
   RitmoBlock,
   formatLongDate,
   photoUrl,
@@ -402,13 +403,19 @@ export function ReportView({
 
     list.push({
       id: "panorama",
-      node: <PanoramaBlock mode={mode} stats={stats} />,
+      node: (
+        <div className="report-print-flow">
+          <PanoramaBlock mode={mode} stats={stats} />
+        </div>
+      ),
     });
 
     list.push({
       id: "resumo",
+      // report-print-flow: abre logo após a capa, sem quebra de página
+      // entre panorama e resumo — os dois formam a abertura do documento.
       node: (
-        <Card className="report-section">
+        <Card className="report-section report-print-flow">
           <CardContent className="pt-6">
             <p className="text-base leading-relaxed">{summary}</p>
           </CardContent>
@@ -504,6 +511,17 @@ export function ReportView({
       className="report-root mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 md:p-6"
       style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
     >
+      {/* Capa + cabeçalho/rodapé corridos: invisíveis na tela, é o que
+          transforma a impressão em documento. */}
+      <ReportPrintDocument
+        channelName={report.channel.name}
+        region={report.channel.region}
+        harvest={report.plan?.harvest ?? null}
+        mode={mode}
+        periodLabel={periodLabel}
+        generatedAt={generatedAt}
+      />
+
       <div className="print:hidden">
         <Breadcrumb>
           <BreadcrumbList>
@@ -534,8 +552,8 @@ export function ReportView({
         </Breadcrumb>
       </div>
 
-      {/* FIX 1 — Header */}
-      <Card className="rounded-xl border border-border bg-card p-6">
+      {/* FIX 1 — Header. No papel some: quem abre o documento é a capa. */}
+      <Card className="rounded-xl border border-border bg-card p-6 print:hidden">
         <div className="flex flex-wrap items-center gap-4">
           <ChannelAvatar name={report.channel.name} />
           <div className="min-w-0">

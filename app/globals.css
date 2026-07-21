@@ -296,63 +296,182 @@
   transition-duration: var(--duration-slow);
 }
 
-/* ── Impressão (Relatório de Safra → "Exportar PDF") ─────────────────
-   Sem sidebar/top bar, cores preservadas, quebras de página entre as
-   seções de problema e nada de foto/título cortado ao meio. */
+/* ── Impressão: Relatório de Safra vira DOCUMENTO ────────────────────
+   Não é screenshot da tela: o app inteiro sai de cena, o tema é forçado
+   para claro (imprimir no dark gastaria toner e sairia ilegível), a
+   tipografia cai para escala de papel e cada meta começa em página
+   nova com cabeçalho e paginação repetidos. */
 @media print {
   * {
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }
 
-  /* Estrutura do app fora do documento impresso */
+  /* 1. Documento é SEMPRE claro, mesmo com o app no tema escuro. */
+  :root,
+  :root.dark {
+    --background: #ffffff;
+    --card: #ffffff;
+    --card-foreground: #0b1220;
+    --foreground: #0b1220;
+    --subtle: #f6f8fb;
+    --muted: #eef2f7;
+    --muted-foreground: #4b5c72;
+    --border: #d5dde8;
+    --border-hover: #b8c3d1;
+    --popover: #ffffff;
+    --popover-foreground: #0b1220;
+    --primary: #14304f;
+    --primary-foreground: #ffffff;
+    --accent-brand: #1f6feb;
+    --success: #15803d;
+    --success-bg: #dcfce7;
+    --success-fg: #14532d;
+    --warning: #b45309;
+    --warning-bg: #fef3c7;
+    --warning-fg: #7c2d12;
+    --destructive: #b91c1c;
+    --hover-surface: transparent;
+  }
+
+  /* 2. Chrome do app fora do papel. */
   [data-slot="sidebar"],
   [data-slot="sidebar-gap"],
   [data-slot="sidebar-container"],
   [data-slot="sidebar-trigger"],
   [data-slot="sidebar-rail"],
-  header.sticky {
+  [data-slot="sidebar-inset"] > header,
+  header.sticky,
+  nav,
+  [data-slot="toaster"],
+  [data-sonner-toaster] {
     display: none !important;
   }
   [data-slot="sidebar-inset"] {
     margin: 0 !important;
     width: 100% !important;
+    box-shadow: none !important;
   }
-
   html,
   body {
-    background: white !important;
+    background: #ffffff !important;
+    font-size: 10.5pt;
   }
 
   .report-root {
     max-width: none !important;
     padding: 0 !important;
-    gap: 1rem !important;
+    gap: 0 !important;
   }
 
-  /* Cada seção de problema começa em página nova; capa + resumo juntos */
+  /* 3. Cabeçalho e rodapé fixos: repetem em toda página impressa.
+        (Preenchidos pelo .report-print-cover via data-attributes.) */
+  .report-print-running-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 3mm;
+    border-bottom: 0.4pt solid var(--border);
+    font-size: 8pt;
+    color: var(--muted-foreground);
+  }
+  .report-print-running-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex !important;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-top: 2.5mm;
+    border-top: 0.4pt solid var(--border);
+    font-size: 8pt;
+    color: var(--muted-foreground);
+  }
+  /* Numeração automática do navegador. */
+  .report-print-pageno::after {
+    content: counter(page);
+  }
+
+  /* 4. Capa: só existe no papel. */
+  .report-print-cover {
+    display: flex !important;
+    break-after: page;
+  }
+
+  /* 5. Cards viram blocos de documento: sem sombra, sem canto redondo
+        forte, borda fina — papel não tem elevação. */
+  [data-slot="card"],
+  .report-section {
+    box-shadow: none !important;
+    border-radius: 2mm !important;
+    border-color: var(--border) !important;
+    background: #ffffff !important;
+  }
+
+  /* 6. Ritmo de página: cada meta abre página nova; panorama e resumo
+        seguem juntos logo após a capa. */
   .report-section {
     break-before: page;
+    break-inside: auto;
   }
-  .report-hero,
-  .report-hero + .report-section {
+  .report-print-flow,
+  .report-print-flow + .report-section {
     break-before: auto;
   }
-  .report-hero {
-    break-inside: avoid;
-  }
-
-  /* Título de seção nunca órfão; linhas e fotos nunca cortadas */
-  .report-section [data-slot="card-header"] {
+  .report-section [data-slot="card-header"],
+  .report-section h1,
+  .report-section h2,
+  .report-section h3 {
     break-after: avoid;
   }
   .report-section img,
-  .report-section button {
+  .report-section figure,
+  .report-section [data-slot="badge"] {
     break-inside: avoid;
+  }
+  /* Linha de atividade e bloco de resultado nunca partem no meio. */
+  .report-section [role="button"],
+  .report-section > [data-slot="card-content"] > * {
+    break-inside: avoid;
+  }
+
+  /* 7. Controles interativos não são conteúdo de documento. */
+  .print\:hidden,
+  [data-print="hide"],
+  [data-slot="dropdown-menu-trigger"],
+  [data-slot="collapsible-trigger"] svg {
+    display: none !important;
+  }
+  /* Collapsible sempre aberto no papel: conteúdo escondido não imprime. */
+  [data-slot="collapsible-content"] {
+    display: block !important;
+    height: auto !important;
+  }
+
+  /* 8. Tipografia de papel. */
+  h1 {
+    font-size: 17pt;
+  }
+  h2 {
+    font-size: 13pt;
+  }
+  h3,
+  [data-slot="card-title"] {
+    font-size: 11pt;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
   }
 }
 
 @page {
   size: A4;
-  margin: 14mm 12mm;
+  /* Margens abrem espaço pro cabeçalho/rodapé fixos. */
+  margin: 18mm 14mm 16mm;
 }

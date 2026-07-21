@@ -88,6 +88,96 @@ export function getInitials(name: string) {
   }`.toUpperCase();
 }
 
+/**
+ * Peças que SÓ existem no PDF (hidden na tela, display forçado no
+ * @media print): capa do documento e o cabeçalho/rodapé que se repetem
+ * em toda página. É o que separa "documento" de "screenshot da tela".
+ */
+export function ReportPrintDocument({
+  channelName,
+  region,
+  harvest,
+  mode,
+  periodLabel,
+  generatedAt,
+}: {
+  channelName: string;
+  region: string;
+  harvest: string | null;
+  mode: ReportMode;
+  periodLabel: string;
+  generatedAt: string;
+}) {
+  const harvestLabel = harvest ?? "Safra atual";
+  return (
+    <>
+      {/* Cabeçalho corrido — repete no topo de cada página */}
+      <div className="report-print-running-header hidden">
+        <span>{channelName}</span>
+        <span>Relatório de safra · {harvestLabel}</span>
+      </div>
+
+      {/* Capa */}
+      <div className="report-print-cover hidden min-h-[220mm] flex-col justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+            Corteva Planner
+          </p>
+          <div className="mt-[60mm]">
+            <p className="text-sm uppercase tracking-wider text-muted-foreground">
+              Relatório de safra
+            </p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight">
+              {channelName}
+            </h1>
+            <p className="mt-3 text-base text-muted-foreground">
+              {region} · {harvestLabel}
+            </p>
+          </div>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-x-8 gap-y-3 border-t border-border pt-5 text-sm">
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              Período coberto
+            </dt>
+            <dd className="mt-0.5 font-medium">{periodLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              Versão do documento
+            </dt>
+            <dd className="mt-0.5 font-medium">
+              {mode === "externo"
+                ? "Externa — para o canal"
+                : "Interna — gestão"}
+            </dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">
+              Emitido em
+            </dt>
+            <dd className="mt-0.5 font-medium">
+              {formatLongDate(generatedAt)}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      {/* Rodapé corrido — repete no fim de cada página */}
+      <div className="report-print-running-footer hidden">
+        <span>
+          Corteva Planner · {channelName}
+          {harvest ? ` · ${harvest}` : ""}
+        </span>
+        <span>
+          Página <span className="report-print-pageno" />
+        </span>
+      </div>
+    </>
+  );
+}
+
 /** Avatar do canal com iniciais — mesmo padrão de Meus Canais. */
 export function ChannelAvatar({ name }: { name: string }) {
   return (
@@ -218,7 +308,7 @@ function ActivityLine({
         />
       ) : null}
       {showStatus ? <StatusBadge status={activity.status} /> : null}
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground print:hidden" />
     </button>
   );
 }
@@ -478,7 +568,7 @@ function ResultadoCard({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="ml-auto cursor-pointer text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/res:opacity-100"
+              className="ml-auto cursor-pointer text-xs text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/res:opacity-100 print:hidden"
             >
               <Pencil className="mr-1 inline size-3" />
               Editar
@@ -506,7 +596,7 @@ function ResultadoCard({
     <Button
       variant="outline"
       onClick={() => setEditing(true)}
-      className="h-auto w-full justify-start gap-2 rounded-lg border-dashed p-4 text-sm font-normal text-muted-foreground hover:border-border-hover hover:bg-hover-surface hover:text-foreground"
+      className="h-auto w-full justify-start gap-2 rounded-lg border-dashed p-4 text-sm font-normal text-muted-foreground hover:border-border-hover hover:bg-hover-surface hover:text-foreground print:hidden"
     >
       <Plus className="size-4" />
       Registrar resultado
