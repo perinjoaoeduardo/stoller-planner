@@ -70,11 +70,19 @@ export default async function AppLayout({
           - Cards internos: bg-card via componente Card. Garante que cards
             SEMPRE contrastem com o canvas ao redor.
         */}
-        <SidebarInset className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-background md:my-6 md:mr-6 md:ml-0">
+        {/* data-print-flow: na impressão estes containers precisam soltar
+            a altura e o overflow, senão o navegador imprime só o que
+            cabe na viewport e o documento sai com uma página só. */}
+        <SidebarInset
+          data-print-flow=""
+          className="m-4 flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl bg-background md:my-6 md:mr-6 md:ml-0"
+        >
           <div className="shrink-0 border-b px-2 py-3 md:px-3">
             <ContentTopBar role={profile.role} fieldChannels={fieldChannels} />
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          <div data-print-flow="" className="min-h-0 flex-1 overflow-y-auto">
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
       </ActivityDrawerProvider>

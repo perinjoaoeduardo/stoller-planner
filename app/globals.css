@@ -352,6 +352,21 @@
     width: 100% !important;
     box-shadow: none !important;
   }
+
+  /* 2b. Solta a altura e o overflow de TODO container de scroll. Sem
+         isto o navegador imprime só o que cabe na viewport e o PDF sai
+         com uma página só — o app trava a altura em h-svh e rola por
+         dentro. */
+  html,
+  body,
+  [data-slot="sidebar-wrapper"],
+  [data-slot="sidebar-inset"],
+  [data-print-flow] {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
   html,
   body {
     background: #ffffff !important;
