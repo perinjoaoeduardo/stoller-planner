@@ -391,6 +391,14 @@ export function PanoramaBlock({
           value={monthsValue}
           sublabel={monthsSublabel}
           icon={CalendarRange}
+          // Lista de meses é TEXTO: em 3xl quebrava em 2 linhas e
+          // esticava a fileira inteira (mesmo caso do Status geral).
+          valueClassName={
+            stats.activeMonthLabels.length > 0 &&
+            stats.activeMonthLabels.length <= 4
+              ? "text-xl leading-snug"
+              : undefined
+          }
         />
       </div>
     );

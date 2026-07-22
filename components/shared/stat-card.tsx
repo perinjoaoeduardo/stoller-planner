@@ -26,6 +26,7 @@ export function StatCard({
   onClick,
   href,
   className,
+  valueClassName,
 }: {
   title: string;
   value: number | string;
@@ -40,6 +41,10 @@ export function StatCard({
   href?: string;
   /** Classe extra no Card (ex.: tinta destructive do card estrela CX). */
   className?: string;
+  /** Classe extra no valor — para valores TEXTUAIS (lista de meses,
+   *  status por extenso) que em 3xl quebrariam em várias linhas e
+   *  desproporcionariam a fileira. Ex.: "text-xl leading-snug". */
+  valueClassName?: string;
 }) {
   const accentClass =
     tone === "warning"
@@ -62,7 +67,8 @@ export function StatCard({
       <p
         className={cn(
           "mt-2 text-3xl font-bold tracking-tight tabular-nums",
-          accentClass ?? "text-foreground"
+          accentClass ?? "text-foreground",
+          valueClassName
         )}
       >
         {value}
