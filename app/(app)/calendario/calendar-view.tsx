@@ -18,11 +18,16 @@ import {
   subWeeks,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Plus,
+} from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { CategoryIconBox } from "@/components/shared/icon-box";
-import { categoryIcon } from "@/lib/category-icons";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { NewActivityButton } from "@/components/app/new-activity-button";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import { StatusBadge, STATUS_LABELS } from "@/components/shared/status-badge";
@@ -88,7 +93,11 @@ function EventPill({
   highlighted?: boolean;
   className?: string;
 }) {
-  const Icon = categoryIcon(activity.category);
+  // Lookup direto no mapa (referência estável) — chamar categoryIcon()
+  // aqui dispara o falso-positivo static-components do lint.
+  const Icon = activity.category
+    ? CATEGORY_ICONS[activity.category]
+    : ClipboardList;
   return (
     <Tooltip>
       <TooltipTrigger
@@ -410,7 +419,7 @@ function DayActivitiesList({
               </span>
               <StatusBadge
                 status={activity.status}
-                className="shrink-0 text-[10px]"
+                className="shrink-0"
               />
             </button>
           ))}
@@ -543,16 +552,15 @@ function DesktopGrid({
 
 /** Borda esquerda do mini-card por status (alarme único: âmbar atraso,
  *  verde conclusão, resto neutro). */
-const EDGE_COLORS: Record<ActivityStatus, string> = {
-  planejada: "border-l-muted-foreground/30",
-  concluida: "border-l-success",
-  atrasada: "border-l-warning",
-  nao_feita: "border-l-muted-foreground/20",
-};
-
 const MAX_WEEK_CARDS = 3;
 
-/** Mini-card de atividade dentro da coluna do dia. */
+/**
+ * Mini-card de atividade dentro da coluna do dia — elemento interativo
+ * = camada 3 (bg-muted, a dos chips/inputs): contrasta tanto na coluna
+ * branca quanto na coluna de hoje (bg-subtle) — nunca duas camadas
+ * iguais encostadas. Hover sinaliza pela borda (hover-surface ≈ muted,
+ * fundo não daria sinal). Status comunicado SÓ pelo dot (alarme único).
+ */
 function WeekMiniCard({
   activity,
   highlighted,
@@ -567,12 +575,11 @@ function WeekMiniCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full cursor-pointer rounded-md border-l-2 bg-subtle px-2 py-1.5 text-left transition-colors hover:bg-hover-surface",
-        EDGE_COLORS[activity.status],
+        "w-full cursor-pointer rounded-lg border border-transparent bg-muted p-2 text-left transition-[border-color] duration-base ease-standard hover:border-border-hover",
         highlighted && "animate-pulse"
       )}
     >
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-2">
         <CategoryIconBox
           category={activity.category}
           size="sm"
@@ -589,7 +596,7 @@ function WeekMiniCard({
           {activity.title}
         </span>
       </span>
-      <span className="mt-1 flex items-center gap-1.5 pl-0.5">
+      <span className="mt-1.5 flex items-center gap-1.5 pl-0.5">
         <span
           aria-hidden
           className={cn(
@@ -597,7 +604,7 @@ function WeekMiniCard({
             DOT_COLORS[activity.status]
           )}
         />
-        <span className="truncate text-[10px] text-muted-foreground">
+        <span className="truncate text-xs text-muted-foreground">
           {activity.channelName}
         </span>
       </span>
@@ -827,7 +834,7 @@ function WeekAgenda({
                   </span>
                   <StatusBadge
                     status={activity.status}
-                    className="shrink-0 text-[10px]"
+                    className="shrink-0"
                   />
                 </button>
               ))}
@@ -868,7 +875,7 @@ function MobileList({
           {WEEKDAYS_SHORT.map((d) => (
             <div
               key={d}
-              className="px-1 py-1.5 text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+              className="px-1 py-1.5 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground"
             >
               {d.slice(0, 1)}
             </div>
@@ -1003,7 +1010,7 @@ function MobileList({
                         </span>
                         <StatusBadge
                           status={activity.status}
-                          className="shrink-0 text-[10px]"
+                          className="shrink-0"
                         />
                       </button>
                     ))}

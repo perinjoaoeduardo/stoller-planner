@@ -38,7 +38,9 @@ import { cn } from "@/lib/utils";
  */
 
 const ISSUE_BADGE_CLASS: Record<PendencyType, string> = {
-  sem_foto: "border-destructive/40 bg-destructive/10 text-destructive",
+  // Âmbar, não vermelho: pendência é atenção — destructive é exclusivo
+  // do prazo vencido em aberto (Constituição, item 2).
+  sem_foto: "border-warning/40 bg-warning/10 text-warning-fg",
   sem_problema:
     "border-warning/40 bg-warning/10 text-warning-fg",
   sem_categoria:

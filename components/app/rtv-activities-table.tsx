@@ -13,7 +13,6 @@ import {
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { ActivityCard } from "@/components/app/activity-card";
 import {
-  StatusBadge,
   type ActivityStatus,
 } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";

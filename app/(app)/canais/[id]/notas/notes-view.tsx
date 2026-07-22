@@ -72,7 +72,7 @@ export function NotesView({
             <>
               <div className="mt-6 mb-2 flex items-center gap-2">
                 <Pin className="size-4 text-muted-foreground" />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="text-sm font-medium text-muted-foreground">
                   Fixadas ({pinned.length})
                 </span>
               </div>
@@ -97,7 +97,7 @@ export function NotesView({
                     : "mt-6"
                 }
               >
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="text-sm font-medium text-muted-foreground">
                   {pinned.length > 0 ? "Todas as notas" : "Notas"}
                 </span>
               </div>

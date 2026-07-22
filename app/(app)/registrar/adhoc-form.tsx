@@ -8,15 +8,10 @@ import {
   Camera,
   CheckCircle2,
   CircleAlert,
-  GraduationCap,
   ImagePlus,
   Lightbulb,
   Link2,
-  Megaphone,
-  Presentation,
-  Route,
   X,
-  type LucideIcon,
 } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";

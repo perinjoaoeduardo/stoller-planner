@@ -54,6 +54,30 @@ export async function getWizardChannels() {
   });
 }
 
+// ── Resolve o canal de uma atividade ──────────────────────────────────
+// Vários pontos do app abrem o wizard só com o activityId (tabelas não
+// carregam channelId). O provider chama isto antes de abrir para pular
+// direto ao passo de concluir.
+
+export async function getActivityChannel(
+  activityId: string
+): Promise<{ channelId: string; channelName: string } | null> {
+  const profile = await getCurrentProfile();
+  const channelIds = await getScopedChannelIds(profile);
+  if (channelIds.length === 0) return null;
+
+  const supabase = await createClient();
+  const { data: activity } = await supabase
+    .from("activities")
+    .select("id, plan:plans(channel:channels(id, name))")
+    .eq("id", activityId)
+    .maybeSingle();
+
+  const channel = activity?.plan?.channel;
+  if (!channel || !channelIds.includes(channel.id)) return null;
+  return { channelId: channel.id, channelName: channel.name };
+}
+
 // ── Fetch channel context (called client-side when channel is picked) ──
 
 export type WizardActivity = {

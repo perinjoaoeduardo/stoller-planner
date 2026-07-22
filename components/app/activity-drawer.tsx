@@ -10,7 +10,6 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Calendar,
   Camera,
   Check,
   CheckCircle2,
@@ -31,7 +30,7 @@ import { toast } from "sonner";
 import { ProblemEditor } from "@/app/(app)/atividades/[id]/problem-editor";
 import { IconBox } from "@/components/shared/icon-box";
 import { PhotoAttach } from "@/components/shared/photo-attach";
-import { categoryIcon } from "@/lib/category-icons";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
 import {
   STATUS_LABELS,
   StatusBadge,
@@ -57,15 +56,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -327,21 +317,6 @@ const EVENT_LABELS: Record<string, string> = {
   problema_vinculado: "Meta vinculada",
 };
 
-/** Ícone semântico do evento — usa createElement pra evitar o
- *  `const Icon = ...` que o React Compiler flaga como componente
- *  criado em render. */
-function EventIcon({
-  type,
-  description,
-  className,
-}: {
-  type: string;
-  description: string | null;
-  className?: string;
-}) {
-  return React.createElement(eventIcon(type, description), { className });
-}
-
 /** Ícone semântico por evento; conclusão ganha o check verde da vida. */
 function eventIcon(type: string, description: string | null): LucideIcon {
   if (type === "status_alterado" && description?.includes('para "Concluída"')) {
@@ -385,8 +360,12 @@ function DrawerBody({
     (event) => event.type === "execucao_registrada"
   );
 
+  // Cancelada é atividade ENCERRADA: nada de anexar foto ou editar meta
+  // — só a mudança de status fica viva (pra poder reabrir).
+  const isCancelled = activity.status === "nao_feita";
+
   const canChangeStatus = activity.canRegister || activity.canEdit;
-  const canLinkMeta = activity.canRegister || activity.canEdit;
+  const canLinkMeta = (activity.canRegister || activity.canEdit) && !isCancelled;
 
   function handleRegistrar() {
     onClose();
@@ -430,7 +409,7 @@ function DrawerBody({
             <EvidencesBlock
               activityId={activity.id}
               photos={activity.photos}
-              canManage={activity.canRegister}
+              canManage={activity.canRegister && !isCancelled}
               onChanged={onRefresh}
               onRegister={
                 isOpen && activity.canRegister && !hasExecution
@@ -643,7 +622,7 @@ function HeaderContainer({
           </span>
           {dueDate ? (
             <span className="tabular-nums">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 Prazo{"  "}
               </span>
               <span
@@ -857,7 +836,9 @@ function SobreCard({
       event.description.trim().length > 0
   );
 
-  const TypeIcon = activity.category ? categoryIcon(activity.category) : null;
+  // Lookup direto no mapa (referência estável) — chamar categoryIcon()
+  // aqui dispara o falso-positivo static-components do lint.
+  const TypeIcon = activity.category ? CATEGORY_ICONS[activity.category] : null;
 
   return (
     <Card className="gap-0 rounded-xl border-border py-6 shadow-sm [--card-spacing:--spacing(6)]">

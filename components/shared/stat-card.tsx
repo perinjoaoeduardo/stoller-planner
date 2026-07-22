@@ -25,18 +25,28 @@ export function StatCard({
   active = false,
   onClick,
   href,
+  className,
 }: {
   title: string;
   value: number | string;
   sublabel?: string;
   icon: LucideIcon;
-  tone?: "neutral" | "warning";
+  /** warning = atenção (âmbar); danger = estado crítico (ex.: canal no
+   *  escuro no CX) — pinta valor e ícone; o card em si tinta via className. */
+  tone?: "neutral" | "warning" | "danger";
   interactive?: boolean;
   active?: boolean;
   onClick?: () => void;
   href?: string;
+  /** Classe extra no Card (ex.: tinta destructive do card estrela CX). */
+  className?: string;
 }) {
-  const accentClass = tone === "warning" ? "text-warning" : null;
+  const accentClass =
+    tone === "warning"
+      ? "text-warning"
+      : tone === "danger"
+        ? "text-destructive"
+        : null;
 
   const body = (
     <>
@@ -85,7 +95,10 @@ export function StatCard({
       <Card
         className={cn(
           cardClass,
-          "hover:border-border-hover hover:shadow-elevated!"
+          "hover:border-border-hover hover:shadow-elevated!",
+          // Por último: a tinta do caller (ex.: card estrela CX) ganha
+          // inclusive do hover canônico.
+          className
         )}
       >
         <Link href={href} className="block p-5">
@@ -97,7 +110,7 @@ export function StatCard({
 
   if (interactive) {
     return (
-      <Card className={cardClass}>
+      <Card className={cn(cardClass, className)}>
         <button
           type="button"
           onClick={onClick}
@@ -111,7 +124,7 @@ export function StatCard({
   }
 
   return (
-    <Card className={cardClass}>
+    <Card className={cn(cardClass, className)}>
       <div className="p-5">{body}</div>
     </Card>
   );

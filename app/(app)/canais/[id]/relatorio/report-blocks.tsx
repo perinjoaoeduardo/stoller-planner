@@ -52,7 +52,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { setProblemResultado } from "@/lib/actions/plan";
-import { categoryIcon } from "@/lib/category-icons";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
 import type { ReportActivity, ReportPhoto } from "@/lib/db/report";
 import { cn } from "@/lib/utils";
 
@@ -203,7 +203,9 @@ export function GalleryThumb({
   originCategory?: ReportActivity["category"];
 }) {
   const [broken, setBroken] = React.useState(false);
-  const OriginIcon = originCategory ? categoryIcon(originCategory) : null;
+  // Lookup direto no mapa (referência estável) — chamar categoryIcon()
+  // aqui dispara o falso-positivo static-components do lint.
+  const OriginIcon = originCategory ? CATEGORY_ICONS[originCategory] : null;
 
   return (
     <button
@@ -427,7 +429,10 @@ export function PanoramaBlock({
               )}
             />
           </div>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">
+          {/* Texto (não número): um degrau abaixo do valor numérico dos
+              outros cards — em 3xl "Precisa atenção" quebrava em 2
+              linhas e esticava a fileira inteira. */}
+          <p className="mt-3 text-xl font-bold leading-snug tracking-tight text-foreground">
             {stats.healthy ? "No ritmo" : "Precisa atenção"}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -527,7 +532,7 @@ function ResultadoCard({
   if (editing) {
     return (
       <div className="rounded-lg bg-subtle p-4">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+        <p className="text-sm font-medium text-muted-foreground">
           Resultado
         </p>
         <Textarea
@@ -561,7 +566,7 @@ function ResultadoCard({
     return (
       <div className="group/res rounded-lg bg-subtle p-4">
         <div className="flex items-center gap-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          <p className="text-sm font-medium text-muted-foreground">
             Resultado
           </p>
           {mode === "interno" && canEdit ? (
@@ -656,7 +661,7 @@ export function MetaBlock({
     <Card className="report-section gap-4">
       <CardHeader className="gap-1" style={{ breakAfter: "avoid" }}>
         {typeof index === "number" ? (
-          <p className="text-xs uppercase tracking-wide text-muted-foreground tabular-nums">
+          <p className="text-xs font-medium text-muted-foreground tabular-nums">
             {String(index + 1).padStart(2, "0")} · Meta
           </p>
         ) : null}

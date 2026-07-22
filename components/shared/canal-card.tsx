@@ -1,8 +1,7 @@
 import { ClickableCard, NeutralChip } from "@/components/shared/clickable-card";
+import { HealthMark } from "@/components/shared/health-mark";
 import { Progress } from "@/components/ui/progress";
 import type { ChannelHealth } from "@/lib/plan-utils";
-import { HEALTH_CONFIG } from "@/lib/plan-utils";
-import { cn } from "@/lib/utils";
 
 export type CanalCardData = {
   id: string;
@@ -16,31 +15,8 @@ export type CanalCardData = {
   lateCount: number;
 };
 
-const HEALTH_LABEL_CLASS: Record<ChannelHealth, string> = {
-  critico: "font-medium text-destructive",
-  atencao: "font-medium text-warning",
-  em_dia: "font-medium text-success-fg",
-};
-
 const PROGRESS_CLASS =
   "flex-1 [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-primary [&_[data-slot=progress-track]]:h-1";
-
-function HealthMark({ health }: { health: ChannelHealth }) {
-  return (
-    <span className="flex items-center gap-1.5 text-xs">
-      <span
-        aria-hidden
-        className={cn(
-          "size-1.5 shrink-0 rounded-full",
-          HEALTH_CONFIG[health].dotClass
-        )}
-      />
-      <span className={HEALTH_LABEL_CLASS[health]}>
-        {HEALTH_CONFIG[health].label}
-      </span>
-    </span>
-  );
-}
 
 /**
  * Card de canal ÚNICO — `compact` (home: 2 linhas densas, saúde inline

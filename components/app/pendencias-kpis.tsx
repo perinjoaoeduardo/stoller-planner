@@ -18,7 +18,9 @@ const ISSUE_META: Record<
 > = {
   sem_foto: {
     icon: CameraOff,
-    activeClass: "border-destructive/60 bg-destructive/5 dark:bg-destructive/10",
+    // Âmbar, não vermelho: pendência é atenção — destructive é
+    // exclusivo do prazo vencido em aberto (Constituição, item 2).
+    activeClass: "border-warning/60 bg-warning/5 dark:bg-warning/10",
     description: "Atividades concluídas sem nenhuma foto de evidência.",
   },
   sem_problema: {

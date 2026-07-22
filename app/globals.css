@@ -296,6 +296,7 @@
   transition-duration: var(--duration-slow);
 }
 
+
 /* ── Impressão: Relatório de Safra vira DOCUMENTO ────────────────────
    Não é screenshot da tela: o app inteiro sai de cena, o tema é forçado
    para claro (imprimir no dark gastaria toner e sairia ilegível), a

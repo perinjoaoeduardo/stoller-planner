@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { HealthMark } from "@/components/shared/health-mark";
 import { DARK_CHANNEL_DAYS } from "@/lib/config";
 import type { ChannelHealthRow } from "@/lib/db/cx";
 import {
@@ -273,18 +274,7 @@ export function ChannelHealthTable({
         ),
         sortingFn: (a, b) =>
           HEALTH_ORDER[a.original.health] - HEALTH_ORDER[b.original.health],
-        cell: ({ row }) => {
-          const health = HEALTH_CONFIG[row.original.health];
-          return (
-            <span className="flex items-center gap-2 whitespace-nowrap text-sm">
-              <span
-                aria-hidden
-                className={cn("size-2 rounded-full", health.dotClass)}
-              />
-              {health.label}
-            </span>
-          );
-        },
+        cell: ({ row }) => <HealthMark health={row.original.health} size="md" />,
       },
     ],
     []

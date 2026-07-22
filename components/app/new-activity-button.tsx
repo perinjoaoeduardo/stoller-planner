@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 export function NewActivityButton({
   mode,
   channelId,
+  activityId,
   date,
   size = "default",
   variant = "brand",
@@ -20,6 +21,8 @@ export function NewActivityButton({
 }: {
   mode?: WizardMode;
   channelId?: string;
+  /** Pula direto pro passo de concluir esta atividade (mode registrar). */
+  activityId?: string;
   date?: string;
   size?: "default" | "sm" | "lg" | "icon-sm";
   variant?: "default" | "brand" | "outline" | "ghost";
@@ -34,7 +37,7 @@ export function NewActivityButton({
       size={size}
       variant={variant}
       className={cn(className)}
-      onClick={() => openWizard({ mode, channelId, date })}
+      onClick={() => openWizard({ mode, channelId, activityId, date })}
     >
       {icon ?? <Plus className="size-4" />}
       {label}

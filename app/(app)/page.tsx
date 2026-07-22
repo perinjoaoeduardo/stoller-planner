@@ -22,7 +22,6 @@ import {
 import {
   differenceInCalendarDays,
   differenceInDays,
-  format,
   formatDistanceToNow,
   parseISO,
 } from "date-fns";
@@ -37,6 +36,7 @@ import {
   type ActivityTableRow,
 } from "@/components/shared/activity-table";
 import { CanalCard } from "@/components/shared/canal-card";
+import { HealthMark } from "@/components/shared/health-mark";
 import { IconBox } from "@/components/shared/icon-box";
 import { StatCard } from "@/components/shared/stat-card";
 import { RtvActivitiesTable } from "@/components/app/rtv-activities-table";
@@ -70,13 +70,10 @@ import {
   getFieldActivities,
   getMyRecentExecutions,
   OPEN_STATUSES,
-  type FieldActivity,
   type RecentExecution,
 } from "@/lib/db/execution";
 import { Progress } from "@/components/ui/progress";
-import { HEALTH_CONFIG, type ChannelHealth } from "@/lib/plan-utils";
 import { greetingByHour, greetingContextLine } from "@/lib/rtv/greeting";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -165,13 +162,6 @@ function DsmSectionHeader({
   );
 }
 
-/** Rótulo de saúde colorido — mesma paleta do CanalCard canônico. */
-const HEALTH_LABEL_CLASS: Record<ChannelHealth, string> = {
-  critico: "font-medium text-destructive",
-  atencao: "font-medium text-warning",
-  em_dia: "font-medium text-success-fg",
-};
-
 const ROW_PROGRESS_CLASS =
   "flex-1 [&_[data-slot=progress-indicator]]:rounded-full [&_[data-slot=progress-indicator]]:bg-primary [&_[data-slot=progress-track]]:h-1";
 
@@ -217,18 +207,10 @@ function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
                   <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
                     {channel.name}
                   </p>
-                  <span className="flex shrink-0 items-center gap-1.5 text-xs">
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "size-1.5 shrink-0 rounded-full",
-                        HEALTH_CONFIG[channel.health].dotClass
-                      )}
-                    />
-                    <span className={HEALTH_LABEL_CLASS[channel.health]}>
-                      {HEALTH_CONFIG[channel.health].label}
-                    </span>
-                  </span>
+                  <HealthMark
+                    health={channel.health}
+                    className="shrink-0"
+                  />
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground/60 transition-transform duration-slow ease-emphasized group-hover:translate-x-0.5" />
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -722,10 +704,12 @@ async function FieldHome() {
 
   // Ordem: atrasadas (por dias de atraso desc = prazo mais antigo primeiro)
   // > vencendo em 7 dias > outras abertas > planejadas por prazo asc. Sem
-  // prazo por último. "abertas" = não concluídas (planejada, atrasada,
-  // nao_feita) — a tabela lista todas, não só as próximas.
+  // prazo por último. "abertas" = planejada ou atrasada — encerradas
+  // (concluída E cancelada) ficam fora da home; canceladas vivem no fim
+  // da fila em /minhas-atividades.
   const openForTable = mine.filter(
-    (activity) => activity.status !== "concluida"
+    (activity) =>
+      activity.status !== "concluida" && activity.status !== "nao_feita"
   );
   const tomorrow = new Date();
   const openOrdered = [...openForTable].sort((a, b) => {

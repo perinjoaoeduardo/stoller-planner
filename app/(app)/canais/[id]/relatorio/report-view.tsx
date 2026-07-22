@@ -22,7 +22,13 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -73,6 +79,14 @@ import type { HeatmapMonth } from "@/components/shared/season-heatmap";
 
 const MODE_STORAGE_KEY = "corteva:report-mode";
 
+/** Store inerte: o localStorage não emite eventos na própria aba. */
+const subscribeToNothing = () => () => {};
+
+function readStoredMode(): ReportMode | null {
+  const saved = window.localStorage.getItem(MODE_STORAGE_KEY);
+  return saved === "interno" || saved === "externo" ? saved : null;
+}
+
 const PERIOD_PRESETS = [
   { value: "safra", label: "Safra completa" },
   { value: "30", label: "Últimos 30 dias" },
@@ -102,7 +116,19 @@ export function ReportView({
 }) {
   const isField = role === "RTV";
 
-  const [mode, setMode] = React.useState<ReportMode>("interno");
+  // Preferência de modo por usuário — o localStorage entra via
+  // useSyncExternalStore (servidor renderiza o fallback, cliente assume
+  // o salvo na hidratação; sem setState em effect). A escolha manual na
+  // sessão (override) sempre ganha do valor salvo.
+  const storedMode = React.useSyncExternalStore(
+    subscribeToNothing,
+    readStoredMode,
+    () => null
+  );
+  const [modeOverride, setModeOverride] = React.useState<ReportMode | null>(
+    null
+  );
+  const mode = modeOverride ?? storedMode ?? "interno";
   const [period, setPeriod] = React.useState<PeriodValue>("safra");
   const [customFrom, setCustomFrom] = React.useState("");
   const [customTo, setCustomTo] = React.useState("");
@@ -118,15 +144,8 @@ export function ReportView({
     []
   );
 
-  // Preferência de modo por usuário. Lida no efeito (não na inicialização
-  // do state) para o HTML do servidor bater com o do cliente.
-  React.useEffect(() => {
-    const saved = window.localStorage.getItem(MODE_STORAGE_KEY);
-    if (saved === "interno" || saved === "externo") setMode(saved);
-  }, []);
-
   function changeMode(next: ReportMode) {
-    setMode(next);
+    setModeOverride(next);
     window.localStorage.setItem(MODE_STORAGE_KEY, next);
   }
 
@@ -416,7 +435,15 @@ export function ReportView({
       // entre panorama e resumo — os dois formam a abertura do documento.
       node: (
         <Card className="report-section report-print-flow">
-          <CardContent className="pt-6">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold">
+              Resumo da safra
+            </CardTitle>
+            <CardDescription>
+              Leitura em texto do que foi planejado e executado.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <p className="text-base leading-relaxed">{summary}</p>
           </CardContent>
         </Card>
@@ -557,7 +584,7 @@ export function ReportView({
         <div className="flex flex-wrap items-center gap-4">
           <ChannelAvatar name={report.channel.name} />
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Relatório de safra
             </p>
             <h1 className="truncate text-2xl font-semibold tracking-tight">

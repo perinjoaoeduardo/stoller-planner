@@ -10,6 +10,7 @@ import {
   parseISO,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
 import {
   Calendar,
   CalendarClock,
@@ -86,7 +87,7 @@ import { formatRelativeDue } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
 import {
   MAX_DESCRIPTION,
-  PhotoNudgeDrawer,
+  PhotoNudgeOverlay,
   usePhotoDrafts,
 } from "@/app/(app)/registrar/register-shared";
 
@@ -105,8 +106,7 @@ type WizardView =
   | "registrar-complete"
   | "adhoc-1"
   | "adhoc-2"
-  | "adhoc-3"
-  | "success";
+  | "adhoc-3";
 
 /** Passos do fluxo de agendar, na ordem do stepper. */
 const AGENDAR_STEPS: { view: WizardView; label: string }[] = [
@@ -146,15 +146,6 @@ const EMPTY_ADHOC: AdhocDraft = {
   problemChoice: null,
 };
 
-/** O que acabou de ser registrado — alimenta a tela de sucesso. */
-type RegistrarResult = {
-  id: string;
-  title: string;
-  category: ActivityCategory | null;
-  kind: "adhoc" | "complete";
-  pendingLink: boolean;
-};
-
 /** Rascunho do agendamento — vive no pai pra persistir entre os passos. */
 type AgendarDraft = {
   title: string;
@@ -177,14 +168,6 @@ function emptyDraft(defaultDate: string | null): AgendarDraft {
     description: "",
   };
 }
-
-/** Atividade recém-criada — alimenta o mini card da tela de sucesso. */
-type CreatedActivity = {
-  id: string;
-  title: string;
-  category: ActivityCategory;
-  dueDate: string;
-};
 
 export type ActionWizardProps = {
   open: boolean;
@@ -256,14 +239,9 @@ type WizardCtx = {
   submitting: boolean;
   submitError: string | null;
   submitAgendar: () => Promise<void>;
-  created: CreatedActivity | null;
-  startAnotherAgendar: () => void;
   adhoc: AdhocDraft;
   updateAdhoc: (patch: Partial<AdhocDraft>) => void;
   photoDrafts: ReturnType<typeof usePhotoDrafts>;
-  registrarResult: RegistrarResult | null;
-  setRegistrarResult: (r: RegistrarResult | null) => void;
-  startAnotherRegistrar: () => void;
   setView: (v: WizardView) => void;
   setMode: (m: WizardMode) => void;
   setChannel: (id: string, name: string) => void;
@@ -317,8 +295,6 @@ function viewTitle(view: WizardView): string {
     case "adhoc-2":
     case "adhoc-3":
       return "Registrar execução";
-    case "success":
-      return "Concluído";
   }
 }
 
@@ -1097,8 +1073,13 @@ function RegistrarPickStep() {
 // ── PA3 Step 3A: Complete planned activity ─────────────────────────────
 
 function RegistrarCompleteStep() {
-  const { selectedActivity, setView, photoDrafts, setRegistrarResult } =
-    useWizard();
+  const {
+    selectedActivity,
+    loadingCtx,
+    setView,
+    photoDrafts,
+    close,
+  } = useWizard();
   const router = useRouter();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const { photos, rejected, addFiles, removePhoto, uploadAll } = photoDrafts;
@@ -1108,9 +1089,23 @@ function RegistrarCompleteStep() {
   const [error, setError] = React.useState<string | null>(null);
 
   if (!selectedActivity) {
+    // Abertura direta pelo activityId: o contexto ainda está chegando —
+    // mesmo padrão de loading dos outros passos do wizard.
+    if (loadingCtx) {
+      return (
+        <div className="flex flex-1 items-center justify-center p-6">
+          <Spinner className="size-6" />
+        </div>
+      );
+    }
+    // Atividade não está mais aberta (ou nada selecionado): oferece a
+    // lista em vez de um beco sem saída.
     return (
-      <div className="flex flex-1 items-center justify-center p-6">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
         <p className="text-muted-foreground">Nenhuma atividade selecionada.</p>
+        <Button variant="outline" onClick={() => setView("registrar-pick")}>
+          Escolher da lista
+        </Button>
       </div>
     );
   }
@@ -1133,16 +1128,18 @@ function RegistrarCompleteStep() {
         setError(result.error);
         return;
       }
-      // Sem toast: a tela de sucesso já comunica (FIX 6).
-      setRegistrarResult({
-        id: result.activityId,
-        title: activity.title,
-        category: activity.category,
-        kind: "complete",
-        pendingLink: false,
-      });
+      // Sucesso vira toast no canto (Sonner discreto): o wizard fecha
+      // na hora e o CTA de abrir a atividade vive na notificação.
       router.refresh();
-      setView("success");
+      close();
+      toast.success("Atividade concluída", {
+        description: activity.title,
+        duration: 6000,
+        action: {
+          label: "Ver atividade",
+          onClick: () => router.push(`/atividades/${result.activityId}`),
+        },
+      });
     } catch {
       setError("Falha ao enviar as fotos — sinal fraco? Tente de novo.");
     } finally {
@@ -1273,7 +1270,7 @@ function RegistrarCompleteStep() {
         </Button>
       </WizardFooter>
 
-      <PhotoNudgeDrawer
+      <PhotoNudgeOverlay
         open={nudgeOpen}
         onOpenChange={setNudgeOpen}
         onAddPhoto={() => fileRef.current?.click()}
@@ -1464,7 +1461,7 @@ function AdhocStep2() {
 }
 
 function AdhocStep3() {
-  const { channelId, adhoc, photoDrafts, setView, setRegistrarResult } =
+  const { channelId, adhoc, photoDrafts, setView, close } =
     useWizard();
   const router = useRouter();
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -1496,16 +1493,21 @@ function AdhocStep3() {
         setError(result.error);
         return;
       }
-      // Sem toast: a tela de sucesso já comunica (FIX 6).
-      setRegistrarResult({
-        id: result.activityId,
-        title: adhoc.description.trim(),
-        category: adhoc.category,
-        kind: "adhoc",
-        pendingLink: adhoc.problemChoice === "later",
-      });
+      // Sucesso vira toast no canto (Sonner discreto): o wizard fecha
+      // na hora e o CTA de abrir a atividade vive na notificação.
       router.refresh();
-      setView("success");
+      close();
+      toast.success("Execução registrada", {
+        description:
+          adhoc.problemChoice === "later"
+            ? `${adhoc.description.trim()} — meta pendente de vínculo.`
+            : adhoc.description.trim(),
+        duration: 6000,
+        action: {
+          label: "Ver atividade",
+          onClick: () => router.push(`/atividades/${result.activityId}`),
+        },
+      });
     } catch {
       setError("Falha ao enviar as fotos — sinal fraco? Tente de novo.");
     } finally {
@@ -1572,7 +1574,7 @@ function AdhocStep3() {
         </Button>
       </WizardFooter>
 
-      <PhotoNudgeDrawer
+      <PhotoNudgeOverlay
         open={nudgeOpen}
         onOpenChange={setNudgeOpen}
         onAddPhoto={() => fileRef.current?.click()}
@@ -1581,157 +1583,6 @@ function AdhocStep3() {
     </>
   );
 }
-
-// ── Success screens ────────────────────────────────────────────────────
-
-/** Sucesso do registrar (FIX 6): mesmo padrão do agendar + aviso de meta pendente. */
-function RegistrarSuccess() {
-  const { channelName, registrarResult, close, startAnotherRegistrar } =
-    useWizard();
-  const router = useRouter();
-
-  function viewActivity() {
-    if (!registrarResult) return;
-    close();
-    router.push(`/atividades/${registrarResult.id}`);
-  }
-
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6">
-      <div className="flex w-full max-w-sm flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-full bg-success-bg duration-300 animate-in zoom-in-50">
-          <Check
-            className="size-7 text-success"
-            strokeWidth={2.5}
-          />
-        </div>
-        <h3 className="mt-4 text-lg font-semibold">
-          {registrarResult?.kind === "complete"
-            ? "Atividade concluída"
-            : "Execução registrada"}
-        </h3>
-        {channelName && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Registrada em {channelName}.
-          </p>
-        )}
-        {registrarResult && (
-          <>
-            <button
-              type="button"
-              onClick={viewActivity}
-              className="group mt-5 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border p-3.5 text-left transition-all hover:border-border-hover"
-            >
-              {registrarResult.category ? (
-                <CategoryIconBox category={registrarResult.category} />
-              ) : (
-                <IconBox icon={PenLine} size="md" />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {registrarResult.title}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {format(new Date(), "dd 'de' MMMM", { locale: ptBR })}
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-            </button>
-            {registrarResult.pendingLink && (
-              <div className="mt-2 flex w-full items-start gap-2 rounded-lg bg-warning-bg p-2.5 text-left text-xs text-warning-fg">
-                <Link2 className="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  Meta pendente de vínculo. Você pode vincular pelo painel da
-                  atividade.
-                </span>
-              </div>
-            )}
-          </>
-        )}
-        <div className="mt-5 grid w-full grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            className="h-10"
-            onClick={startAnotherRegistrar}
-          >
-            Registrar outra
-          </Button>
-          <Button
-            className="h-10"
-            onClick={viewActivity}
-          >
-            Ver atividade
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Sucesso do agendar (FIX 7): composição compacta, ações lado a lado. */
-function AgendarSuccess() {
-  const { channelName, created, close, startAnotherAgendar } = useWizard();
-  const router = useRouter();
-
-  function viewActivity() {
-    if (!created) return;
-    close();
-    router.push(`/atividades/${created.id}`);
-  }
-
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto p-6">
-      <div className="flex w-full max-w-sm flex-col items-center text-center">
-        <div className="flex size-14 items-center justify-center rounded-full bg-success-bg duration-300 animate-in zoom-in-50">
-          <Check
-            className="size-7 text-success"
-            strokeWidth={2.5}
-          />
-        </div>
-        <h3 className="mt-4 text-lg font-semibold">Atividade agendada</h3>
-        {channelName && (
-          <p className="mt-1 text-sm text-muted-foreground">
-            Adicionada ao plano de {channelName}.
-          </p>
-        )}
-        {created && (
-          <button
-            type="button"
-            onClick={viewActivity}
-            className="group mt-5 flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border p-3.5 text-left transition-all hover:border-border-hover"
-          >
-            <CategoryIconBox category={created.category} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground">
-                {created.title}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {formatRelativeDue(created.dueDate)}
-              </p>
-            </div>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </button>
-        )}
-        <div className="mt-5 grid w-full grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            className="h-10"
-            onClick={startAnotherAgendar}
-          >
-            Agendar outra
-          </Button>
-          <Button
-            className="h-10"
-            onClick={viewActivity}
-          >
-            Ver atividade
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 
 // ── Main wizard component ──────────────────────────────────────────────
 
@@ -1788,7 +1639,6 @@ export function ActionWizard({
   );
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [created, setCreated] = React.useState<CreatedActivity | null>(null);
 
   const updateDraft = React.useCallback((patch: Partial<AgendarDraft>) => {
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -1796,8 +1646,6 @@ export function ActionWizard({
 
   // Registro fora do plano — draft + fotos compartilhadas entre os passos.
   const [adhoc, setAdhoc] = React.useState<AdhocDraft>(EMPTY_ADHOC);
-  const [registrarResult, setRegistrarResult] =
-    React.useState<RegistrarResult | null>(null);
   const photoDrafts = usePhotoDrafts();
 
   const updateAdhoc = React.useCallback((patch: Partial<AdhocDraft>) => {
@@ -1845,6 +1693,18 @@ export function ActionWizard({
   const resolvedChannelCtx = channelId ? channelCtx : null;
   const loadingCtx = channelId !== null && ctxForChannelId !== channelId;
 
+  // Abertura direta no concluir (ex.: "Registrar execução" na página da
+  // atividade): o contexto do canal chega async — a seleção é DERIVADA
+  // do defaultActivityId no render, sem effect. Escolha manual na lista
+  // (setSelectedActivity) sempre ganha do default.
+  const effectiveSelectedActivity =
+    selectedActivity ??
+    (defaultActivityId && resolvedChannelCtx
+      ? (resolvedChannelCtx.openActivities.find(
+          (a) => a.id === defaultActivityId
+        ) ?? null)
+      : null);
+
   function handleSetChannel(id: string, name: string) {
     setChannelId(id);
     setChannelName(name);
@@ -1878,13 +1738,6 @@ export function ActionWizard({
       setSubmitError(result.error);
       return;
     }
-    // Sem toast aqui: a tela de sucesso já comunica (FIX 7).
-    setCreated({
-      id: result.activityId,
-      title: draft.title.trim(),
-      category: draft.category,
-      dueDate: draft.dueDate,
-    });
     // Avisa superfícies abertas (ex.: calendário) pra destacar a recém-criada.
     window.dispatchEvent(
       new CustomEvent("stoller:activity-created", {
@@ -1892,24 +1745,19 @@ export function ActionWizard({
       })
     );
     router.refresh();
-    setView("success");
-  }
-
-  function startAnotherAgendar() {
-    setDraft(emptyDraft(defaultDate ?? null));
-    setCreated(null);
-    setSubmitError(null);
-    setMode("agendar");
-    setView("agendar-1");
-  }
-
-  function startAnotherRegistrar() {
-    setAdhoc(EMPTY_ADHOC);
-    setRegistrarResult(null);
-    setSelectedActivity(null);
-    photoDrafts.reset();
-    setMode("registrar");
-    setView("registrar-pick");
+    // Sucesso vira toast no canto (Sonner discreto): o wizard fecha na
+    // hora e o CTA de abrir a atividade vive na notificação.
+    handleClose();
+    toast.success("Atividade agendada", {
+      description: channelName
+        ? `${draft.title.trim()} — ${channelName}`
+        : draft.title.trim(),
+      duration: 6000,
+      action: {
+        label: "Ver atividade",
+        onClick: () => router.push(`/atividades/${result.activityId}`),
+      },
+    });
   }
 
   function handleReset() {
@@ -1926,11 +1774,9 @@ export function ActionWizard({
     setSelectedActivity(null);
     setView(resolveInitialView());
     setDraft(emptyDraft(defaultDate ?? null));
-    setCreated(null);
     setSubmitError(null);
     setSubmitting(false);
     setAdhoc(EMPTY_ADHOC);
-    setRegistrarResult(null);
     photoDrafts.reset();
   }
 
@@ -1961,20 +1807,15 @@ export function ActionWizard({
     channelName,
     channelCtx: resolvedChannelCtx,
     loadingCtx,
-    selectedActivity,
+    selectedActivity: effectiveSelectedActivity,
     draft,
     updateDraft,
     submitting,
     submitError,
     submitAgendar,
-    created,
-    startAnotherAgendar,
     adhoc,
     updateAdhoc,
     photoDrafts,
-    registrarResult,
-    setRegistrarResult,
-    startAnotherRegistrar,
     setView,
     setMode,
     setChannel: handleSetChannel,
@@ -1983,7 +1824,6 @@ export function ActionWizard({
     close: handleClose,
   };
 
-  const isSuccess = view === "success";
   // Bifurcação no desktop = modal centrado compacto (FIX 1), não painel
   // lateral. Ambos os containers ficam montados (cada um com o próprio
   // open derivado) — trocar de container com open=true não renderiza.
@@ -2034,19 +1874,7 @@ export function ActionWizard({
               Wizard para criar ou registrar atividades
             </DrawerDescription>
 
-            {isSuccess && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={tryClose}
-                className="absolute right-4 top-4 z-10 rounded-full bg-secondary"
-              >
-                <X className="size-4" />
-                <span className="sr-only">Fechar</span>
-              </Button>
-            )}
-
-            {!isSuccess && (
+            {(
               <div className="shrink-0 border-b border-border">
                 <div className="flex items-center justify-between px-6 py-4">
                   <div className="min-w-0">
@@ -2107,12 +1935,6 @@ export function ActionWizard({
               {view === "adhoc-1" && <AdhocStep1 />}
               {view === "adhoc-2" && <AdhocStep2 />}
               {view === "adhoc-3" && <AdhocStep3 />}
-              {view === "success" &&
-                (mode === "agendar" ? (
-                  <AgendarSuccess />
-                ) : (
-                  <RegistrarSuccess />
-                ))}
             </div>
 
             {isAgendarStepView && <AgendarFooter />}

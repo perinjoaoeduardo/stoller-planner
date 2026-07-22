@@ -202,6 +202,10 @@ export default async function AtividadePage({
     getPlanProblems(activity.planId),
   ]);
 
+  // Cancelada é atividade ENCERRADA: nada de anexar foto ou editar meta
+  // — só a mudança de status fica viva (pra poder reabrir).
+  const isCancelled = activity.status === "nao_feita";
+
   // RTV navega pelos "Meus Canais"; DSM/CX pelo cockpit denso.
   const isField = profile.role === "RTV";
   const channelBase = isField ? "/meus-canais" : "/canais";
@@ -245,7 +249,7 @@ export default async function AtividadePage({
           problemId={activity.problemId}
           problemTitle={activity.problemTitle}
           problems={planProblems}
-          canEdit={canEdit || canRegister}
+          canEdit={(canEdit || canRegister) && !isCancelled}
           showPendency={needsProblemLink}
           channelHref={channelHref}
         />
@@ -366,7 +370,12 @@ export default async function AtividadePage({
       descriptionClassName="mt-1 flex"
       actions={
         isOpen && canRegister ? (
-          <NewActivityButton mode="registrar" label="Registrar" />
+          <NewActivityButton
+            mode="registrar"
+            label="Registrar"
+            channelId={activity.channelId}
+            activityId={activity.id}
+          />
         ) : null
       }
     >
@@ -401,7 +410,7 @@ export default async function AtividadePage({
           <PhotosCard
             activityId={activity.id}
             photos={activity.photos}
-            canManage={canRegister}
+            canManage={canRegister && !isCancelled}
           />
 
           {executionEvent ? (
@@ -517,6 +526,8 @@ export default async function AtividadePage({
           <NewActivityButton
             mode="registrar"
             label="Registrar"
+            channelId={activity.channelId}
+            activityId={activity.id}
             size="lg"
             className="h-12 w-full text-base"
           />

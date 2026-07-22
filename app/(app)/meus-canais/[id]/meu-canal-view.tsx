@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import {
   CalendarClock,
@@ -35,8 +34,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
 } from "@/components/ui/card";
 import {
   Empty,
@@ -107,25 +104,48 @@ export function MeuCanalView({
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
   const isMobile = useIsMobile();
-  const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
-  const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>("todos");
-  const [search, setSearch] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
+  const [branchFilter, setBranchFilterRaw] = React.useState<string | null>(
     null
   );
-  const [onlyMine, setOnlyMine] = React.useState(false);
-  const [problemFilter, setProblemFilter] = React.useState<ProblemRow | null>(
+  const [kpiFilter, setKpiFilterRaw] = React.useState<KpiFilter>("todos");
+  const [search, setSearchRaw] = React.useState("");
+  const [categoryFilter, setCategoryFilterRaw] = React.useState<string | null>(
     null
   );
+  const [onlyMine, setOnlyMineRaw] = React.useState(false);
+  const [problemFilter, setProblemFilterRaw] =
+    React.useState<ProblemRow | null>(null);
   const [problemsOpen, setProblemsOpen] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<SortKey>("prazo");
   const [sortDir, setSortDir] = React.useState<SortDir>("asc");
   const [page, setPage] = React.useState(1);
 
-  // Reset paginação quando um filtro muda.
-  React.useEffect(() => {
+  // Todo filtro reseta a paginação NO PRÓPRIO evento (nada de effect —
+  // setState em effect dispara render em cascata e o lint barra).
+  const setBranchFilter = (value: string | null) => {
+    setBranchFilterRaw(value);
     setPage(1);
-  }, [branchFilter, kpiFilter, search, categoryFilter, onlyMine, problemFilter]);
+  };
+  const setKpiFilter = (value: KpiFilter) => {
+    setKpiFilterRaw(value);
+    setPage(1);
+  };
+  const setSearch = (value: string) => {
+    setSearchRaw(value);
+    setPage(1);
+  };
+  const setCategoryFilter = (value: string | null) => {
+    setCategoryFilterRaw(value);
+    setPage(1);
+  };
+  const setOnlyMine = (value: boolean) => {
+    setOnlyMineRaw(value);
+    setPage(1);
+  };
+  const setProblemFilter = (value: ProblemRow | null) => {
+    setProblemFilterRaw(value);
+    setPage(1);
+  };
 
   const filteredByBranch = React.useMemo(
     () =>
@@ -269,13 +289,6 @@ export function MeuCanalView({
     [activities, profileId]
   );
   const showOnlyMine = mineCount > 0 && mineCount < activities.length;
-
-  const filtersActive =
-    kpiFilter !== "todos" ||
-    search.trim().length > 0 ||
-    categoryFilter !== null ||
-    onlyMine ||
-    problemFilter !== null;
 
   function clearFilters() {
     setKpiFilter("todos");

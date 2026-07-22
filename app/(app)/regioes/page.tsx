@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Map, Store, Users } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";
+import { HealthMark } from "@/components/shared/health-mark";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Empty,
@@ -14,27 +15,19 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { requireCx } from "@/lib/auth/scope";
 import { getRegionCards, type RegionCard } from "@/lib/db/cx";
-import { HEALTH_CONFIG } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 function RegionCardItem({ region }: { region: RegionCard }) {
-  const health = HEALTH_CONFIG[region.health];
-
   return (
     <Link href={`/regioes/${region.id}`} className="group">
-      <Card className="h-full gap-4 transition-colors group-hover:border-primary/40 group-hover:bg-muted/40">
+      {/* Hover canônico (ClickableCard): borda um passo + shadow-elevated. */}
+      <Card className="h-full gap-4 shadow-card transition-[background-color,border-color,box-shadow] duration-base ease-standard group-hover:border-border-hover group-hover:shadow-elevated">
         <CardHeader className="gap-1">
           <div className="flex items-start justify-between gap-2">
             <h2 className="font-semibold leading-snug">{region.name}</h2>
-            <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <span
-                aria-hidden
-                className={cn("size-2 rounded-full", health.dotClass)}
-              />
-              {health.label}
-            </span>
+            <HealthMark health={region.health} className="shrink-0" />
           </div>
           <p className="flex items-center gap-3 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">

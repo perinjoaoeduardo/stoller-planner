@@ -25,10 +25,7 @@ import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
-import {
-  StatusBadge,
-  type ActivityStatus,
-} from "@/components/shared/status-badge";
+import { type ActivityStatus } from "@/components/shared/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +43,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
-import { cn } from "@/lib/utils";
 
 const OPEN = new Set<ActivityStatus>(["planejada", "atrasada"]);
 
@@ -97,34 +93,49 @@ export function MyActivitiesList({
   const mapInitial = (s: InitialStatus): KpiFilter =>
     s === "todas" ? "todos" : s;
 
-  const [kpiFilter, setKpiFilter] = React.useState<KpiFilter>(
+  const [kpiFilter, setKpiFilterRaw] = React.useState<KpiFilter>(
     mapInitial(initialStatus)
   );
-  const [search, setSearch] = React.useState("");
-  const [channelId, setChannelId] = React.useState<string | null>(null);
-  const [branchId, setBranchId] = React.useState<string | null>(null);
-  const [categoryFilter, setCategoryFilter] = React.useState<string | null>(
+  const [search, setSearchRaw] = React.useState("");
+  const [channelId, setChannelIdRaw] = React.useState<string | null>(null);
+  const [branchId, setBranchIdRaw] = React.useState<string | null>(null);
+  const [categoryFilter, setCategoryFilterRaw] = React.useState<string | null>(
     null
   );
-  const [metaFilter, setMetaFilter] = React.useState<string | null>(null);
+  const [metaFilter, setMetaFilterRaw] = React.useState<string | null>(null);
   const [sortKey, setSortKey] = React.useState<SortKey>("prazo");
   const [sortDir, setSortDir] = React.useState<SortDir>("asc");
   const [page, setPage] = React.useState(1);
 
-  // Reset paginação quando qualquer filtro muda.
-  React.useEffect(() => {
+  // Todo filtro reseta a paginação NO PRÓPRIO evento (nada de effect —
+  // setState em effect dispara render em cascata e o lint barra).
+  const setKpiFilter = (value: KpiFilter) => {
+    setKpiFilterRaw(value);
     setPage(1);
-  }, [kpiFilter, search, channelId, branchId, categoryFilter, metaFilter]);
-
-  // Reset filial e meta quando o canal muda.
-  const previousChannel = React.useRef<string | null>(null);
-  React.useEffect(() => {
-    if (previousChannel.current !== channelId) {
-      previousChannel.current = channelId;
-      setBranchId(null);
-      setMetaFilter(null);
-    }
-  }, [channelId]);
+  };
+  const setSearch = (value: string) => {
+    setSearchRaw(value);
+    setPage(1);
+  };
+  const setBranchId = (value: string | null) => {
+    setBranchIdRaw(value);
+    setPage(1);
+  };
+  const setCategoryFilter = (value: string | null) => {
+    setCategoryFilterRaw(value);
+    setPage(1);
+  };
+  const setMetaFilter = (value: string | null) => {
+    setMetaFilterRaw(value);
+    setPage(1);
+  };
+  // Trocar de canal também derruba filial e meta (filtros hierárquicos).
+  const setChannelId = (value: string | null) => {
+    setChannelIdRaw(value);
+    setBranchIdRaw(null);
+    setMetaFilterRaw(null);
+    setPage(1);
+  };
 
   const channels = React.useMemo(() => {
     const seen = new Map<string, string>();
@@ -258,8 +269,11 @@ export function MyActivitiesList({
     const rows = [...filtered];
     if (sortKey === "prazo") {
       rows.sort((a, b) => {
-        const lateA = a.status === "atrasada" ? 0 : 1;
-        const lateB = b.status === "atrasada" ? 0 : 1;
+        // Atrasadas primeiro; canceladas sempre no fim da fila.
+        const rank = (s: string) =>
+          s === "atrasada" ? 0 : s === "nao_feita" ? 2 : 1;
+        const lateA = rank(a.status);
+        const lateB = rank(b.status);
         if (lateA !== lateB) return lateA - lateB;
         const dueA = a.dueDate ?? "9999-12-31";
         const dueB = b.dueDate ?? "9999-12-31";

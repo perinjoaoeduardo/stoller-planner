@@ -118,24 +118,6 @@ export function CompleteActivity({
 
   const showTip = photos.length === 0 && description.trim().length === 0;
 
-  const MetaRow = ({
-    icon: Icon,
-    label,
-    children,
-  }: {
-    icon: typeof MapPin;
-    label: string;
-    children: React.ReactNode;
-  }) => (
-    <div className="flex items-start gap-3 min-w-0">
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <div className="min-w-0 text-sm font-medium">{children}</div>
-      </div>
-    </div>
-  );
-
   return (
     <PageShell
       title="Concluir atividade"
@@ -420,5 +402,27 @@ export function CompleteActivity({
         onConfirm={() => void submit()}
       />
     </PageShell>
+  );
+}
+
+/** Linha de metadado ícone + label + valor (fora do render — o lint
+ *  barra componente criado dentro do componente pai). */
+function MetaRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: typeof MapPin;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 min-w-0">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <div className="min-w-0 text-sm font-medium">{children}</div>
+      </div>
+    </div>
   );
 }

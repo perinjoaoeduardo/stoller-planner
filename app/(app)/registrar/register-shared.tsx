@@ -212,6 +212,91 @@ export function PhotoNudgeDrawer({
   );
 }
 
+/**
+ * Variante do nudge para DENTRO do wizard (Drawer): em vez de abrir um
+ * Dialog fora do painel, escurece e desfoca o próprio drawer e o card
+ * de confirmação nasce ali dentro — o contexto do fluxo não se perde.
+ * (O overlay é `absolute inset-0` e ancora no DrawerContent, que é o
+ * ancestral posicionado mais próximo.)
+ */
+export function PhotoNudgeOverlay({
+  open,
+  onOpenChange,
+  onAddPhoto,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAddPhoto: () => void;
+  onConfirm: () => void;
+}) {
+  // Escape fecha SÓ o nudge, nunca o drawer atrás — captura antes do
+  // listener do Drawer e corta a propagação.
+  React.useEffect(() => {
+    if (!open) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      event.preventDefault();
+      onOpenChange(false);
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onOpenChange]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      // rounded-4xl acompanha o raio do drawer-popup — sem isso o véu
+      // de blur fica com canto reto vazando por cima da curva do painel.
+      className="absolute inset-0 z-50 flex items-center justify-center overflow-hidden rounded-4xl bg-black/45 p-6 backdrop-blur-sm duration-base animate-in fade-in"
+      onClick={() => onOpenChange(false)}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="photo-nudge-title"
+        className="w-full max-w-sm rounded-xl border border-border bg-popover p-6 shadow-elevated duration-base ease-emphasized animate-in fade-in zoom-in-95 slide-in-from-bottom-2"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <h3 id="photo-nudge-title" className="text-base font-semibold">
+          Sem foto?
+        </h3>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          A evidência fortalece o registro nas reuniões com o canal. Concluir
+          mesmo assim?
+        </p>
+        <div className="mt-5 flex flex-col gap-2">
+          <Button
+            size="lg"
+            className="h-11 w-full"
+            autoFocus
+            onClick={() => {
+              onOpenChange(false);
+              onAddPhoto();
+            }}
+          >
+            <Camera className="size-4" />
+            Adicionar foto
+          </Button>
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-11 w-full"
+            onClick={() => {
+              onOpenChange(false);
+              onConfirm();
+            }}
+          >
+            Concluir sem foto
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Tela de sucesso — a recompensa do registro. */
 export function SuccessScreen({
   title,

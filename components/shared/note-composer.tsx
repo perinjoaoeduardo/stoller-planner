@@ -20,7 +20,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { createNote } from "@/lib/actions/notes";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
 
 /**
  * Composer das Notas do Canal.
@@ -71,7 +70,12 @@ export function NoteComposer({
   /** Incrementar força a abertura (usado pelo CTA do empty state). */
   expandedSignal?: number;
 }) {
-  const [expanded, setExpanded] = React.useState(false);
+  // Aberto = clique manual OU sinal externo ainda não dispensado.
+  // Derivado no render (sem setState em effect): fechar registra qual
+  // sinal foi visto, então o próximo incremento reabre.
+  const [manualExpanded, setManualExpanded] = React.useState(false);
+  const [dismissedSignal, setDismissedSignal] = React.useState(0);
+  const expanded = manualExpanded || expandedSignal > dismissedSignal;
   const [body, setBody] = React.useState("");
   const [photoPath, setPhotoPath] = React.useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = React.useState<string | null>(null);
@@ -79,28 +83,24 @@ export function NoteComposer({
   const [confirmDiscard, setConfirmDiscard] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-
-  React.useEffect(() => {
-    if (expandedSignal > 0) {
-      setExpanded(true);
-      // Espera o textarea montar antes de focar.
-      requestAnimationFrame(() => textareaRef.current?.focus());
-    }
-  }, [expandedSignal]);
 
   const dirty = body.trim() !== "" || !!photoPath;
+
+  function collapse() {
+    setManualExpanded(false);
+    setDismissedSignal(expandedSignal);
+  }
 
   function reset() {
     setBody("");
     setPhotoPath(null);
     setPhotoPreview(null);
-    setExpanded(false);
+    collapse();
   }
 
   function requestClose() {
     if (dirty) setConfirmDiscard(true);
-    else setExpanded(false);
+    else collapse();
   }
 
   async function handleFile(file: File) {
@@ -148,14 +148,11 @@ export function NoteComposer({
       <Card
         role="button"
         tabIndex={0}
-        onClick={() => {
-          setExpanded(true);
-          requestAnimationFrame(() => textareaRef.current?.focus());
-        }}
+        onClick={() => setManualExpanded(true)}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            setExpanded(true);
+            setManualExpanded(true);
           }
         }}
         className="flex cursor-pointer flex-row items-center gap-3 px-4 py-3 transition-colors hover:bg-hover-surface"
@@ -179,7 +176,9 @@ export function NoteComposer({
     <>
       <Card className="gap-0 p-4">
         <Textarea
-          ref={textareaRef}
+          // Foca ao montar — o composer só expande por gesto do usuário
+          // (clique aqui ou CTA do empty state), então o foco é esperado.
+          autoFocus
           value={body}
           onChange={(event) => setBody(event.target.value)}
           onKeyDown={(event) => {
