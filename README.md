@@ -63,7 +63,9 @@ a base de demo ficar bagunçada.
 | Regra de status derivado (atrasada) | `lib/db/status.ts` |
 | Pipeline de fotos (limite, compressão, URLs do bucket) | `lib/photos.ts` |
 | Tokens de cor/tema (light/dark, sidebar, gráficos) | `app/globals.css` (ver Constituição Visual em `/design-system`) |
-| Quem vê o quê (escopo por perfil) | `lib/auth/scope.ts` |
+| Quem vê o quê (escopo por perfil) | `lib/auth/scope.ts` (guard de action: `requireChannelAccess`) |
+| Rotas revalidadas após uma mutação | `lib/revalidate.ts` (rota nova entra ali, uma vez) |
+| Tipos compartilhados client ↔ actions | `lib/types.ts` |
 | Textos/ícones da linha do tempo | `lib/activity-events.ts` |
 
 ## Estrutura
@@ -76,6 +78,8 @@ components/shared/    peças canônicas do produto (StatusBadge, StatCard, Canal
 components/app/       componentes de feature (wizard, drawer, tabelas, gráficos)
 lib/config.ts         parâmetros de negócio num só lugar
 lib/photos.ts         pipeline único de fotos (bucket activity-photos)
+lib/types.ts          tipos compartilhados entre client e server actions
+lib/revalidate.ts     revalidação de rotas pós-mutação (lista única)
 lib/auth/             sessão + escopo por perfil
 lib/db/               queries (server); lib/actions/ = server actions
 hooks/                use-mobile, use-media-query

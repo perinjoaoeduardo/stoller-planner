@@ -1,20 +1,23 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import {
   isCategoryRequired,
   isDescriptionRequired,
 } from "@/lib/activities/rules";
-import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
+import { ACTIVITY_CATEGORIES } from "@/lib/config";
 import {
   canRegisterExecution,
   getCurrentProfile,
   getScopedBranchIds,
-  getScopedChannelIds,
+  requireChannelAccess,
 } from "@/lib/auth/scope";
 import { logActivityEvent } from "@/lib/db/events";
+import { revalidateActivityPaths } from "@/lib/revalidate";
 import { createClient } from "@/lib/supabase/server";
+import type {
+  RegisterExecutionInput,
+  RegisterExecutionResult,
+} from "@/lib/types";
 
 /**
  * Server action do fluxo "Registrar execução" (Bloco 4).
@@ -25,33 +28,6 @@ import { createClient } from "@/lib/supabase/server";
 
 const GENERIC_ERROR =
   "Não foi possível concluir o registro. Verifique o sinal e tente de novo.";
-
-export type RegisterExecutionInput = {
-  /** Atividade existente do plano (Situação A: abrir e concluir). */
-  activityId?: string;
-  /** Registro avulso (Situação B): filial onde a ação aconteceu. */
-  adhocBranchId?: string;
-  /** Registro avulso sem filial específica ("Canal geral"). */
-  adhocChannelId?: string;
-  /**
-   * O que foi feito. Obrigatória no avulso; opcional na atividade
-   * planejada (o plano já descreve) — se vier diferente, atualiza a
-   * descrição da atividade.
-   */
-  description: string;
-  /** Categoria do registro avulso (obrigatória na Situação B). */
-  category?: ActivityCategory;
-  /** Problema do plano no registro avulso; null = "vincular depois". */
-  problemId?: string | null;
-  /** Marcar a atividade como concluída ao registrar. */
-  markCompleted: boolean;
-  /** Caminhos no bucket activity-photos, já enviados pelo client. */
-  photoPaths: string[];
-};
-
-export type RegisterExecutionResult =
-  | { ok: true; activityId: string; completed: boolean }
-  | { ok: false; error: string };
 
 /** Título do registro avulso: primeiras palavras da descrição. */
 function titleFromDescription(description: string): string {
@@ -153,8 +129,7 @@ export async function registerExecution(
     } else {
       // Canal geral: sem filial específica
       resolvedChannelId = input.adhocChannelId!;
-      const channelIds = await getScopedChannelIds(profile);
-      if (!channelIds.includes(resolvedChannelId)) {
+      if (!(await requireChannelAccess(resolvedChannelId))) {
         return { ok: false, error: "Você não atua neste canal." };
       }
     }
@@ -244,13 +219,7 @@ export async function registerExecution(
       : `Execução registrada por ${profile.fullName}`,
   });
 
-  revalidatePath("/");
-  revalidatePath("/minhas-atividades");
-  revalidatePath("/atividades");
-  revalidatePath(`/atividades/${activityId}`);
-  revalidatePath("/canais");
-  revalidatePath(`/canais/${channelId}`);
-  revalidatePath("/registrar");
+  revalidateActivityPaths(channelId, activityId);
 
   return { ok: true, activityId, completed };
 }

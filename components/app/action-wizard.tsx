@@ -71,12 +71,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { registerExecution } from "@/lib/actions/execution";
-import {
-  getWizardChannelContext,
-  scheduleActivity,
-  type WizardActivity,
-  type WizardChannelContext,
-} from "@/lib/actions/wizard";
+import { getWizardChannelContext, scheduleActivity } from "@/lib/actions/wizard";
+import type { WizardActivity, WizardChannelContext } from "@/lib/types";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   ACTIVITY_CATEGORIES,

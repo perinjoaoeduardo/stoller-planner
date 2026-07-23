@@ -164,6 +164,20 @@ export const getScopedBranchIds = cache(
 );
 
 /**
+ * Guard padrão dos server actions: usuário logado + canal no escopo.
+ * Devolve o profile quando o canal é visível; null quando não é.
+ * getCurrentProfile/getScopedChannelIds são cacheados por request —
+ * chamar isto depois deles não custa query extra.
+ */
+export async function requireChannelAccess(
+  channelId: string
+): Promise<CurrentProfile | null> {
+  const profile = await getCurrentProfile();
+  const channelIds = await getScopedChannelIds(profile);
+  return channelIds.includes(channelId) ? profile : null;
+}
+
+/**
  * DSM linkado ao canal e CX podem editar plano/problemas/atividades.
  * RTV/RDC não editam plano.
  */

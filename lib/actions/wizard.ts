@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import {
   OPEN_STATUSES,
   type ActivityStatus,
@@ -10,18 +8,31 @@ import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
 import {
   getCurrentProfile,
   getScopedChannelIds,
+  requireChannelAccess,
 } from "@/lib/auth/scope";
 import { setAssignees } from "@/lib/db/assignees";
-import {
-  getChannelResponsibles,
-  type ResponsibleOption,
-} from "@/lib/db/channels";
+import { getChannelResponsibles } from "@/lib/db/channels";
 import { logActivityEvent } from "@/lib/db/events";
 import { getDisplayStatus } from "@/lib/db/status";
+import { revalidateActivityPaths } from "@/lib/revalidate";
 import { createClient } from "@/lib/supabase/server";
+import type {
+  ScheduleActivityInput,
+  ScheduleResult,
+  WizardActivity,
+  WizardChannelContext,
+} from "@/lib/types";
 
 const GENERIC_ERROR =
   "Não foi possível concluir a ação. Tente novamente em instantes.";
+
+const EMPTY_CONTEXT: WizardChannelContext = {
+  planId: null,
+  branches: [],
+  problems: [],
+  responsibles: [],
+  openActivities: [],
+};
 
 // ── Fetch channels for the wizard picker ──────────────────────────────
 
@@ -43,7 +54,6 @@ export async function getWizardChannels() {
 
   if (!channels) return [];
 
-  const OPEN = ["planejada"];
   return channels.map((ch) => {
     const activities = ch.plans[0]?.activities ?? [];
     const openCount = activities.filter((a) => {
@@ -51,7 +61,7 @@ export async function getWizardChannels() {
         status: a.status as ActivityStatus,
         dueDate: a.due_date,
       });
-      return OPEN.includes(display) || display === "atrasada";
+      return OPEN_STATUSES.includes(display);
     }).length;
     return { id: ch.id, name: ch.name, openActivityCount: openCount };
   });
@@ -65,10 +75,6 @@ export async function getWizardChannels() {
 export async function getActivityChannel(
   activityId: string
 ): Promise<{ channelId: string; channelName: string } | null> {
-  const profile = await getCurrentProfile();
-  const channelIds = await getScopedChannelIds(profile);
-  if (channelIds.length === 0) return null;
-
   const supabase = await createClient();
   const { data: activity } = await supabase
     .from("activities")
@@ -77,51 +83,18 @@ export async function getActivityChannel(
     .maybeSingle();
 
   const channel = activity?.plan?.channel;
-  if (!channel || !channelIds.includes(channel.id)) return null;
+  if (!channel) return null;
+  if (!(await requireChannelAccess(channel.id))) return null;
   return { channelId: channel.id, channelName: channel.name };
 }
 
 // ── Fetch channel context (called client-side when channel is picked) ──
 
-export type WizardActivity = {
-  id: string;
-  title: string;
-  status: ActivityStatus;
-  category: ActivityCategory | null;
-  description: string | null;
-  dueDate: string | null;
-  branchId: string | null;
-  branchName: string | null;
-  channelId: string;
-  channelName: string;
-  problemTitle: string | null;
-  assigneeCount: number;
-  isMine: boolean;
-};
-
-export type WizardChannelContext = {
-  planId: string | null;
-  branches: { id: string; name: string }[];
-  problems: { id: string; title: string }[];
-  responsibles: ResponsibleOption[];
-  openActivities: WizardActivity[];
-};
-
-
 export async function getWizardChannelContext(
   channelId: string
 ): Promise<WizardChannelContext> {
-  const profile = await getCurrentProfile();
-  const channelIds = await getScopedChannelIds(profile);
-  if (!channelIds.includes(channelId)) {
-    return {
-      planId: null,
-      branches: [],
-      problems: [],
-      responsibles: [],
-      openActivities: [],
-    };
-  }
+  const profile = await requireChannelAccess(channelId);
+  if (!profile) return EMPTY_CONTEXT;
 
   const supabase = await createClient();
 
@@ -141,15 +114,7 @@ export async function getWizardChannelContext(
     .eq("plans.status", "ativo")
     .maybeSingle();
 
-  if (!channel) {
-    return {
-      planId: null,
-      branches: [],
-      problems: [],
-      responsibles: [],
-      openActivities: [],
-    };
-  }
+  if (!channel) return EMPTY_CONTEXT;
 
   const plan = channel.plans[0];
   const branches = channel.branches
@@ -212,27 +177,11 @@ export async function getWizardChannelContext(
 
 // ── Schedule activity (PA2) ────────────────────────────────────────────
 
-export type ScheduleActivityInput = {
-  channelId: string;
-  title: string;
-  category: ActivityCategory;
-  description?: string;
-  problemId?: string | null;
-  branchId?: string | null;
-  assigneeIds: string[];
-  dueDate: string;
-};
-
-export type ScheduleResult =
-  | { ok: true; activityId: string }
-  | { ok: false; error: string };
-
 export async function scheduleActivity(
   input: ScheduleActivityInput
 ): Promise<ScheduleResult> {
-  const profile = await getCurrentProfile();
-  const channelIds = await getScopedChannelIds(profile);
-  if (!channelIds.includes(input.channelId)) {
+  const profile = await requireChannelAccess(input.channelId);
+  if (!profile) {
     return { ok: false, error: "Você não atua neste canal." };
   }
 
@@ -296,14 +245,7 @@ export async function scheduleActivity(
     description: `Atividade agendada por ${profile.fullName}`,
   });
 
-  revalidatePath("/");
-  revalidatePath("/minhas-atividades");
-  revalidatePath("/atividades");
-  revalidatePath(`/atividades/${created.id}`);
-  revalidatePath("/canais");
-  revalidatePath(`/canais/${input.channelId}`);
-  revalidatePath("/meus-canais");
-  revalidatePath(`/meus-canais/${input.channelId}`);
+  revalidateActivityPaths(input.channelId, created.id);
 
   return { ok: true, activityId: created.id };
 }

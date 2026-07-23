@@ -1,7 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-
 import type { ActivityStatus } from "@/components/shared/status-badge";
 import { STATUS_LABELS } from "@/components/shared/status-badge";
 import {
@@ -17,14 +15,14 @@ import {
 } from "@/lib/auth/scope";
 import { setAssignees } from "@/lib/db/assignees";
 import { logActivityEvent } from "@/lib/db/events";
+import { revalidateActivityPaths } from "@/lib/revalidate";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResult } from "@/lib/types";
 
 /**
  * Server actions de mutação do plano (problemas, atividades, fotos).
  * Toda action revalida escopo no servidor — o client nunca é confiável.
  */
-
-export type ActionResult = { ok: true } | { ok: false; error: string };
 
 const GENERIC_ERROR =
   "Não foi possível concluir a ação. Tente novamente em instantes.";
@@ -48,16 +46,6 @@ async function requirePlanEditor(
   if (!(await canEditPlan(profile, channelId))) return null;
   return { profile, channelId };
 }
-
-function revalidatePlanPages(channelId: string, activityId?: string) {
-  revalidatePath("/");
-  revalidatePath("/canais");
-  revalidatePath(`/canais/${channelId}`);
-  revalidatePath("/atividades");
-  if (activityId) revalidatePath(`/atividades/${activityId}`);
-}
-
-const logEvent = logActivityEvent;
 
 // ─── Problemas ───────────────────────────────────────────────────────────────
 
@@ -86,7 +74,7 @@ export async function createProblem(input: {
   });
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidatePlanPages(auth.channelId);
+  revalidateActivityPaths(auth.channelId);
   return { ok: true };
 }
 
@@ -112,7 +100,7 @@ export async function updateProblem(input: {
     .eq("id", input.problemId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidatePlanPages(auth.channelId);
+  revalidateActivityPaths(auth.channelId);
   return { ok: true };
 }
 
@@ -142,7 +130,7 @@ export async function setProblemResultado(input: {
     .eq("id", input.problemId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidatePlanPages(auth.channelId);
+  revalidateActivityPaths(auth.channelId);
   return { ok: true };
 }
 
@@ -176,7 +164,7 @@ export async function deleteProblem(input: {
     .eq("id", input.problemId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidatePlanPages(auth.channelId);
+  revalidateActivityPaths(auth.channelId);
   return { ok: true };
 }
 
@@ -223,7 +211,7 @@ export async function moveProblem(input: {
   ]);
   if (swapA.error || swapB.error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidatePlanPages(auth.channelId);
+  revalidateActivityPaths(auth.channelId);
   return { ok: true };
 }
 
@@ -295,14 +283,14 @@ export async function createActivity(
   // responsible_id — espelha em activity_assignees.
   await setAssignees(data.id, input.responsibleId ? [input.responsibleId] : []);
 
-  await logEvent({
+  await logActivityEvent({
     activityId: data.id,
     profileId: auth.profile.id,
     type: "criada",
     description: `Atividade criada por ${auth.profile.fullName}`,
   });
 
-  revalidatePlanPages(auth.channelId, data.id);
+  revalidateActivityPaths(auth.channelId, data.id);
   return { ok: true };
 }
 
@@ -352,7 +340,7 @@ export async function updateActivity(
   );
 
   if (statusChanged) {
-    await logEvent({
+    await logActivityEvent({
       activityId: input.activityId,
       profileId: auth.profile.id,
       type: "status_alterado",
@@ -360,7 +348,7 @@ export async function updateActivity(
     });
   }
 
-  revalidatePlanPages(auth.channelId, input.activityId);
+  revalidateActivityPaths(auth.channelId, input.activityId);
   return { ok: true };
 }
 
@@ -419,7 +407,7 @@ export async function updateActivityProblem(input: {
     .eq("id", input.activityId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  await logEvent({
+  await logActivityEvent({
     activityId: input.activityId,
     profileId: profile.id,
     type: "editada",
@@ -428,8 +416,7 @@ export async function updateActivityProblem(input: {
       : `Vínculo com meta removido por ${profile.fullName}`,
   });
 
-  revalidatePlanPages(activity.plan.channel_id, input.activityId);
-  revalidatePath("/minhas-atividades");
+  revalidateActivityPaths(activity.plan.channel_id, input.activityId);
   return { ok: true };
 }
 
@@ -474,7 +461,7 @@ export async function changeActivityStatus(input: {
 
   const reopened =
     activity.status === "concluida" && input.status !== "concluida";
-  await logEvent({
+  await logActivityEvent({
     activityId: input.activityId,
     profileId: profile.id,
     type: reopened ? "reaberta" : "status_alterado",
@@ -483,7 +470,7 @@ export async function changeActivityStatus(input: {
       : `Status alterado de "${STATUS_LABELS[activity.status as ActivityStatus]}" para "${STATUS_LABELS[input.status]}" por ${profile.fullName}`,
   });
 
-  revalidatePlanPages(activity.plan.channel_id, input.activityId);
+  revalidateActivityPaths(activity.plan.channel_id, input.activityId);
   return { ok: true };
 }
 
@@ -522,14 +509,14 @@ export async function registerActivityPhoto(input: {
   });
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  await logEvent({
+  await logActivityEvent({
     activityId: input.activityId,
     profileId: profile.id,
     type: "foto_adicionada",
     description: `Foto adicionada por ${profile.fullName}`,
   });
 
-  revalidatePlanPages(activity.plan.channel_id, input.activityId);
+  revalidateActivityPaths(activity.plan.channel_id, input.activityId);
   return { ok: true };
 }
 
@@ -572,13 +559,13 @@ export async function deleteActivityPhoto(input: {
       .remove([photo.storage_path]);
   }
 
-  await logEvent({
+  await logActivityEvent({
     activityId: photo.activity_id,
     profileId: profile.id,
     type: "foto_removida",
     description: `Foto removida por ${profile.fullName}`,
   });
 
-  revalidatePlanPages(photo.activity.plan.channel_id, photo.activity_id);
+  revalidateActivityPaths(photo.activity.plan.channel_id, photo.activity_id);
   return { ok: true };
 }

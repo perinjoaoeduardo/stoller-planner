@@ -5,8 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentProfile } from "@/lib/auth/scope";
 import { getUserLinksSummary, type UserLinksSummary } from "@/lib/db/settings";
 import { createClient } from "@/lib/supabase/server";
-
-type ActionResult = { ok: true } | { ok: false; error: string };
+import type { ActionResult } from "@/lib/types";
 
 /** Atualiza o nome do próprio usuário (Configurações → Perfil). */
 export async function updateProfileName(

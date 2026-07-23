@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResult } from "@/lib/types";
 
 /**
  * O planner tem acesso CONTROLADO: contas são criadas pela
@@ -21,8 +22,6 @@ const requestSchema = z.object({
 });
 
 export type AccessRequestInput = z.infer<typeof requestSchema>;
-
-type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function submitAccessRequest(
   input: AccessRequestInput

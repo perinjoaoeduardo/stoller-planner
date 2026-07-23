@@ -1,12 +1,10 @@
 "use server";
 
 import { NOTES_MAX_BODY, NOTES_MAX_PINNED } from "@/lib/config";
-
-import { revalidatePath } from "next/cache";
-
-import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
-
+import { getCurrentProfile, requireChannelAccess } from "@/lib/auth/scope";
+import { revalidateNotePaths } from "@/lib/revalidate";
 import { createClient } from "@/lib/supabase/server";
+import type { ActionResult } from "@/lib/types";
 
 /**
  * Actions das Notas do Canal.
@@ -16,23 +14,7 @@ import { createClient } from "@/lib/supabase/server";
  * - editar/deletar: só o autor
  */
 
-type ActionResult = { ok: true } | { ok: false; error: string };
-
 const GENERIC_ERROR = "Não foi possível salvar. Tente de novo.";
-
-/** Confirma que o canal está no escopo de quem chama. */
-async function requireChannelAccess(channelId: string) {
-  const profile = await getCurrentProfile();
-  const channelIds = await getScopedChannelIds(profile);
-  if (!channelIds.includes(channelId)) return null;
-  return profile;
-}
-
-function revalidateNotes(channelId: string) {
-  revalidatePath(`/canais/${channelId}/notas`);
-  revalidatePath(`/canais/${channelId}`);
-  revalidatePath(`/meus-canais/${channelId}`);
-}
 
 export async function createNote(input: {
   channelId: string;
@@ -59,7 +41,7 @@ export async function createNote(input: {
   });
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidateNotes(input.channelId);
+  revalidateNotePaths(input.channelId);
   return { ok: true };
 }
 
@@ -92,7 +74,7 @@ export async function updateNote(input: {
     .eq("id", input.noteId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidateNotes(note.channel_id);
+  revalidateNotePaths(note.channel_id);
   return { ok: true };
 }
 
@@ -124,7 +106,7 @@ export async function deleteNote(input: {
     .eq("id", input.noteId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidateNotes(note.channel_id);
+  revalidateNotePaths(note.channel_id);
   return { ok: true };
 }
 
@@ -173,6 +155,6 @@ export async function toggleNotePin(input: {
     .eq("id", input.noteId);
   if (error) return { ok: false, error: GENERIC_ERROR };
 
-  revalidateNotes(note.channel_id);
+  revalidateNotePaths(note.channel_id);
   return { ok: true };
 }
