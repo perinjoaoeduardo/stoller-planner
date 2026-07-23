@@ -32,6 +32,19 @@ export const STATUS_LABELS: Record<ActivityStatus, string> = {
 };
 
 /**
+ * Cor canônica de cada status EM GRÁFICO — a mesma em todas as telas.
+ * Segue a semântica dos badges: verde = conclusão, âmbar = atraso,
+ * abertos/cancelados são neutros. Azul nunca codifica status — é a cor
+ * de série única de dado (chart-1).
+ */
+export const STATUS_CHART_COLORS: Record<ActivityStatus, string> = {
+  planejada: "var(--border-active)",
+  concluida: "var(--success)",
+  atrasada: "var(--warning)",
+  nao_feita: "var(--border-hover)",
+};
+
+/**
  * Badge de status ÚNICO do app (Constituição, item 2): âmbar é o alerta
  * de atraso, verde é conclusão, o resto é neutro. NUNCA vermelho em
  * badge — o vermelho pertence ao texto de prazo vencido (lib/deadline).

@@ -153,17 +153,18 @@
   --cat-demanda-bg: #e0f2fe;
   --cat-demanda-fg: #0369a1;
 
-  /* ── Gráficos — paleta semântica com identidade de marca ─────────────
-     Ordem calibrada para os charts de status (planejada → em andamento
-     → concluída → atrasada → não feita): vai do azul claro até o azul
-     vibrant da Corteva, atravessa pro verde Stoller (sucesso), sobe pro
-     âmbar (atenção) e termina em neutro (inerte). Séries únicas usam
-     chart-1 — o azul Corteva primário, cor de "dado" do produto. */
-  --chart-1: var(--blue-500); /* Azul Corteva 500 — planejada / série única */
-  --chart-2: var(--blue-700); /* Azul Corteva 700 — em andamento (deeper) */
-  --chart-3: #96cb40;         /* Verde Stoller — concluída (sucesso) */
-  --chart-4: #f59e0b;         /* Âmbar 500 — atrasada (atenção) */
-  --chart-5: #94a3b8;         /* Slate 400 — não feita (inerte) */
+  /* ── Gráficos ────────────────────────────────────────────────────────
+     Azul NUNCA codifica status — é a cor de "dado" (série única =
+     chart-1; segunda série do mesmo dado = chart-2). Gráficos de STATUS
+     não usam esta paleta: usam STATUS_CHART_COLORS (status-badge.tsx),
+     que segue os badges (verde = conclusão, âmbar = atraso, resto
+     neutro). chart-3..5 são apelidos dos tokens semânticos para uso
+     eventual em série categórica. */
+  --chart-1: var(--blue-500);      /* Azul Corteva — série única de dado */
+  --chart-2: var(--blue-700);      /* segunda série do mesmo dado */
+  --chart-3: var(--success);       /* sucesso/conclusão */
+  --chart-4: var(--warning);       /* atenção/atraso */
+  --chart-5: var(--border-active); /* neutro/inerte */
 
   /* Radius base: card = rounded-xl (0.75rem via escala), sub-container
      = rounded-lg, chips/inputs = rounded-md, pills/barras = rounded-full.
@@ -258,14 +259,12 @@
   --shadow-card: none;
   --shadow-elevated: 0 8px 24px rgb(0 0 0 / 0.5);
 
-  /* Gráficos no dark — um passo mais luminoso para manter contraste
-     sobre a camada 1 (#17171b). Verde Stoller e âmbar ganham brilho,
-     azul vai pro Corteva 400, neutro pro zinc 500. */
-  --chart-1: var(--blue-400); /* Azul Corteva 400 — planejada / série única */
-  --chart-2: var(--blue-500); /* Azul Corteva 500 — em andamento */
-  --chart-3: #a8db55;         /* Verde Stoller +Δ luminosidade */
-  --chart-4: #fbbf24;         /* Âmbar 400 */
-  --chart-5: #64748b;         /* Slate 500 */
+  /* Gráficos no dark — azul um passo mais luminoso para manter
+     contraste sobre a camada 1. chart-3..5 são apelidos de tokens
+     semânticos (--success/--warning/--border-active), que já têm
+     versão dark própria — herdam automaticamente, sem override. */
+  --chart-1: var(--blue-400); /* Azul Corteva 400 — série única de dado */
+  --chart-2: var(--blue-500); /* segunda série do mesmo dado */
 
   /* Sidebar dark = mesmos tokens do light (a sidebar já é escura nos
      dois temas, não precisa de override). Se algum dia quisermos uma

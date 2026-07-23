@@ -3,7 +3,10 @@
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import type { ActivityStatus } from "@/components/shared/status-badge";
-import { STATUS_LABELS } from "@/components/shared/status-badge";
+import {
+  STATUS_CHART_COLORS,
+  STATUS_LABELS,
+} from "@/components/shared/status-badge";
 import {
   ChartContainer,
   ChartTooltip,
@@ -11,15 +14,14 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-// Distribuição POR STATUS: cada barra na cor semântica do próprio
-// status (não na paleta genérica chart-1..5). Nada de azul saturado —
-// os abertos são neutros, concluída = verde, atrasada = âmbar.
+// Distribuição POR STATUS: cada barra na cor canônica do próprio status
+// (STATUS_CHART_COLORS) — a mesma usada em qualquer gráfico de status.
 const chartConfig = {
   total: { label: "Atividades" },
-  planejada: { label: "Planejada", color: "var(--border-active)" },
-  concluida: { label: "Concluída", color: "var(--success)" },
-  atrasada: { label: "Atrasada", color: "var(--warning)" },
-  nao_feita: { label: "Cancelada", color: "var(--border-hover)" },
+  planejada: { label: "Planejada", color: STATUS_CHART_COLORS.planejada },
+  concluida: { label: "Concluída", color: STATUS_CHART_COLORS.concluida },
+  atrasada: { label: "Atrasada", color: STATUS_CHART_COLORS.atrasada },
+  nao_feita: { label: "Cancelada", color: STATUS_CHART_COLORS.nao_feita },
 } satisfies ChartConfig;
 
 export function ActivitiesStatusChart({

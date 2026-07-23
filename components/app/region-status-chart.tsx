@@ -2,6 +2,7 @@
 
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
+import { STATUS_CHART_COLORS } from "@/components/shared/status-badge";
 import type { RegionStatusDatum } from "@/lib/db/cx";
 import {
   ChartContainer,
@@ -12,11 +13,14 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
+// Mesmas cores de status do gráfico do canal (STATUS_CHART_COLORS):
+// antes este gráfico usava a paleta chart-1..5 (planejada azul saturado,
+// concluída verde-limão da marca antiga) e divergia do resto do app.
 const chartConfig = {
-  concluida: { label: "Concluída", color: "var(--chart-3)" },
-  planejada: { label: "Planejada", color: "var(--chart-1)" },
-  atrasada: { label: "Atrasada", color: "var(--chart-4)" },
-  nao_feita: { label: "Cancelada", color: "var(--chart-5)" },
+  concluida: { label: "Concluída", color: STATUS_CHART_COLORS.concluida },
+  planejada: { label: "Planejada", color: STATUS_CHART_COLORS.planejada },
+  atrasada: { label: "Atrasada", color: STATUS_CHART_COLORS.atrasada },
+  nao_feita: { label: "Cancelada", color: STATUS_CHART_COLORS.nao_feita },
 } satisfies ChartConfig;
 
 const STACK_KEYS = [
