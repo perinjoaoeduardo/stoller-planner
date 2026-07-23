@@ -1,11 +1,10 @@
-import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { formatMonthShort } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,13 +41,6 @@ function levelOf(total: number): number {
   if (total <= 4) return 2;
   if (total <= 7) return 3;
   return 4;
-}
-
-function monthLabel(month: string) {
-  return format(parseISO(`${month}-01`), "MMM yy", { locale: ptBR }).replace(
-    ".",
-    ""
-  );
 }
 
 export function SeasonHeatmap({
@@ -109,7 +101,7 @@ export function SeasonHeatmap({
                   ) : null}
                 </TooltipTrigger>
                 <TooltipContent>
-                  {monthLabel(entry.month)}
+                  {formatMonthShort(entry.month)}
                   {isFuture
                     ? " · ainda não iniciado"
                     : `: ${entry.total} ${
@@ -123,7 +115,7 @@ export function SeasonHeatmap({
                   isFuture && "opacity-60"
                 )}
               >
-                {monthLabel(entry.month)}
+                {formatMonthShort(entry.month)}
               </span>
               {isCurrent ? (
                 <span className="text-[10px] text-accent-brand">atual</span>

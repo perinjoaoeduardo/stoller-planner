@@ -8,9 +8,6 @@ import { createClient } from "@/lib/supabase/server";
  * resto do projeto.
  */
 
-/** Limite de notas fixadas por canal (soft cap validado na action). */
-export const MAX_PINNED_NOTES = 5;
-
 export type ChannelNote = {
   id: string;
   body: string;

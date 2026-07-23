@@ -10,7 +10,7 @@ Conceito central: Problema → Atividades → Resultado, por safra, por
 canal.
 
 ## Stack
-Next.js 15 App Router, TS, Tailwind v4, shadcn/ui (preset customizado),
+Next.js 16 App Router, TS, Tailwind v4, shadcn/ui (preset customizado),
 Supabase, pnpm.
 
 ## Padrões
@@ -61,16 +61,21 @@ Implementações genéricas de shadcn ficam mornas. Evite.
 Use o MCP do shadcn para buscar e instalar em vez de recriar.
 
 ## Estrutura
-/app — rotas
+/app — rotas ((app) autenticado, (auth) público)
 /components/ui — shadcn (não editar manualmente)
-/components/app — componentes do produto (PageShell, StatusBadge,
-BrandLogo...)
+/components/shared — peças canônicas (StatusBadge, StatCard, CanalCard,
+HealthMark, ActivityTable...)
+/components/app — componentes de feature (wizard, drawer, tabelas)
+/lib/config.ts — parâmetros de negócio num só lugar
+/lib/photos.ts — pipeline único de fotos
+/lib/auth — sessão + escopo por perfil
 /lib/supabase — clients
-/lib/db — queries reutilizáveis
-/lib/types — tipos
+/lib/db — queries (server); /lib/actions — server actions
+/hooks — use-mobile, use-media-query
+/scripts — seeds (pnpm tsx); proxy.ts — middleware
 
 ## Dados
-Hierarquia: regions → channels → branches. Perfis: DSM, RTV, RDC, CX.
+Hierarquia: regions → channels → branches. Perfis: DSM, RTV, CX (RDC foi removido).
 Vínculos em user_links definem o que cada um vê. Plano por canal por
 safra; problems e activities pertencem ao plano; activity pode ter
 problem_id nulo.

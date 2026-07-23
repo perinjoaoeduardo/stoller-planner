@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { format, parseISO, subDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, subDays } from "date-fns";
 import {
   CalendarRange,
   ClipboardList,
@@ -59,6 +58,7 @@ import { ACTIVITY_STATUSES } from "@/components/shared/status-badge";
 import type { Role } from "@/lib/auth/nav";
 import type { ReportPhoto, SeasonReport } from "@/lib/db/report";
 import { buildExecutiveSummary } from "@/lib/reports/summary";
+import { formatMonthShort } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
 
 import {
@@ -254,7 +254,7 @@ export function ReportView({
       )
     );
     const sortedMonths = [...monthsSet].sort();
-    const activeMonthLabels = sortedMonths.map(monthShort);
+    const activeMonthLabels = sortedMonths.map(formatMonthShort);
 
     return {
       done,
@@ -790,13 +790,6 @@ export function ReportView({
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function monthShort(month: string) {
-  return format(parseISO(`${month}-01`), "MMM yy", { locale: ptBR }).replace(
-    ".",
-    ""
   );
 }
 

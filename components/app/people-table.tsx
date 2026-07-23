@@ -39,14 +39,7 @@ import type { Role } from "@/lib/auth/nav";
 import { DARK_CHANNEL_DAYS } from "@/lib/config";
 import type { PersonRow } from "@/lib/db/cx";
 import { formatDaysAgo } from "@/lib/plan-utils";
-import { cn } from "@/lib/utils";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
+import { cn, getInitials } from "@/lib/utils";
 
 const ROLE_OPTIONS: SelectOption[] = [
   { value: "DSM", label: "DSM" },

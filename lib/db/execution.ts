@@ -14,7 +14,7 @@ import { createClient } from "@/lib/supabase/server";
  * pelo escopo do usuário (user_links) — nunca consulte fora dele.
  */
 
-export const OPEN_STATUSES: ActivityStatus[] = ["planejada", "atrasada"];
+export { OPEN_STATUSES } from "@/components/shared/status-badge";
 
 export type FieldActivity = {
   id: string;

@@ -14,6 +14,16 @@ export const ACTIVITY_STATUSES: ActivityStatus[] = [
   "nao_feita",
 ];
 
+/**
+ * Atividade ABERTA = planejada ou atrasada — predicado canônico (antes
+ * redefinido em ~11 arquivos). Encerradas: concluída e cancelada.
+ */
+export const OPEN_STATUSES: ActivityStatus[] = ["planejada", "atrasada"];
+
+export function isOpenStatus(status: ActivityStatus): boolean {
+  return status === "planejada" || status === "atrasada";
+}
+
 export const STATUS_LABELS: Record<ActivityStatus, string> = {
   planejada: "Planejada",
   concluida: "Concluída",

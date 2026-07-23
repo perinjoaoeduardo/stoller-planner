@@ -7,10 +7,7 @@ import { Camera } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
 
-import {
-  StatusBadge,
-  type ActivityStatus,
-} from "@/components/shared/status-badge";
+import { type ActivityStatus, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
 import {
   Avatar,
   AvatarFallback,
@@ -25,7 +22,7 @@ import {
 } from "@/components/ui/tooltip";
 import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
 import { formatRelativeDue } from "@/lib/plan-utils";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 export type ActivityCardData = {
   id: string;
@@ -39,17 +36,6 @@ export type ActivityCardData = {
   assignees: { id: string; name: string }[];
 };
 
-const OPEN_STATUSES: ActivityStatus[] = ["planejada", "atrasada"];
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 /** Texto do prazo: relativo nas abertas, data de conclusão nas feitas. */
 function dueLine(activity: ActivityCardData): string {

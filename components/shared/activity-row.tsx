@@ -4,10 +4,7 @@ import { Camera, ChevronRight } from "lucide-react";
 
 import { CategoryIconBox } from "@/components/shared/icon-box";
 import { DeadlineText } from "@/components/shared/deadline-text";
-import {
-  STATUS_LABELS,
-  type ActivityStatus,
-} from "@/components/shared/status-badge";
+import { type ActivityStatus, OPEN_STATUSES, STATUS_LABELS } from "@/components/shared/status-badge";
 import {
   Avatar,
   AvatarFallback,
@@ -19,7 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { type ActivityCategory } from "@/lib/config";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 /**
  * Linha canônica de atividade — usada na visão global agrupada
@@ -51,14 +48,7 @@ const STATUS_DOT: Record<ActivityStatus, string> = {
   nao_feita: "bg-muted-foreground/40",
 };
 
-const OPEN_STATUSES = new Set<ActivityStatus>(["planejada", "atrasada"]);
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
+const OPEN_SET = new Set<ActivityStatus>(OPEN_STATUSES);
 
 export function ActivityRow({
   activity,
@@ -73,7 +63,7 @@ export function ActivityRow({
   onRegister?: (activity: ActivityRowData) => void;
   className?: string;
 }) {
-  const open = OPEN_STATUSES.has(activity.status);
+  const open = OPEN_SET.has(activity.status);
   const assignees = activity.assignees;
   const primaryAssigneeName = assignees[0]?.name ?? null;
 

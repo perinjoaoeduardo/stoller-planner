@@ -35,15 +35,9 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { requireCx } from "@/lib/auth/scope";
 import { getChannelHealthRows, getRegionDetail } from "@/lib/db/cx";
+import { getInitials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
 
 export const metadata: Metadata = {
   title: "Região — Corteva Planner",

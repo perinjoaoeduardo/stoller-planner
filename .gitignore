@@ -40,5 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.vercel
-.env*
+# windows / onedrive
+Thumbs.db
+[Dd]esktop.ini
+
+# claude local
+.claude/settings.local.json
+
+# permitir o template de env (a regra .env* acima ignora tudo)
+!.env.local.example

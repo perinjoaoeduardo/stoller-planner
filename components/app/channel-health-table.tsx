@@ -43,14 +43,7 @@ import {
   HEALTH_CONFIG,
   type ChannelHealth,
 } from "@/lib/plan-utils";
-import { cn } from "@/lib/utils";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
+import { cn, getInitials } from "@/lib/utils";
 
 /** "há 3 dias" / "há 26 dias" (vermelho > limite) / "Nunca". */
 function LastExecutionCell({ row }: { row: ChannelHealthRow }) {

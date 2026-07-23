@@ -48,36 +48,7 @@ import {
 } from "@/lib/actions/plan";
 import type { ActivityPhotoRow } from "@/lib/db/channels";
 import { createClient } from "@/lib/supabase/client";
-
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
-
-/** Reduz a imagem no client (máx. 1600px, JPEG q0.8) antes do upload. */
-async function compressImage(file: File): Promise<Blob> {
-  if (file.size < 400 * 1024) return file;
-
-  const bitmap = await createImageBitmap(file);
-  const maxDim = 1600;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-  return new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(blob ?? file),
-      "image/jpeg",
-      0.8
-    );
-  });
-}
-
-function photoUrl(storagePath: string) {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
-}
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, compressImage, photoStoragePath, publicPhotoUrl } from "@/lib/photos";
 
 function PhotoThumb({
   photo,
@@ -105,7 +76,7 @@ function PhotoThumb({
           </span>
         ) : (
           <Image
-            src={photoUrl(photo.storagePath)}
+            src={publicPhotoUrl(photo.storagePath)}
             alt={photo.caption ?? "Evidência da atividade"}
             fill
             sizes="(max-width: 640px) 50vw, 220px"
@@ -152,11 +123,11 @@ export function PhotosCard({
     event.target.value = "";
     if (!file) return;
 
-    if (!ACCEPTED.includes(file.type)) {
+    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
       toast.error("Formato não suportado. Envie JPG, PNG ou WEBP.");
       return;
     }
-    if (file.size > MAX_SIZE) {
+    if (file.size > MAX_PHOTO_SIZE) {
       toast.error("A foto pode ter no máximo 5MB.");
       return;
     }
@@ -165,7 +136,7 @@ export function PhotosCard({
     try {
       const blob = await compressImage(file);
       const extension = blob.type === "image/jpeg" ? "jpg" : file.name.split(".").pop() ?? "jpg";
-      const path = `${activityId}/${Date.now()}.${extension}`;
+      const path = photoStoragePath(activityId, extension);
 
       const supabase = createClient();
       const { error: uploadError } = await supabase.storage
@@ -242,7 +213,7 @@ export function PhotosCard({
           <input
             ref={inputRef}
             type="file"
-            accept={ACCEPTED.join(",")}
+            accept={ACCEPTED_PHOTO_TYPES.join(",")}
             className="hidden"
             onChange={handleUpload}
           />
@@ -297,7 +268,7 @@ export function PhotosCard({
           {preview ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={photoUrl(preview.storagePath)}
+              src={publicPhotoUrl(preview.storagePath)}
               alt={preview.caption ?? "Evidência da atividade"}
               className="max-h-[70dvh] w-full rounded-2xl object-contain"
             />

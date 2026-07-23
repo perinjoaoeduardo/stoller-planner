@@ -20,6 +20,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { createNote } from "@/lib/actions/notes";
 import { createClient } from "@/lib/supabase/client";
+import { getInitials } from "@/lib/utils";
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, compressImage, photoStoragePath } from "@/lib/photos";
 
 /**
  * Composer das Notas do Canal.
@@ -28,37 +30,6 @@ import { createClient } from "@/lib/supabase/client";
  * clique. A foto é opcional e sobe direto para o bucket pelo client —
  * mesmo caminho das fotos de execução — e só o path vai para a action.
  */
-
-const MAX_PHOTO_SIZE = 10 * 1024 * 1024;
-const ACCEPTED = ["image/jpeg", "image/png", "image/webp"];
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
-
-/** Reduz a imagem antes do upload (mesma regra do registro de execução). */
-async function compressImage(file: File): Promise<Blob> {
-  if (file.size < 400 * 1024) return file;
-  const bitmap = await createImageBitmap(file);
-  const maxDim = 1600;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve) =>
-    canvas.toBlob(
-      (blob) => resolve(blob ?? file),
-      "image/jpeg",
-      0.82
-    )
-  );
-}
 
 export function NoteComposer({
   channelId,
@@ -104,7 +75,7 @@ export function NoteComposer({
   }
 
   async function handleFile(file: File) {
-    if (!ACCEPTED.includes(file.type)) {
+    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
       toast.error("Use uma imagem JPG, PNG ou WEBP.");
       return;
     }
@@ -115,7 +86,7 @@ export function NoteComposer({
     setUploading(true);
     try {
       const blob = await compressImage(file);
-      const path = `notes/${channelId}/${Date.now()}.jpg`;
+      const path = photoStoragePath(`notes/${channelId}`, "jpg");
       const supabase = createClient();
       const { error } = await supabase.storage
         .from("activity-photos")
@@ -218,7 +189,7 @@ export function NoteComposer({
           <input
             ref={inputRef}
             type="file"
-            accept={ACCEPTED.join(",")}
+            accept={ACCEPTED_PHOTO_TYPES.join(",")}
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];

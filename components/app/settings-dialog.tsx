@@ -55,7 +55,7 @@ import {
 } from "@/lib/actions/settings";
 import type { UserLinksSummary } from "@/lib/db/settings";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 /**
  * Configurações em modal (referência: block sidebar-13) — navegação
@@ -79,13 +79,6 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof UserIcon }[] = [
   { id: "vinculos", label: "Meus vínculos", icon: Link2 },
   { id: "conta", label: "Conta", icon: ShieldCheck },
 ];
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
 
 export function SettingsDialog({
   open,

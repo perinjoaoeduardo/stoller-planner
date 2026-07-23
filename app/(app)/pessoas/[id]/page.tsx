@@ -29,6 +29,7 @@ import { daysSince, isDark } from "@/lib/db/cx";
 import { getPersonDetail } from "@/lib/db/person";
 
 import { PersonActivities } from "./person-activities";
+import { getInitials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -42,13 +43,6 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   RDC: "Representante de desenvolvimento",
   CX: "Excelência comercial",
 };
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
 
 /** Aberta primeiro (atrasada > planejada por prazo), encerrada por último. */
 function sortForProfile(activities: ActivityRowData[]): ActivityRowData[] {

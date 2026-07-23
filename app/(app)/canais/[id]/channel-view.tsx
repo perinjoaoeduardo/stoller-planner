@@ -25,10 +25,7 @@ import { PageShell } from "@/components/app/page-shell";
 import { ProblemsTab } from "@/components/app/problems-tab";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { SearchableSelect } from "@/components/app/searchable-select";
-import {
-  ACTIVITY_STATUSES,
-  StatusBadge,
-} from "@/components/shared/status-badge";
+import { ACTIVITY_STATUSES, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -68,7 +65,7 @@ import type {
 } from "@/lib/db/channels";
 import { isLateActivity, todayISO } from "@/lib/db/status";
 
-const PENDING = new Set(["planejada", "atrasada"]);
+const PENDING = new Set<string>(OPEN_STATUSES);
 
 function addDaysISO(days: number) {
   const date = new Date();

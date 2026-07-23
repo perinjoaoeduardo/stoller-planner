@@ -54,6 +54,7 @@ import {
 import type { ActivityRow } from "@/lib/db/channels";
 import { formatRelativeDue } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 // ── Pills: sistema de status do app (FIX 2) — sem azul ────────────────
 
@@ -134,24 +135,6 @@ function EventPill({
 // ── Weekday headers (Mon-Sun, Brazilian standard) ──────────────────────
 
 const WEEKDAYS_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-
-// ── useMediaQuery ──────────────────────────────────────────────────────
-
-function useMediaQuery(query: string) {
-  const subscribe = React.useCallback(
-    (cb: () => void) => {
-      const mql = window.matchMedia(query);
-      mql.addEventListener("change", cb);
-      return () => mql.removeEventListener("change", cb);
-    },
-    [query]
-  );
-  const getSnapshot = React.useCallback(
-    () => window.matchMedia(query).matches,
-    [query]
-  );
-  return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
-}
 
 // ── Types ─────────────────────────────────────────────────────────────
 

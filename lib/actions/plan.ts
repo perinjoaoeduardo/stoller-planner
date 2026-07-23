@@ -433,36 +433,6 @@ export async function updateActivityProblem(input: {
   return { ok: true };
 }
 
-export async function deleteActivity(input: {
-  activityId: string;
-}): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { data: activity } = await supabase
-    .from("activities")
-    .select("plan_id, photos:activity_photos(storage_path)")
-    .eq("id", input.activityId)
-    .maybeSingle();
-  if (!activity) return { ok: false, error: "Atividade não encontrada." };
-
-  const auth = await requirePlanEditor(activity.plan_id);
-  if (!auth) return { ok: false, error: "Você não pode editar este plano." };
-
-  // Remove os arquivos do bucket antes (as linhas caem em cascata).
-  const paths = activity.photos.map((photo) => photo.storage_path);
-  if (paths.length > 0) {
-    await supabase.storage.from("activity-photos").remove(paths);
-  }
-
-  const { error } = await supabase
-    .from("activities")
-    .delete()
-    .eq("id", input.activityId);
-  if (error) return { ok: false, error: GENERIC_ERROR };
-
-  revalidatePlanPages(auth.channelId);
-  return { ok: true };
-}
-
 /**
  * Muda só o status (card "Status" do detalhe). Permissão mais ampla que
  * edição de plano: RTV/RDC responsáveis/linkados também podem.

@@ -23,13 +23,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/lib/auth/actions";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
-  return `${first}${last}`.toUpperCase();
-}
+import { getInitials } from "@/lib/utils";
 
 /** Perfil fixo no rodapé da sidebar: avatar + nome + role, abre o menu. */
 export function NavUser({ user }: { user: SettingsUser }) {

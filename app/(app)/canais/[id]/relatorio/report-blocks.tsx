@@ -54,7 +54,9 @@ import {
 import { setProblemResultado } from "@/lib/actions/plan";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import type { ReportActivity, ReportPhoto } from "@/lib/db/report";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
+import { publicPhotoUrl } from "@/lib/photos";
+export { publicPhotoUrl as photoUrl };
 
 /**
  * Blocos autônomos do Relatório de Safra. Cada export daqui é um bloco
@@ -68,10 +70,6 @@ import { cn } from "@/lib/utils";
 
 export type ReportMode = "interno" | "externo";
 
-export function photoUrl(storagePath: string) {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
-}
-
 export function formatDate(value: string | null, pattern = "dd MMM yyyy") {
   if (!value) return "—";
   return format(parseISO(value), pattern, { locale: ptBR });
@@ -79,13 +77,6 @@ export function formatDate(value: string | null, pattern = "dd MMM yyyy") {
 
 export function formatLongDate(value: string) {
   return format(parseISO(value), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
-}
-
-export function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
 }
 
 /**
@@ -223,7 +214,7 @@ export function GalleryThumb({
         </span>
       ) : (
         <Image
-          src={photoUrl(photo.storagePath)}
+          src={publicPhotoUrl(photo.storagePath)}
           alt={photo.caption ?? photo.activityTitle}
           fill
           sizes="(max-width: 640px) 33vw, 160px"

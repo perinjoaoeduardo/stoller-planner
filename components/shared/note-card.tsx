@@ -35,7 +35,8 @@ import {
 } from "@/components/ui/tooltip";
 import { deleteNote, toggleNotePin, updateNote } from "@/lib/actions/notes";
 import type { ChannelNote } from "@/lib/db/notes";
-import { cn } from "@/lib/utils";
+import { publicPhotoUrl } from "@/lib/photos";
+import { cn, getInitials } from "@/lib/utils";
 
 /**
  * Card de nota do canal — feed de aprendizados sobre o cliente.
@@ -44,17 +45,6 @@ import { cn } from "@/lib/utils";
  * apagar são só do autor. O menu já filtra por autoria, e a action
  * revalida do lado do servidor.
  */
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
-
-function photoUrl(storagePath: string) {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
-}
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
@@ -287,7 +277,7 @@ export function NoteCard({
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={photoUrl(note.photoPath)}
+                  src={publicPhotoUrl(note.photoPath)}
                   alt="Foto da nota"
                   className="max-h-64 w-auto object-cover"
                 />
@@ -313,7 +303,7 @@ export function NoteCard({
           {note.photoPath ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={photoUrl(note.photoPath)}
+              src={publicPhotoUrl(note.photoPath)}
               alt="Foto da nota"
               className="max-h-[70dvh] w-full rounded-md object-contain"
             />

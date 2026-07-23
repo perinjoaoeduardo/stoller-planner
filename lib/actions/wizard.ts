@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { ActivityStatus } from "@/components/shared/status-badge";
+import {
+  OPEN_STATUSES,
+  type ActivityStatus,
+} from "@/components/shared/status-badge";
 import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
 import {
   getCurrentProfile,
@@ -104,7 +107,6 @@ export type WizardChannelContext = {
   openActivities: WizardActivity[];
 };
 
-const OPEN_STATUSES = ["planejada", "atrasada"];
 
 export async function getWizardChannelContext(
   channelId: string

@@ -21,16 +21,16 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { createClient } from "@/lib/supabase/client";
+import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, compressImage, photoStoragePath } from "@/lib/photos";
 
 /**
  * Peças compartilhadas do fluxo Registrar (Situações A e B): fotos com
  * compressão e upload resiliente, nudge de foto e tela de sucesso.
  */
 
-export const MAX_PHOTO_SIZE = 10 * 1024 * 1024; // 10MB antes da compressão
-export const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+export { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, compressImage } from "@/lib/photos";
 export const MAX_DESCRIPTION = 500;
 
 export type PhotoDraft = {
@@ -39,28 +39,9 @@ export type PhotoDraft = {
   url: string;
 };
 
-/** Reduz a imagem no client (máx. 1600px, JPEG q0.8) antes do upload. */
-export async function compressImage(file: File): Promise<Blob> {
-  if (file.size < 400 * 1024) return file;
-
-  const bitmap = await createImageBitmap(file);
-  const maxDim = 1600;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob ?? file), "image/jpeg", 0.8);
-  });
-}
-
 /** Caminho único no bucket para a foto comprimida. */
 export function buildStoragePath(extension: string): string {
-  return `execucoes/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
+  return photoStoragePath("execucoes", extension);
 }
 
 /**

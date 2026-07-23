@@ -1,9 +1,11 @@
 "use server";
 
+import { NOTES_MAX_BODY, NOTES_MAX_PINNED } from "@/lib/config";
+
 import { revalidatePath } from "next/cache";
 
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
-import { MAX_PINNED_NOTES } from "@/lib/db/notes";
+
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -17,7 +19,6 @@ import { createClient } from "@/lib/supabase/server";
 type ActionResult = { ok: true } | { ok: false; error: string };
 
 const GENERIC_ERROR = "Não foi possível salvar. Tente de novo.";
-const MAX_BODY = 5000;
 
 /** Confirma que o canal está no escopo de quem chama. */
 async function requireChannelAccess(channelId: string) {
@@ -40,7 +41,7 @@ export async function createNote(input: {
 }): Promise<ActionResult> {
   const body = input.body.trim();
   if (!body) return { ok: false, error: "Escreva algo antes de publicar." };
-  if (body.length > MAX_BODY) {
+  if (body.length > NOTES_MAX_BODY) {
     return { ok: false, error: "A nota ficou longa demais." };
   }
 
@@ -68,7 +69,7 @@ export async function updateNote(input: {
 }): Promise<ActionResult> {
   const body = input.body.trim();
   if (!body) return { ok: false, error: "A nota não pode ficar vazia." };
-  if (body.length > MAX_BODY) {
+  if (body.length > NOTES_MAX_BODY) {
     return { ok: false, error: "A nota ficou longa demais." };
   }
 
@@ -155,10 +156,10 @@ export async function toggleNotePin(input: {
       .select("id", { count: "exact", head: true })
       .eq("channel_id", note.channel_id)
       .eq("pinned", true);
-    if ((count ?? 0) >= MAX_PINNED_NOTES) {
+    if ((count ?? 0) >= NOTES_MAX_PINNED) {
       return {
         ok: false,
-        error: `Máximo de ${MAX_PINNED_NOTES} notas fixadas. Desafixe outra antes.`,
+        error: `Máximo de ${NOTES_MAX_PINNED} notas fixadas. Desafixe outra antes.`,
       };
     }
   }

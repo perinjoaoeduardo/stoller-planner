@@ -1,8 +1,8 @@
 import { differenceInCalendarDays, parseISO } from "date-fns";
 
-import type { ActivityStatus } from "@/components/shared/status-badge";
+import { ActivityStatus, OPEN_STATUSES } from "@/components/shared/status-badge";
 import type { ActivityCategory } from "@/lib/config";
-import { DARK_CHANNEL_DAYS } from "@/lib/config";
+import { CRITICAL_OVERDUE_DAYS, DARK_CHANNEL_DAYS } from "@/lib/config";
 import type { CurrentProfile } from "@/lib/auth/scope";
 import { computeHealth, type ChannelHealth } from "@/lib/plan-utils";
 import { getDisplayStatus } from "@/lib/db/status";
@@ -18,12 +18,10 @@ import { createClient } from "@/lib/supabase/server";
  * (DARK_CHANNEL_DAYS) são aplicados aqui, nunca nos componentes.
  */
 
-const OPEN_STATUSES = new Set<ActivityStatus>(["planejada", "atrasada"]);
 
 /** Nº de atrasadas de um RTV a partir do qual vira exceção na fila. */
 const RTV_LATE_THRESHOLD = 3;
 /** Dias de atraso a partir dos quais uma atividade vira "atraso crítico". */
-const CRITICAL_OVERDUE_DAYS = 30;
 
 type Person = { id: string; name: string };
 
@@ -247,7 +245,7 @@ export async function getDsmHome(
       if (activity.responsible_id) owners.add(activity.responsible_id);
 
       // Minhas atividades (DSM é responsável ou assignee)
-      if (owners.has(profile.id) && OPEN_STATUSES.has(activity.displayStatus)) {
+      if (owners.has(profile.id) && OPEN_STATUSES.includes(activity.displayStatus)) {
         myActivities.push({
           id: activity.id,
           title: activity.title,

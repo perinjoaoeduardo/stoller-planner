@@ -1,4 +1,5 @@
-import { differenceInCalendarDays, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 /**
  * Regras puras do plano, compartilhadas entre servidor e client
@@ -37,6 +38,24 @@ export function formatRelativeDue(dueDate: string | null): string {
  * "hoje" / "há 1 dia" / "há 26 dias" / "Nunca" — usado nas colunas de
  * último registro de execução da visão CX (null = nunca registrou).
  */
+/** "12 jul 2026" (ou com hora) — formatador ptBR canônico das telas. */
+export function formatDate(value: string | null, withTime = false): string {
+  if (!value) return "—";
+  return format(
+    parseISO(value),
+    withTime ? "dd MMM yyyy 'às' HH:mm" : "dd MMM yyyy",
+    { locale: ptBR }
+  );
+}
+
+/** "jul 26" — rótulo curto de mês para heatmaps e eixos. */
+export function formatMonthShort(isoMonth: string): string {
+  return format(parseISO(`${isoMonth}-01`), "MMM yy", { locale: ptBR }).replace(
+    ".",
+    ""
+  );
+}
+
 export function formatDaysAgo(days: number | null): string {
   if (days === null) return "Nunca";
   if (days === 0) return "hoje";

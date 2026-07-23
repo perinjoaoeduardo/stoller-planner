@@ -4,7 +4,6 @@ import * as React from "react";
 import { Dialog as PanelPrimitive } from "@base-ui/react/dialog";
 import {
   differenceInCalendarDays,
-  format,
   formatDistanceToNow,
   parseISO,
 } from "date-fns";
@@ -12,18 +11,9 @@ import { ptBR } from "date-fns/locale";
 import {
   Camera,
   Check,
-  CheckCircle2,
   ChevronDown,
-  ClipboardCheck,
-  ImageMinus,
-  Link2,
-  MessageSquare,
-  Pencil,
   Plus,
-  RefreshCw,
-  RotateCcw,
   X as XIcon,
-  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -74,41 +64,29 @@ import {
   getDrawerActivity,
   type DrawerActivity,
 } from "@/lib/actions/activity-drawer";
+import { EVENT_LABELS, eventIcon } from "@/lib/activity-events";
+import { formatDate } from "@/lib/plan-utils";
 import {
   changeActivityStatus,
   deleteActivityPhoto,
   registerActivityPhoto,
 } from "@/lib/actions/plan";
+import {
+  ACCEPTED_PHOTO_TYPES,
+  MAX_PHOTO_SIZE,
+  compressImage,
+  photoStoragePath,
+  publicPhotoUrl,
+} from "@/lib/photos";
 import { CATEGORY_LABELS } from "@/lib/config";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
-
-const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+import { cn, getInitials } from "@/lib/utils";
 
 // Ritmo compartilhado entre os cards do painel (FIX 11): padding de 20px
 // (p-5) e cabeçalho com respiro fixo antes do conteúdo. Aplicar em todos
 // os blocos — Situação, Sobre, Evidências, Linha do tempo.
 const PANEL_CARD = "[--card-spacing:--spacing(5)]";
 const PANEL_CARD_HEADER = "pb-4";
-
-/** Reduz a imagem no client (máx. 1600px, JPEG q0.8) antes do upload —
- *  espelha o pipeline usado no PhotosCard da tela cheia. */
-async function compressImage(file: File): Promise<Blob> {
-  if (file.size < 400 * 1024) return file;
-  const bitmap = await createImageBitmap(file);
-  const maxDim = 1600;
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob ?? file), "image/jpeg", 0.8);
-  });
-}
 
 // ── Context ──────────────────────────────────────────────────────────
 
@@ -287,56 +265,6 @@ function DrawerSkeleton() {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-function formatDate(value: string | null, withTime = false) {
-  if (!value) return "—";
-  return format(
-    parseISO(value),
-    withTime ? "dd MMM yyyy 'às' HH:mm" : "dd MMM yyyy",
-    { locale: ptBR }
-  );
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-const EVENT_LABELS: Record<string, string> = {
-  criada: "Atividade criada",
-  editada: "Atividade editada",
-  status_alterado: "Status alterado",
-  foto_adicionada: "Foto adicionada",
-  foto_removida: "Foto removida",
-  execucao_registrada: "Execução registrada",
-  reaberta: "Atividade reaberta",
-  problema_vinculado: "Meta vinculada",
-};
-
-/** Ícone semântico por evento; conclusão ganha o check verde da vida. */
-function eventIcon(type: string, description: string | null): LucideIcon {
-  if (type === "status_alterado" && description?.includes('para "Concluída"')) {
-    return CheckCircle2;
-  }
-  if (type === "execucao_registrada" && description) {
-    return MessageSquare;
-  }
-  const icons: Record<string, LucideIcon> = {
-    criada: Plus,
-    editada: Pencil,
-    status_alterado: RefreshCw,
-    foto_adicionada: Camera,
-    foto_removida: ImageMinus,
-    execucao_registrada: ClipboardCheck,
-    reaberta: RotateCcw,
-    problema_vinculado: Link2,
-  };
-  return icons[type] ?? RefreshCw;
-}
 
 // ── Drawer body ──────────────────────────────────────────────────────
 
@@ -674,12 +602,12 @@ function EvidencesBlock({
     try {
       let sent = 0;
       for (const file of files) {
-        if (!ALLOWED_TYPES.has(file.type)) {
+        if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
           toast.error("Formato não suportado. Envie JPG, PNG ou WEBP.");
           continue;
         }
-        if (file.size > MAX_UPLOAD_SIZE) {
-          toast.error("A foto pode ter no máximo 5MB.");
+        if (file.size > MAX_PHOTO_SIZE) {
+          toast.error("A foto pode ter no máximo 10MB.");
           continue;
         }
         const blob = await compressImage(file);
@@ -687,7 +615,7 @@ function EvidencesBlock({
           blob.type === "image/jpeg"
             ? "jpg"
             : file.name.split(".").pop() ?? "jpg";
-        const path = `${activityId}/${Date.now()}-${sent}.${extension}`;
+        const path = photoStoragePath(activityId, extension);
         const supabase = createSupabaseClient();
         const { error } = await supabase.storage
           .from("activity-photos")
@@ -764,7 +692,7 @@ function EvidencesBlock({
             <PhotoAttach
               photos={photos.map((photo) => ({
                 id: photo.id,
-                url: photoPublicUrl(photo.storagePath),
+                url: publicPhotoUrl(photo.storagePath),
                 caption: photo.caption,
                 createdAt: photo.createdAt,
               }))}
@@ -811,11 +739,6 @@ function EvidencesBlock({
       </AlertDialog>
     </>
   );
-}
-
-/** URL pública do bucket activity-photos (o bucket é público). */
-function photoPublicUrl(storagePath: string): string {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-photos/${storagePath}`;
 }
 
 // ── Bloco "Sobre" (subgrupos: o que / onde-o quê / vínculos) ─────────

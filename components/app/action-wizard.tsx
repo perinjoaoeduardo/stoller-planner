@@ -77,6 +77,7 @@ import {
   type WizardActivity,
   type WizardChannelContext,
 } from "@/lib/actions/wizard";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   ACTIVITY_CATEGORIES,
   CATEGORY_LABELS,
@@ -84,7 +85,7 @@ import {
 } from "@/lib/config";
 import type { ChannelOption } from "@/lib/db/execution";
 import { formatRelativeDue } from "@/lib/plan-utils";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import {
   MAX_DESCRIPTION,
   PhotoNudgeOverlay,
@@ -181,13 +182,6 @@ export type ActionWizardProps = {
 
 // ── Category icons (same as adhoc form) ────────────────────────────────
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : "";
-  return (first + last).toUpperCase();
-}
-
 /** Grid 2x2 de tipos de ação selecionáveis — compartilhado agendar/adhoc. */
 function CategoryGrid({
   value,
@@ -256,24 +250,6 @@ function useWizard() {
   const ctx = React.useContext(WizardContext);
   if (!ctx) throw new Error("useWizard must be used inside ActionWizard");
   return ctx;
-}
-
-// ── useMediaQuery ──────────────────────────────────────────────────────
-
-function useMediaQuery(query: string) {
-  const subscribe = React.useCallback(
-    (cb: () => void) => {
-      const mql = window.matchMedia(query);
-      mql.addEventListener("change", cb);
-      return () => mql.removeEventListener("change", cb);
-    },
-    [query]
-  );
-  const getSnapshot = React.useCallback(
-    () => window.matchMedia(query).matches,
-    [query]
-  );
-  return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
 
 function viewTitle(view: WizardView): string {
@@ -622,7 +598,7 @@ function AgendarStep2() {
                 >
                   <Avatar className="size-5">
                     <AvatarFallback className="bg-border text-[9px] font-semibold text-foreground/70">
-                      {initials(r.name)}
+                      {getInitials(r.name)}
                     </AvatarFallback>
                   </Avatar>
                   {r.name}

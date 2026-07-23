@@ -11,10 +11,7 @@ import {
 
 import { CategoryIconBox } from "@/components/shared/icon-box";
 import { DeadlineText } from "@/components/shared/deadline-text";
-import {
-  StatusBadge,
-  type ActivityStatus,
-} from "@/components/shared/status-badge";
+import { type ActivityStatus, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
 import { TruncatedText } from "@/components/shared/truncated-text";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -39,7 +36,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { ActivityCategory } from "@/lib/config";
 import type { DeadlineFormat } from "@/lib/deadline";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 export type ActivityTableRow = {
   id: string;
@@ -61,19 +58,9 @@ export type ActivityTableColumn =
   | "status"
   | "acao";
 
-const OPEN_STATUSES = new Set<ActivityStatus>(["planejada", "atrasada"]);
+const OPEN_SET = new Set<ActivityStatus>(OPEN_STATUSES);
 
 type SortKey = "prazo" | "status";
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 /**
  * Tabela de atividades ÚNICA do app (home, Minhas Atividades, Visão do
@@ -163,7 +150,7 @@ export function ActivityTable({
   }
 
   function cell(column: ActivityTableColumn, activity: ActivityTableRow) {
-    const open = OPEN_STATUSES.has(activity.status);
+    const open = OPEN_SET.has(activity.status);
     switch (column) {
       case "atividade":
         return (

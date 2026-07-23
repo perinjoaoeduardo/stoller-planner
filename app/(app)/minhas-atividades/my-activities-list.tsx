@@ -25,7 +25,7 @@ import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
-import { type ActivityStatus } from "@/components/shared/status-badge";
+import { type ActivityStatus, OPEN_STATUSES } from "@/components/shared/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,17 +41,16 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
+import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 
-const OPEN = new Set<ActivityStatus>(["planejada", "atrasada"]);
+const OPEN = new Set<ActivityStatus>(OPEN_STATUSES);
 
 type KpiFilter = "todos" | "abertas" | "atrasadas" | "concluidas";
 
 type SortKey = "prazo" | "status";
 type SortDir = "asc" | "desc";
 
-const PAGE_SIZE = 20;
 
 const LIST_COLUMNS: ActivityTableColumn[] = [
   "atividade",
@@ -290,10 +289,10 @@ export function MyActivitiesList({
     return rows;
   }, [filtered, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / DEFAULT_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paged = React.useMemo(
-    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    () => sorted.slice((currentPage - 1) * DEFAULT_PAGE_SIZE, currentPage * DEFAULT_PAGE_SIZE),
     [sorted, currentPage]
   );
 

@@ -28,24 +28,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { createProblem } from "@/lib/actions/plan";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const MIN_TITLE = 5;
-
-function useMediaQuery(query: string) {
-  const subscribe = React.useCallback(
-    (cb: () => void) => {
-      const mql = window.matchMedia(query);
-      mql.addEventListener("change", cb);
-      return () => mql.removeEventListener("change", cb);
-    },
-    [query]
-  );
-  const getSnapshot = React.useCallback(
-    () => window.matchMedia(query).matches,
-    [query]
-  );
-  return React.useSyncExternalStore(subscribe, getSnapshot, () => false);
-}
 
 /**
  * Wizard de nova meta — mesma linguagem do ActionWizard (drawer lateral

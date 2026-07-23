@@ -90,20 +90,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ACTIVITY_CATEGORIES,
-  CATEGORY_LABELS,
-  type ActivityCategory,
-} from "@/lib/config";
+import { ACTIVITY_CATEGORIES, CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
-import { cn } from "@/lib/utils";
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return `${parts[0]?.[0] ?? ""}${
-    parts.length > 1 ? parts[parts.length - 1][0] : ""
-  }`.toUpperCase();
-}
+import { cn, getInitials } from "@/lib/utils";
 
 const STATUS_SORT_ORDER: Record<ActivityStatus, number> = {
   atrasada: 0,
@@ -735,7 +724,7 @@ export function ActivitiesTable({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    initialState: { pagination: { pageSize: 20 } },
+    initialState: { pagination: { pageSize: DEFAULT_PAGE_SIZE } },
   });
 
   function clearFilters() {

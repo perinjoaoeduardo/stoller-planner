@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
+import { ACTIVITY_CATEGORIES } from "@/lib/config";
 
 /**
  * Regras de obrigatoriedade da atividade — ÚNICO ponto de verdade.
@@ -16,11 +16,6 @@ import { ACTIVITY_CATEGORIES, type ActivityCategory } from "@/lib/config";
  * - DATA/HORA de conclusão são automáticas (now() no servidor), nunca
  *   digitadas pelo usuário.
  */
-
-/** Foto de evidência: opcional em todo registro. */
-export function isPhotoRequired(): boolean {
-  return false;
-}
 
 /** Descrição curta do que foi feito: sempre obrigatória. */
 export function isDescriptionRequired(): boolean {
@@ -76,30 +71,3 @@ export type ActivityFormValues = z.infer<
   ReturnType<typeof buildActivitySchema>
 >;
 
-/**
- * Heurística de categoria a partir de um texto livre (mesmos padrões do
- * backfill em migration). O fluxo Registrar agora pergunta a categoria
- * explicitamente; mantida como referência do backfill e para eventuais
- * importações em lote.
- */
-export function inferCategoryFromText(text: string): ActivityCategory {
-  const normalized = text.toLowerCase();
-  if (/treinament|capacita|reciclagem/.test(normalized)) {
-    return "treinamento";
-  }
-  if (
-    /dia de campo|demonstra|campanha|geração de demanda|geracao de demanda|lançamento|lancamento|ensaio/.test(
-      normalized
-    )
-  ) {
-    return "geracao_demanda";
-  }
-  if (
-    /reuni|resultado|alinhament|meta|gerência|gerencia|diretoria|análise|analise|previs|defini/.test(
-      normalized
-    )
-  ) {
-    return "reuniao_gerente";
-  }
-  return "rodada_canal";
-}

@@ -25,10 +25,7 @@ import { ClickableCard } from "@/components/shared/clickable-card";
 import { DeadlineText } from "@/components/shared/deadline-text";
 import { StatCard } from "@/components/shared/stat-card";
 import { useWizardProvider } from "@/components/app/wizard-provider";
-import {
-  StatusBadge,
-  type ActivityStatus,
-} from "@/components/shared/status-badge";
+import { type ActivityStatus, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,17 +55,16 @@ import type {
   ProblemRow,
 } from "@/lib/db/channels";
 import { isLateActivity, todayISO } from "@/lib/db/status";
-import { CATEGORY_LABELS, type ActivityCategory } from "@/lib/config";
+import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
-const PENDING = new Set<ActivityStatus>(["planejada", "atrasada"]);
+const PENDING = new Set<ActivityStatus>(OPEN_STATUSES);
 
 type KpiFilter = "todos" | "concluidas" | "atrasadas" | "vencendo";
 
 type SortKey = "prazo" | "status";
 type SortDir = "asc" | "desc";
 
-const PAGE_SIZE = 20;
 
 const CANAL_COLUMNS: ActivityTableColumn[] = [
   "atividade",
@@ -257,10 +253,10 @@ export function MeuCanalView({
     return rows;
   }, [filtered, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(sorted.length / DEFAULT_PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const paged = React.useMemo(
-    () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    () => sorted.slice((currentPage - 1) * DEFAULT_PAGE_SIZE, currentPage * DEFAULT_PAGE_SIZE),
     [sorted, currentPage]
   );
 

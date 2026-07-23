@@ -36,6 +36,7 @@ import {
   type ActivityTableRow,
 } from "@/components/shared/activity-table";
 import { CanalCard } from "@/components/shared/canal-card";
+import { publicPhotoUrl } from "@/lib/photos";
 import { HealthMark } from "@/components/shared/health-mark";
 import { IconBox } from "@/components/shared/icon-box";
 import { StatCard } from "@/components/shared/stat-card";
@@ -456,14 +457,6 @@ function currentHourInSaoPaulo(): number {
   );
 }
 
-/** URL pública direta do bucket activity-photos (o bucket é public). */
-function photoPublicUrl(storagePath: string | null): string | null {
-  if (!storagePath) return null;
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return null;
-  return `${base}/storage/v1/object/public/activity-photos/${storagePath}`;
-}
-
 function RtvMetrics({
   openCount,
   completedCount,
@@ -612,7 +605,9 @@ function RecentExecutionsCard({
       <CardContent>
         <div className="grid gap-4 md:grid-cols-3">
           {executions.map((execution) => {
-            const photoUrl = photoPublicUrl(execution.photoPath);
+            const photoUrl = execution.photoPath
+              ? publicPhotoUrl(execution.photoPath)
+              : null;
             const meta = [execution.channelName, execution.branchName]
               .filter(Boolean)
               .join(" · ");

@@ -1,21 +1,11 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { formatDistanceToNow, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Camera,
-  CheckCircle2,
-  ClipboardCheck,
-  ImageMinus,
-  Link2,
-  MessageSquare,
-  Pencil,
   Plus,
-  RefreshCw,
-  RotateCcw,
   SearchX,
-  type LucideIcon,
 } from "lucide-react";
 
 import { NewActivityButton } from "@/components/app/new-activity-button";
@@ -72,48 +62,11 @@ import { isLateActivity } from "@/lib/db/status";
 import { PhotosCard } from "./photos-card";
 import { ProblemEditor } from "./problem-editor";
 import { StatusCard } from "./status-card";
+import { getInitials } from "@/lib/utils";
+import { formatDate } from "@/lib/plan-utils";
+import { EVENT_LABELS, eventIcon } from "@/lib/activity-events";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: string | null, withTime = false) {
-  if (!value) return "—";
-  return format(
-    parseISO(value),
-    withTime ? "dd MMM yyyy 'às' HH:mm" : "dd MMM yyyy",
-    { locale: ptBR }
-  );
-}
-
-const EVENT_LABELS: Record<string, string> = {
-  criada: "Atividade criada",
-  editada: "Atividade editada",
-  status_alterado: "Status alterado",
-  foto_adicionada: "Foto adicionada",
-  foto_removida: "Foto removida",
-  execucao_registrada: "Execução registrada",
-  reaberta: "Atividade reaberta",
-};
-
-/** Ícone semântico por evento; conclusão ganha o check verde da vida. */
-function eventIcon(type: string, description: string | null): LucideIcon {
-  if (type === "status_alterado" && description?.includes('para "Concluída"')) {
-    return CheckCircle2;
-  }
-  if (type === "execucao_registrada" && description) {
-    return MessageSquare;
-  }
-  const icons: Record<string, LucideIcon> = {
-    criada: Plus,
-    editada: Pencil,
-    status_alterado: RefreshCw,
-    foto_adicionada: Camera,
-    foto_removida: ImageMinus,
-    execucao_registrada: ClipboardCheck,
-    reaberta: RotateCcw,
-    problema_vinculado: Link2,
-  };
-  return icons[type] ?? RefreshCw;
-}
 
 /** "Em andamento desde 06 jul" / "Concluída em 15 mar". */
 function statusContextLabel(activity: ActivityDetail): string | null {
@@ -130,16 +83,6 @@ function statusContextLabel(activity: ActivityDetail): string | null {
   );
   const since = statusEvent?.createdAt ?? activity.createdAt;
   return `${STATUS_LABELS[activity.status]} desde ${formatDate(since)}`;
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
 }
 
 function ActivityNotFound() {
