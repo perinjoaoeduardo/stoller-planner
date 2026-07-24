@@ -3,10 +3,7 @@ import { notFound } from "next/navigation";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  AlertCircle,
   Camera,
-  CheckCircle2,
-  ClipboardList,
   Store,
 } from "lucide-react";
 
@@ -144,26 +141,22 @@ export default async function PessoaPage({
           title="Atividades na safra"
           value={person.stats.total}
           sublabel="no nome dela"
-          icon={ClipboardList}
         />
         <StatCard
           title="Concluídas"
           value={`${person.stats.completedPercent}%`}
           sublabel={`${person.stats.completed} de ${person.stats.total}`}
-          icon={CheckCircle2}
         />
         <StatCard
           title="Atrasadas"
           value={person.stats.late}
           sublabel="vencidas ainda abertas"
-          icon={AlertCircle}
           tone={person.stats.late > 0 ? "warning" : "neutral"}
         />
         <StatCard
           title="Último registro"
           value={lastRegisterValue}
           sublabel={dark ? "sem registro recente" : "ritmo em dia"}
-          icon={Camera}
           tone={dark ? "warning" : "neutral"}
         />
       </div>

@@ -27,30 +27,26 @@ export function categoryIcon(category: ActivityCategory | null): LucideIcon {
 }
 
 /**
- * MAPA GLOBAL categoria → cor de pilar. Tons pastel definidos em
- * globals.css (--cat-*): identificam o tipo de ação em toda a
- * experiência (icon box, badge, wizard) sem competir com os alarmes
- * semânticos nem com o azul Corteva de ação.
+ * Categoria é distinguida pelo ÍCONE + rótulo, não por cor. As quatro
+ * cores de pilar eram idênticas (mesmo sky-blue) — não separavam nada e
+ * ainda competiam com o azul Corteva. Todas neutras agora (camada 3 +
+ * foreground suave); a cor semântica fica livre para os alarmes.
  */
+const NEUTRAL_CATEGORY = { bg: "bg-muted", fg: "text-foreground/70" };
+
 export const CATEGORY_COLORS: Record<
   ActivityCategory,
   { bg: string; fg: string }
 > = {
-  reuniao_gerente: { bg: "bg-cat-reuniao-bg", fg: "text-cat-reuniao-fg" },
-  treinamento: {
-    bg: "bg-cat-treinamento-bg",
-    fg: "text-cat-treinamento-fg",
-  },
-  rodada_canal: { bg: "bg-cat-rodada-bg", fg: "text-cat-rodada-fg" },
-  geracao_demanda: { bg: "bg-cat-demanda-bg", fg: "text-cat-demanda-fg" },
+  reuniao_gerente: NEUTRAL_CATEGORY,
+  treinamento: NEUTRAL_CATEGORY,
+  rodada_canal: NEUTRAL_CATEGORY,
+  geracao_demanda: NEUTRAL_CATEGORY,
 };
 
-/** Fallback neutro pra categoria nula (camada 3 + foreground suave). */
 export function categoryColors(category: ActivityCategory | null): {
   bg: string;
   fg: string;
 } {
-  return category
-    ? CATEGORY_COLORS[category]
-    : { bg: "bg-muted", fg: "text-foreground/70" };
+  return category ? CATEGORY_COLORS[category] : NEUTRAL_CATEGORY;
 }

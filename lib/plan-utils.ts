@@ -11,13 +11,16 @@ import { ptBR } from "date-fns/locale";
 
 export type ChannelHealth = "em_dia" | "atencao" | "critico";
 
+// Saúde não é semáforo de 3 cores: âmbar sinaliza "precisa de olhar"
+// (atenção/crítico), em dia é neutro. Verde fica reservado a conclusão
+// e vermelho a prazo vencido — a severidade vem do rótulo, não da cor.
 export const HEALTH_CONFIG: Record<
   ChannelHealth,
   { label: string; dotClass: string }
 > = {
-  em_dia: { label: "Em dia", dotClass: "bg-success" },
+  em_dia: { label: "Em dia", dotClass: "bg-muted-foreground/40" },
   atencao: { label: "Atenção", dotClass: "bg-warning" },
-  critico: { label: "Crítico", dotClass: "bg-destructive" },
+  critico: { label: "Crítico", dotClass: "bg-warning" },
 };
 
 /**

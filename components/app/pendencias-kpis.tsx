@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { CameraOff, Tag, Unlink, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
@@ -14,22 +13,19 @@ import { cn } from "@/lib/utils";
 
 const ISSUE_META: Record<
   PendencyType,
-  { icon: LucideIcon; activeClass: string; description: string }
+  { activeClass: string; description: string }
 > = {
   sem_foto: {
-    icon: CameraOff,
     // Âmbar, não vermelho: pendência é atenção — destructive é
     // exclusivo do prazo vencido em aberto (Constituição, item 2).
     activeClass: "border-warning/60 bg-warning/5 dark:bg-warning/10",
     description: "Atividades concluídas sem nenhuma foto de evidência.",
   },
   sem_problema: {
-    icon: Unlink,
     activeClass: "border-warning/60 bg-warning/5 dark:bg-warning/10",
     description: "Atividades concluídas sem vínculo com uma meta do plano.",
   },
   sem_categoria: {
-    icon: Tag,
     activeClass: "border-muted-foreground/60 bg-muted-foreground/5 dark:bg-muted-foreground/10",
     description: "Atividades sem categoria definida.",
   },
@@ -67,7 +63,6 @@ export function PendenciasKpis({
       <div className="grid gap-4 sm:grid-cols-3">
         {PENDENCY_TYPES.map((type) => {
           const meta = ISSUE_META[type];
-          const Icon = meta.icon;
           const isActive = activeFilter === type;
           const count = totalsByType[type];
           const disabled = count === 0;
@@ -94,10 +89,7 @@ export function PendenciasKpis({
                   disabled ? "cursor-default opacity-60" : "cursor-pointer"
                 )}
               >
-                <div className="flex flex-row items-center justify-between gap-2">
-                  <CardDescription>{PENDENCY_LABELS[type]}</CardDescription>
-                  <Icon className="size-4 shrink-0 text-muted-foreground" />
-                </div>
+                <CardDescription>{PENDENCY_LABELS[type]}</CardDescription>
                 <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
                   {count}
                 </p>

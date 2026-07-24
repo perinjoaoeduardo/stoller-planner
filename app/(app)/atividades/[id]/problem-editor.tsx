@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Check, Link2, Pencil, TriangleAlert, Unlink } from "lucide-react";
+import { Check, Link2, Pencil, Unlink } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -173,7 +173,6 @@ export function ProblemEditor({
           variant="outline"
           className="border-warning/40 bg-warning/10 text-warning-fg"
         >
-          <TriangleAlert aria-hidden="true" />
           Vincular meta
         </Badge>
       ) : (

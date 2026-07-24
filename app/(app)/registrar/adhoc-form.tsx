@@ -556,7 +556,7 @@ export function AdhocForm({
           {showTip ? (
             <Card className="border-dashed bg-muted/30">
               <CardContent className="flex items-start gap-3 py-4">
-                <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning" />
+                <Lightbulb className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
                   Uma foto fortalece o registro nas reuniões com o canal.
                 </p>

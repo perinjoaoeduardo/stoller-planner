@@ -1,10 +1,6 @@
 import {
   ArrowUpRight,
   CalendarClock,
-  CheckCircle2,
-  CircleAlert,
-  ClipboardList,
-  ListTodo,
   Sprout,
   Store,
 } from "lucide-react";
@@ -225,45 +221,27 @@ function SemanticsSection() {
   );
 }
 
-const PILLAR_TOKENS: Record<string, { bg: string; fg: string }> = {
-  reuniao_gerente: { bg: "--cat-reuniao-bg", fg: "--cat-reuniao-fg" },
-  treinamento: { bg: "--cat-treinamento-bg", fg: "--cat-treinamento-fg" },
-  rodada_canal: { bg: "--cat-rodada-bg", fg: "--cat-rodada-fg" },
-  geracao_demanda: { bg: "--cat-demanda-bg", fg: "--cat-demanda-fg" },
-};
-
 function PillarsSection() {
   return (
     <Section
-      title="Pilares — cor por tipo de ação"
-      hint="Identidade pastel (bg 100 + fg 700), nunca alarme. Propaga via CategoryIconBox e CategoryBadge — não pintar categoria manualmente."
+      title="Pilares — ícone por tipo de ação"
+      hint="Categoria é distinguida pelo ÍCONE + rótulo, nunca por cor: as 4 cores pastel eram idênticas (não separavam nada) e competiam com o azul. Agora neutras. Propaga via CategoryIconBox e CategoryBadge — não pintar categoria manualmente."
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {ACTIVITY_CATEGORIES.map((category) => {
-          const tokens = PILLAR_TOKENS[category];
-          return (
-            <div
-              key={category}
-              className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-card"
-            >
-              <div className="flex items-center gap-2.5">
-                <CategoryIconBox category={category} size="lg" />
-                <p className="text-sm font-semibold leading-tight">
-                  {CATEGORY_LABELS[category]}
-                </p>
-              </div>
-              <CategoryBadge category={category} className="self-start" />
-              <div className="flex flex-col gap-0.5">
-                <code className="text-[10px] tabular-nums text-muted-foreground">
-                  {tokens.bg}
-                </code>
-                <code className="text-[10px] tabular-nums text-muted-foreground">
-                  {tokens.fg}
-                </code>
-              </div>
+        {ACTIVITY_CATEGORIES.map((category) => (
+          <div
+            key={category}
+            className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-card"
+          >
+            <div className="flex items-center gap-2.5">
+              <CategoryIconBox category={category} size="lg" />
+              <p className="text-sm font-semibold leading-tight">
+                {CATEGORY_LABELS[category]}
+              </p>
             </div>
-          );
-        })}
+            <CategoryBadge category={category} className="self-start" />
+          </div>
+        ))}
       </div>
     </Section>
   );
@@ -372,33 +350,21 @@ function ComponentsSection() {
         <div>
           <p className="text-sm font-medium text-muted-foreground">StatCard</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            tone: neutral · warning. O único acento colorido é o alerta âmbar; dado-âncora fica no foreground (o azul da marca vive nos CTAs, não nos KPIs).
+            tone: neutral · warning. Sem ícone por padrão (título + número já dizem tudo). O único acento colorido é o alerta âmbar; dado-âncora fica no foreground (o azul da marca vive nos CTAs, não nos KPIs).
           </p>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Métrica"
-              value={128}
-              sublabel="tone=neutral"
-              icon={ClipboardList}
-            />
-            <StatCard
-              title="Outra métrica"
-              value={64}
-              sublabel="tone=neutral"
-              icon={ListTodo}
-            />
+            <StatCard title="Métrica" value={128} sublabel="tone=neutral" />
+            <StatCard title="Outra métrica" value={64} sublabel="tone=neutral" />
             <StatCard
               title="Alerta"
               value={3}
               sublabel="tone=warning"
-              icon={CircleAlert}
               tone="warning"
             />
             <StatCard
               title="Filtro ativo"
               value={12}
               sublabel="interactive + active"
-              icon={CheckCircle2}
               interactive
               active
             />

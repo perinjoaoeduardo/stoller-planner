@@ -9,15 +9,11 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleCheckBig,
-  ClipboardCheck,
-  ClipboardList,
   Clock,
   ListTodo,
   Store,
   Target,
-  TriangleAlert,
   User,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -112,14 +108,12 @@ function DsmStats({ stats }: { stats: DsmHome["stats"] }) {
         title="Canais que acompanho"
         value={stats.channelCount}
         sublabel="na safra"
-        icon={Store}
         href="/canais"
       />
       <StatCard
         title="Canais em risco"
         value={stats.atRiskCount}
         sublabel="exigem acompanhamento"
-        icon={TriangleAlert}
         tone={stats.atRiskCount > 0 ? "warning" : "neutral"}
         href="/canais"
       />
@@ -127,14 +121,12 @@ function DsmStats({ stats }: { stats: DsmHome["stats"] }) {
         title="RTVs na equipe"
         value={stats.rtvCount}
         sublabel="ver equipe"
-        icon={Users}
         href="/equipe"
       />
       <StatCard
         title="Minhas pendências"
         value={stats.myOpenCount}
         sublabel="atribuídas a você"
-        icon={ClipboardCheck}
         tone={stats.myHasOverdue ? "warning" : "neutral"}
         href="/pendencias"
       />
@@ -172,7 +164,6 @@ function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
     <Card className={PAIRED_CARD}>
       <CardHeader className={PAIRED_HEADER}>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Store className="size-4 text-muted-foreground" />
           Meus canais
           <TitleCount value={channels.length} />
         </CardTitle>
@@ -222,7 +213,7 @@ function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
                     {channel.completedPercent}%
                   </span>
                   {channel.lateCount > 0 ? (
-                    <span className="shrink-0 text-xs tabular-nums text-warning">
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       · {channel.lateCount}{" "}
                       {channel.lateCount === 1 ? "atrasada" : "atrasadas"}
                     </span>
@@ -256,7 +247,6 @@ function ExceptionQueue({ exceptions }: { exceptions: DsmException[] }) {
     <Card className={PAIRED_CARD}>
       <CardHeader className={PAIRED_HEADER}>
         <CardTitle className="flex items-center gap-2 text-base">
-          <TriangleAlert className="size-4 text-muted-foreground" />
           Precisa de atenção
           {exceptions.length > 0 ? (
             <TitleCount value={exceptions.length} />
@@ -511,7 +501,6 @@ function RtvMetrics({
           title={metric.label}
           value={metric.value}
           sublabel={metric.hint}
-          icon={metric.icon}
           tone={metric.tone === "alert" ? "warning" : "neutral"}
           href={metric.href}
         />
@@ -534,7 +523,6 @@ function ChannelsSummaryCard({ channels }: { channels: ChannelCard[] }) {
     <Card className="flex h-full flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Store className="size-4 text-muted-foreground" />
           Meus canais
         </CardTitle>
         <CardDescription>Toque para ver detalhes.</CardDescription>
@@ -593,7 +581,6 @@ function RecentExecutionsCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Camera className="size-4 text-muted-foreground" />
           Registros recentes
         </CardTitle>
         <CardDescription>
@@ -759,7 +746,6 @@ async function FieldHome() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="size-4 text-muted-foreground" />
               Minhas atividades
             </CardTitle>
             {tableRows.length > 0 ? (

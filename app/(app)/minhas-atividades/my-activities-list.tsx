@@ -5,9 +5,6 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
-  CircleAlert,
-  CircleCheckBig,
-  ClipboardList,
   ListTodo,
   Plus,
   Search,
@@ -350,7 +347,6 @@ export function MyActivitiesList({
           title="Total"
           value={metrics.total}
           sublabel="no total"
-          icon={ClipboardList}
           interactive
           active={kpiFilter === "todos"}
           onClick={() => setKpiFilter("todos")}
@@ -359,7 +355,6 @@ export function MyActivitiesList({
           title="Abertas"
           value={metrics.open - metrics.late}
           sublabel="em andamento"
-          icon={ListTodo}
           interactive
           active={kpiFilter === "abertas"}
           onClick={() => setKpiFilter("abertas")}
@@ -370,7 +365,6 @@ export function MyActivitiesList({
           sublabel={
             metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"
           }
-          icon={CircleAlert}
           tone={metrics.late > 0 ? "warning" : "neutral"}
           interactive
           active={kpiFilter === "atrasadas"}
@@ -380,7 +374,6 @@ export function MyActivitiesList({
           title="Concluídas"
           value={metrics.completed}
           sublabel={`${metrics.completedPercent}% do total`}
-          icon={CircleCheckBig}
           interactive
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}

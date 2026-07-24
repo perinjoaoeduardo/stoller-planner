@@ -29,7 +29,6 @@ import {
   Plus,
   Search,
   Settings2,
-  TriangleAlert,
 } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
@@ -612,7 +611,6 @@ export function ActivitiesTable({
               variant="outline"
               className="border-transparent bg-warning-bg text-warning-fg"
             >
-              <TriangleAlert aria-hidden="true" />
               Vincular meta
             </Badge>
           ) : (
@@ -785,7 +783,6 @@ export function ActivitiesTable({
               label="Concluídas"
               value={bucketCounts.concluida}
               hint="na safra"
-              valueTone="muted"
               active={bucketFilter === "concluida"}
               onClick={() => toggleBucket("concluida")}
             />

@@ -3,11 +3,8 @@
 import * as React from "react";
 
 import {
-  CalendarClock,
   ChevronLeft,
   ChevronRight,
-  CircleAlert,
-  CircleCheckBig,
   ClipboardList,
   Plus,
   Search,
@@ -334,7 +331,6 @@ export function MeuCanalView({
           title="Total de atividades"
           value={metrics.total}
           sublabel="no plano"
-          icon={ClipboardList}
           interactive
           active={kpiFilter === "todos"}
           onClick={() => setKpiFilter("todos")}
@@ -343,7 +339,6 @@ export function MeuCanalView({
           title="Concluídas"
           value={metrics.completed}
           sublabel={`${metrics.completedPercent}% do total`}
-          icon={CircleCheckBig}
           interactive
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}
@@ -352,7 +347,6 @@ export function MeuCanalView({
           title="Atrasadas"
           value={metrics.late}
           sublabel={metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"}
-          icon={CircleAlert}
           tone={metrics.late > 0 ? "warning" : "neutral"}
           interactive
           active={kpiFilter === "atrasadas"}
@@ -362,8 +356,6 @@ export function MeuCanalView({
           title="Vencem em 7 dias"
           value={metrics.dueSoon}
           sublabel="prazo próximo"
-          icon={CalendarClock}
-          tone={metrics.dueSoon > 0 ? "warning" : "neutral"}
           interactive
           active={kpiFilter === "vencendo"}
           onClick={() => setKpiFilter("vencendo")}

@@ -6,14 +6,9 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Camera,
-  CalendarRange,
   ChevronDown,
   ChevronRight,
-  CircleCheckBig,
-  ClipboardList,
   ImageOff,
-  ListChecks,
   Pencil,
   Plus,
   TriangleAlert,
@@ -361,27 +356,23 @@ export function PanoramaBlock({
           title="Ações realizadas"
           value={stats.done}
           sublabel="na safra"
-          icon={CircleCheckBig}
         />
         <StatCard
           title="Metas trabalhadas"
           value={stats.workedProblems}
           sublabel="endereçadas"
-          icon={ListChecks}
         />
         {showEvidencias ? (
           <StatCard
             title="Evidências registradas"
             value={stats.photoCount}
             sublabel="fotos em campo"
-            icon={Camera}
           />
         ) : null}
         <StatCard
           title="Ações realizadas em"
           value={monthsValue}
           sublabel={monthsSublabel}
-          icon={CalendarRange}
           // Lista de meses é TEXTO: em 3xl quebrava em 2 linhas e
           // esticava a fileira inteira (mesmo caso do Status geral).
           valueClassName={
@@ -401,19 +392,16 @@ export function PanoramaBlock({
         title="Ações realizadas"
         value={stats.done}
         sublabel={`de ${stats.planned} planejadas`}
-        icon={ClipboardList}
       />
       <StatCard
         title="Concluídas"
         value={`${stats.completedPercent}%`}
         sublabel={`no prazo: ${stats.onTime}`}
-        icon={CircleCheckBig}
       />
       <StatCard
         title="Metas trabalhadas"
         value={stats.workedProblems}
         sublabel={`de ${stats.totalProblems} mapeadas`}
-        icon={ListChecks}
       />
       {/* Status geral é o único card com cor semântica (bolinha). */}
       <Card className="rounded-xl border border-border bg-card p-0 shadow-card!">
@@ -424,7 +412,7 @@ export function PanoramaBlock({
               aria-hidden
               className={cn(
                 "ml-auto size-2.5 shrink-0 rounded-full",
-                stats.healthy ? "bg-success" : "bg-warning"
+                stats.healthy ? "bg-muted-foreground/40" : "bg-warning"
               )}
             />
           </div>
@@ -610,11 +598,11 @@ function ResultadoCard({
 
 // ── FIX 4 — Bloco de meta ─────────────────────────────────────────────
 
-/** Cor da barra por saúde da execução. Sem cinza: 33% em cinza escuro
- *  soaria "desligado", quando é "abaixo do esperado" — a leitura vira
- *  binária (verde acima de 75, âmbar abaixo). */
+/** Cor da barra por saúde da execução. Verde é só conclusão: no ritmo
+ *  (≥75%) usa o primary neutro das outras barras; abaixo disso, âmbar de
+ *  "abaixo do esperado". Leitura binária: âmbar = atrás, neutro = ok. */
 function progressClass(percent: number) {
-  if (percent >= 75) return "[&_[data-slot=progress-indicator]]:bg-success";
+  if (percent >= 75) return "[&_[data-slot=progress-indicator]]:bg-primary";
   return "[&_[data-slot=progress-indicator]]:bg-warning";
 }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CameraOff, ChevronRight, PartyPopper, Tag, Unlink } from "lucide-react";
+import { ChevronRight, PartyPopper } from "lucide-react";
 
 import { ActivityLink } from "@/components/app/activity-link";
 import { PendenciasKpis } from "@/components/app/pendencias-kpis";
@@ -47,12 +47,6 @@ const ISSUE_BADGE_CLASS: Record<PendencyType, string> = {
     "border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground",
 };
 
-const ISSUE_ICON: Record<PendencyType, typeof CameraOff> = {
-  sem_foto: CameraOff,
-  sem_problema: Unlink,
-  sem_categoria: Tag,
-};
-
 const NEGATIVE_STATUSES = new Set<ActivityStatus>(["atrasada", "nao_feita"]);
 
 function IssueBadge({
@@ -63,7 +57,6 @@ function IssueBadge({
   /** Quando há filtro ativo e este não é o selecionado, fica neutro. */
   dim?: boolean;
 }) {
-  const Icon = ISSUE_ICON[issue];
   return (
     <Badge
       variant="outline"
@@ -74,7 +67,6 @@ function IssueBadge({
           : ISSUE_BADGE_CLASS[issue]
       )}
     >
-      <Icon aria-hidden="true" />
       {PENDENCY_LABELS[issue]}
     </Badge>
   );

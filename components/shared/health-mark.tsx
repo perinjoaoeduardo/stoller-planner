@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
  * Selo de saúde ÚNICO (dot + label) — a única leitura visual do
  * ChannelHealth em cards, tabelas e drill-downs. Antes existiam 4
  * markups à mão (canal-card, home DSM, tabela de saúde, card de
- * região); agora todos leem daqui. O label carrega a cor do estado
- * (crítico = destructive, atenção = warning, em dia = success).
+ * região); agora todos leem daqui. Uma cor só de alarme: âmbar =
+ * precisa de olhar (atenção/crítico); em dia é neutro. A severidade
+ * está no rótulo, não numa terceira cor.
  */
 const LABEL_CLASS: Record<ChannelHealth, string> = {
-  critico: "font-medium text-destructive",
+  critico: "font-medium text-warning",
   atencao: "font-medium text-warning",
-  em_dia: "font-medium text-success-fg",
+  em_dia: "font-medium text-muted-foreground",
 };
 
 export function HealthMark({

@@ -10,10 +10,13 @@ import { cn } from "@/lib/utils";
 
 /**
  * Stat card ÚNICO do app (home, Minhas Atividades, Visão do Canal).
- * Anatomia: título sm/medium + ícone muted à direita, valor 3xl/bold,
- * sublabel xs/muted. `tone="warning"` pinta valor e ícone de âmbar.
- * `interactive` liga os 3 estados (padrão/hover/ativo); a lógica de
- * filtro fica na tela.
+ * Anatomia: título sm/medium + valor 3xl/bold + sublabel xs/muted.
+ * `tone="warning"` pinta o valor de âmbar. `interactive` liga os 3
+ * estados (padrão/hover/ativo); a lógica de filtro fica na tela.
+ *
+ * `icon` é OPCIONAL e por padrão nem aparece: num card com título e
+ * número por extenso, o glifo não informa nada (carga cognitiva). Só
+ * passar ícone quando ele de fato ajudar a ler.
  */
 export function StatCard({
   title,
@@ -31,38 +34,35 @@ export function StatCard({
   title: string;
   value: number | string;
   sublabel?: string;
-  icon: LucideIcon;
-  /** warning = atenção (âmbar); danger = estado crítico (ex.: canal no
-   *  escuro no CX) — pinta valor e ícone; o card em si tinta via className. */
-  tone?: "neutral" | "warning" | "danger";
+  icon?: LucideIcon;
+  /** warning = atenção (âmbar) — o único acento colorido do KPI; pinta o
+   *  valor. Sem vermelho: KPI nunca é alarme de "prazo vencido". */
+  tone?: "neutral" | "warning";
   interactive?: boolean;
   active?: boolean;
   onClick?: () => void;
   href?: string;
-  /** Classe extra no Card (ex.: tinta destructive do card estrela CX). */
+  /** Classe extra no Card. */
   className?: string;
   /** Classe extra no valor — para valores TEXTUAIS (lista de meses,
    *  status por extenso) que em 3xl quebrariam em várias linhas e
    *  desproporcionariam a fileira. Ex.: "text-xl leading-snug". */
   valueClassName?: string;
 }) {
-  const accentClass =
-    tone === "warning"
-      ? "text-warning"
-      : tone === "danger"
-        ? "text-destructive"
-        : null;
+  const accentClass = tone === "warning" ? "text-warning" : null;
 
   const body = (
     <>
       <div className="flex items-center gap-2">
         <p className="text-sm font-medium text-foreground">{title}</p>
-        <Icon
-          className={cn(
-            "ml-auto size-4 shrink-0",
-            accentClass ?? "text-muted-foreground"
-          )}
-        />
+        {Icon ? (
+          <Icon
+            className={cn(
+              "ml-auto size-4 shrink-0",
+              accentClass ?? "text-muted-foreground"
+            )}
+          />
+        ) : null}
       </div>
       <p
         className={cn(
