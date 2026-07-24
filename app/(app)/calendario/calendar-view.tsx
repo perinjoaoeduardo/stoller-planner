@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CALENDAR_MAX_PILLS, CALENDAR_MAX_WEEK_CARDS } from "@/lib/config";
 import {
   addDays,
   addMonths,
@@ -437,7 +438,6 @@ function DesktopGrid({
   channelFilter: string | null;
   highlightId: string | null;
 }) {
-  const MAX_PILLS = 3;
   const { openActivity } = useActivityDrawer();
 
   return (
@@ -461,7 +461,7 @@ function DesktopGrid({
           const dayActivities = activityMap.get(key) ?? [];
           const inMonth = isSameMonth(day, currentMonth);
           const todayCell = isToday(day);
-          const overflow = dayActivities.length - MAX_PILLS;
+          const overflow = dayActivities.length - CALENDAR_MAX_PILLS;
 
           return (
             <Popover key={key}>
@@ -493,7 +493,7 @@ function DesktopGrid({
 
                 {/* Activity pills */}
                 <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
-                  {dayActivities.slice(0, MAX_PILLS).map((activity) => (
+                  {dayActivities.slice(0, CALENDAR_MAX_PILLS).map((activity) => (
                     <EventPill
                       key={activity.id}
                       activity={activity}
@@ -535,7 +535,6 @@ function DesktopGrid({
 
 /** Borda esquerda do mini-card por status (alarme único: âmbar atraso,
  *  verde conclusão, resto neutro). */
-const MAX_WEEK_CARDS = 3;
 
 /**
  * Mini-card de atividade dentro da coluna do dia — elemento interativo
@@ -614,7 +613,7 @@ function WeekGrid({
         const key = format(day, "yyyy-MM-dd");
         const dayActivities = activityMap.get(key) ?? [];
         const todayCell = isToday(day);
-        const overflow = dayActivities.length - MAX_WEEK_CARDS;
+        const overflow = dayActivities.length - CALENDAR_MAX_WEEK_CARDS;
         // Semana sempre começa na segunda (weekStartsOn: 1) — o índice
         // bate com o array canônico de abreviações.
         const weekdayShort = WEEKDAYS_SHORT[index].toUpperCase();
@@ -692,7 +691,7 @@ function WeekGrid({
                 </div>
               ) : (
                 <>
-                  {dayActivities.slice(0, MAX_WEEK_CARDS).map((activity) => (
+                  {dayActivities.slice(0, CALENDAR_MAX_WEEK_CARDS).map((activity) => (
                     <WeekMiniCard
                       key={activity.id}
                       activity={activity}

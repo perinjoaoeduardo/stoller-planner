@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { BrandLogo } from "@/components/app/brand-logo";
 import { NavUser } from "@/components/app/nav-user";
 import type { SettingsUser } from "@/components/app/settings-dialog";
-import { useWizardProvider } from "@/components/app/wizard-provider";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
   Sidebar,
@@ -27,7 +26,8 @@ import type { NavItem } from "@/lib/auth/nav";
  * Sidebar flutuante escura (padrão shadcn/create): marca + toggle no
  * topo, navegação por perfil no meio e o perfil do usuário fixo no
  * rodapé. Não há header full-width — todas essas responsabilidades
- * vivem aqui dentro.
+ * vivem aqui dentro. "Nova atividade" não é item de menu: virou ação
+ * universal no topbar (ao lado da busca).
  */
 export function AppSidebar({
   role,
@@ -36,31 +36,18 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { role: Role; user: SettingsUser }) {
   const pathname = usePathname();
   const navItems = NAV_BY_ROLE[role];
-  const { openWizard } = useWizardProvider();
-
-  // Ações (ex.: Nova atividade) vivem num subgrupo separado; o resto é
-  // navegação. Estrutura idêntica pra DSM/CX se um dia ganharem ações.
-  const actionItems = navItems.filter((item) => item.action);
-  const navigationItems = navItems.filter((item) => !item.action);
 
   function renderMenuItem(item: NavItem) {
     return (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton
           tooltip={item.title}
-          isActive={!item.action && pathname === item.href}
+          isActive={pathname === item.href}
           render={
-            item.action === "wizard" ? (
-              <button type="button" onClick={() => openWizard()}>
-                <item.icon />
-                <span>{item.title}</span>
-              </button>
-            ) : (
-              <Link href={item.href}>
-                <item.icon />
-                <span>{item.title}</span>
-              </Link>
-            )
+            <Link href={item.href}>
+              <item.icon />
+              <span>{item.title}</span>
+            </Link>
           }
         />
       </SidebarMenuItem>
@@ -92,17 +79,9 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>{navigationItems.map(renderMenuItem)}</SidebarMenu>
+            <SidebarMenu>{navItems.map(renderMenuItem)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {actionItems.length > 0 ? (
-          <SidebarGroup>
-            <SidebarGroupLabel>Ações</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>{actionItems.map(renderMenuItem)}</SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ) : null}
       </SidebarContent>
       {/* Footer — separador sutil acima pra descolar do último grupo */}
       <SidebarFooter className="border-t border-sidebar-border">

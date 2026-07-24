@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { MAX_DESCRIPTION } from "@/lib/config";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -36,7 +37,6 @@ import { cn } from "@/lib/utils";
 
 import {
   ACCEPTED_PHOTO_TYPES,
-  MAX_DESCRIPTION,
   PhotoNudgeDrawer,
   SuccessScreen,
   usePhotoDrafts,

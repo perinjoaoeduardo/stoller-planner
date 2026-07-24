@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { harvestLabel } from "@/lib/config";
 import { Store } from "lucide-react";
 
 import { CanalCard } from "@/components/shared/canal-card";
@@ -18,11 +19,6 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import type { ChannelCard } from "@/lib/db/channels";
-
-function harvestLabel(harvest: string | null): string {
-  if (!harvest) return "Safra 2025/26";
-  return harvest.startsWith("Safra") ? harvest : `Safra ${harvest}`;
-}
 
 /** Rank de saúde: crítico primeiro, depois atenção, depois em dia. */
 function healthRank(h: ChannelCard["health"]): number {

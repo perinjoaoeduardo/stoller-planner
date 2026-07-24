@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { harvestLabel } from "@/lib/config";
 import Link from "next/link";
 import { FileText, StickyNote, Store } from "lucide-react";
 
@@ -33,12 +34,6 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Canal — Corteva Planner",
 };
-
-/** "Safra 2025/26" mesmo quando o banco já traz o prefixo "Safra". */
-function harvestLabel(harvest: string | null | undefined): string {
-  if (!harvest) return "Safra 2025/26";
-  return harvest.startsWith("Safra") ? harvest : `Safra ${harvest}`;
-}
 
 /** 404 amigável: canal inexistente ou fora do escopo do usuário. */
 function ChannelNotFound() {

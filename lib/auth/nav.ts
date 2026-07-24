@@ -1,13 +1,11 @@
 import {
   BrushCleaning,
-  CalendarDays,
   ChartColumn,
   ClipboardList,
   FileText,
   Home,
   ListTodo,
   Map,
-  Plus,
   Radar,
   Store,
   type LucideIcon,
@@ -19,42 +17,30 @@ export type NavItem = {
   title: string;
   href: string;
   icon: LucideIcon;
-  /** Abre o wizard em vez de navegar. */
-  action?: "wizard";
 };
 
 /**
  * Navegação por perfil — a sidebar e o command palette leem daqui para
  * refletir exatamente o que o role logado pode acessar.
+ *
+ * "Nova atividade" NÃO vive aqui: virou ação universal, no botão ao lado
+ * da busca (content-topbar). Calendário também não é item próprio: é uma
+ * visão dentro de Atividades/Minhas Atividades (ver ViewSwitch).
  */
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   CX: [
     { title: "Início", href: "/visao-geral", icon: Home },
     { title: "Regiões", href: "/regioes", icon: Map },
     { title: "Canais", href: "/canais", icon: Store },
-    { title: "Atividades", href: "/atividades", icon: ClipboardList },
     { title: "Acompanhamento", href: "/acompanhamento", icon: Radar },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
-    {
-      title: "Nova atividade",
-      href: "#wizard",
-      icon: Plus,
-      action: "wizard",
-    },
   ],
   DSM: [
     { title: "Início", href: "/", icon: Home },
     { title: "Meus Canais", href: "/canais", icon: Store },
     { title: "Atividades", href: "/atividades", icon: ClipboardList },
-    { title: "Calendário", href: "/calendario", icon: CalendarDays },
     { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
-    {
-      title: "Nova atividade",
-      href: "#wizard",
-      icon: Plus,
-      action: "wizard",
-    },
   ],
   RTV: [
     { title: "Início", href: "/", icon: Home },
@@ -64,15 +50,8 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       href: "/minhas-atividades",
       icon: ListTodo,
     },
-    { title: "Calendário", href: "/calendario", icon: CalendarDays },
     { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: FileText },
-    {
-      title: "Nova atividade",
-      href: "#wizard",
-      icon: Plus,
-      action: "wizard",
-    },
   ],
 };
 

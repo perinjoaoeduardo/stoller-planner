@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { harvestLabel } from "@/lib/config";
 import Link from "next/link";
 import { ChartColumn, Store } from "lucide-react";
 
@@ -46,11 +47,7 @@ export default async function RelatoriosPage() {
 
   // Contexto de safra é global da tela — uma vez no header, não 1x por card.
   const harvest = channels[0]?.harvest ?? null;
-  const safraLabel = !harvest
-    ? "Safra 2025/26"
-    : harvest.startsWith("Safra")
-      ? harvest
-      : `Safra ${harvest}`;
+  const safraLabel = harvestLabel(harvest);
 
   return (
     <PageShell

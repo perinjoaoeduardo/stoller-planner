@@ -41,6 +41,7 @@ import { registerExecution } from "@/lib/actions/execution";
 import {
   ACTIVITY_CATEGORIES,
   CATEGORY_LABELS,
+  MAX_DESCRIPTION,
   type ActivityCategory,
 } from "@/lib/config";
 import type {
@@ -53,7 +54,6 @@ import { cn } from "@/lib/utils";
 
 import {
   ACCEPTED_PHOTO_TYPES,
-  MAX_DESCRIPTION,
   PhotoNudgeDrawer,
   SuccessScreen,
   usePhotoDrafts,

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CURRENT_HARVEST, MAX_MY_ACTIVITIES } from "@/lib/config";
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -30,7 +31,6 @@ import { ptBR } from "date-fns/locale";
 import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
 import { ActivityLink } from "@/components/app/activity-link";
 import { DsmMyActivities } from "@/components/app/dsm-my-activities";
-import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
 import {
   type ActivityTableRow,
@@ -87,7 +87,6 @@ const EXCEPTION_ICONS: Record<DsmExceptionKind, LucideIcon> = {
   atraso_critico: Clock,
 };
 
-const MAX_MY_ACTIVITIES = 5;
 /** Altura visível dos cards pareados (Meus canais / Precisa de atenção)
  *  — ~6 linhas; o excedente entra no scroll interno. */
 const PAIRED_CARD = "flex h-full max-h-[26rem] flex-col gap-0 overflow-hidden py-0";
@@ -426,8 +425,7 @@ async function DsmHome() {
   return (
     <PageShell
       title="Início"
-      description="Panorama dos seus canais na safra 2025/26."
-      actions={<NewActivityButton />}
+      description={`Panorama dos seus canais na safra ${CURRENT_HARVEST}.`}
     >
       <DsmStats stats={home.stats} />
 
@@ -749,11 +747,6 @@ async function FieldHome() {
       title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
-      actions={
-        <NewActivityButton
-          size="lg"
-          />
-      }
     >
       <RtvMetrics
         openCount={openForTable.length}

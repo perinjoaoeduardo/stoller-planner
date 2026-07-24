@@ -31,7 +31,6 @@ import { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, compressImage, photoStoragePath }
  */
 
 export { ACCEPTED_PHOTO_TYPES, MAX_PHOTO_SIZE, compressImage } from "@/lib/photos";
-export const MAX_DESCRIPTION = 500;
 
 export type PhotoDraft = {
   id: string;

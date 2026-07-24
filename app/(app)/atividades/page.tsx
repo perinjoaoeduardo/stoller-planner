@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { CalendarDays, ListTodo } from "lucide-react";
+
 import { ActivitiesTable } from "@/components/app/activities-table";
 import { PageShell } from "@/components/app/page-shell";
 import type { SelectOption } from "@/components/app/searchable-select";
+import { ViewSwitch } from "@/components/app/view-switch";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getScopedActivities } from "@/lib/db/channels";
+
+import { CalendarView } from "../calendario/calendar-view";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +18,10 @@ export const metadata: Metadata = {
 
 /**
  * Versão global da tabela de atividades: cruza todos os canais do escopo
- * do usuário, com a coluna extra "Canal". Edição acontece na página do
- * canal ou no detalhe da atividade. Usa o variant "global" da
- * ActivitiesTable — StatCards clicáveis + linha de controle enxuta.
+ * do usuário, com a coluna extra "Canal". Duas visões alternadas pelo
+ * ViewSwitch — Lista (tabela densa, com o filtro "só minhas") e
+ * Calendário (a agenda da safra). Não há mais rota /calendario separada.
+ * Edição acontece na página do canal ou no detalhe da atividade.
  */
 export default async function AtividadesPage() {
   const profile = await getCurrentProfile();
@@ -60,6 +66,7 @@ export default async function AtividadesPage() {
   );
 
   const isField = profile.role === "RTV";
+  const calendarChannels = channels.map((c) => ({ id: c.value, name: c.label }));
 
   return (
     <PageShell
@@ -70,16 +77,36 @@ export default async function AtividadesPage() {
           : "Todas as atividades dos seus canais na safra, em um só lugar."
       }
     >
-      <ActivitiesTable
-        data={activities}
-        problems={[]}
-        branches={[]}
-        responsibles={responsibles}
-        channels={channels}
-        currentUserId={profile.id}
-        canEdit={false}
-        showChannel
-        variant="global"
+      <ViewSwitch
+        storageKey="atividades-view"
+        views={[
+          {
+            key: "lista",
+            label: "Lista",
+            icon: <ListTodo className="size-4" />,
+            node: (
+              <ActivitiesTable
+                data={activities}
+                problems={[]}
+                branches={[]}
+                responsibles={responsibles}
+                channels={channels}
+                currentUserId={profile.id}
+                canEdit={false}
+                showChannel
+                variant="global"
+              />
+            ),
+          },
+          {
+            key: "calendario",
+            label: "Calendário",
+            icon: <CalendarDays className="size-4" />,
+            node: (
+              <CalendarView activities={activities} channels={calendarChannels} />
+            ),
+          },
+        ]}
       />
     </PageShell>
   );

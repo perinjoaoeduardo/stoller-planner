@@ -42,7 +42,7 @@ Implementações genéricas de shadcn ficam mornas. Evite.
 - Seleção com busca (filiais, responsáveis): Combobox
 - Listas ricas: Item/ItemGroup
 - Status: sempre via <StatusBadge /> central
-  (/components/app/status-badge.tsx)
+  (/components/shared/status-badge.tsx)
 
 ### Estados obrigatórios em toda tela
 - Loading: Skeleton espelhando o layout final, nunca spinner central

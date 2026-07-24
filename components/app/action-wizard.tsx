@@ -77,13 +77,13 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   ACTIVITY_CATEGORIES,
   CATEGORY_LABELS,
+  MAX_DESCRIPTION,
   type ActivityCategory,
 } from "@/lib/config";
 import type { ChannelOption } from "@/lib/db/execution";
 import { formatRelativeDue } from "@/lib/plan-utils";
 import { cn, getInitials } from "@/lib/utils";
 import {
-  MAX_DESCRIPTION,
   PhotoNudgeOverlay,
   usePhotoDrafts,
 } from "@/app/(app)/registrar/register-shared";

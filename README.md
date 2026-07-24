@@ -59,6 +59,8 @@ a base de demo ficar bagunçada.
 | Quero mudar… | Onde |
 | --- | --- |
 | Parâmetros de negócio (dias de "canal no escuro", atraso crítico, paginação, limites de notas) | `lib/config.ts` |
+| Safra corrente ("2025/26") e label de safra | `lib/config.ts` (`CURRENT_HARVEST`, `harvestLabel`) |
+| Limites de UI (descrição de atividade, itens do calendário, "minhas atividades" da home, recentes da busca) | `lib/config.ts` |
 | Categorias de atividade e labels | `lib/config.ts` (+ CHECK no banco) |
 | Regra de status derivado (atrasada) | `lib/db/status.ts` |
 | Pipeline de fotos (limite, compressão, URLs do bucket) | `lib/photos.ts` |

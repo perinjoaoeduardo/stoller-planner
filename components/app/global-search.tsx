@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { SEARCH_MAX_RECENTS } from "@/lib/config";
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -56,7 +57,6 @@ import { Spinner } from "@/components/ui/spinner";
  */
 
 const RECENT_KEY = "planner-recent-searches";
-const MAX_RECENTS = 5;
 
 function readRecents(): string[] {
   try {
@@ -79,7 +79,7 @@ function saveRecent(query: string) {
       ...readRecents().filter(
         (item) => item.toLowerCase() !== trimmed.toLowerCase()
       ),
-    ].slice(0, MAX_RECENTS);
+    ].slice(0, SEARCH_MAX_RECENTS);
     window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
   } catch {
     // localStorage indisponível — buscas recentes ficam só na sessão.
@@ -146,8 +146,7 @@ export function GlobalSearch({
   const { openWizard } = useWizardProvider();
   const { openActivity } = useActivityDrawer();
 
-  const navItems = NAV_BY_ROLE[role];
-  const navRoutes = navItems.filter((item) => !item.action);
+  const navRoutes = NAV_BY_ROLE[role];
   const isField = role === "RTV";
   const trimmed = query.trim();
   const hasQuery = trimmed.length >= 2;

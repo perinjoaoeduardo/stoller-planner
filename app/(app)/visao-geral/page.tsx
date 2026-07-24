@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { harvestLabel } from "@/lib/config";
 import { Activity, ChartColumnStacked } from "lucide-react";
 
 import { ChannelHealthTable } from "@/components/app/channel-health-table";
@@ -63,7 +64,7 @@ export default async function VisaoGeralPage() {
   return (
     <PageShell
       title="Visão geral"
-      description="Radar nacional da execução comercial — Safra 2025/26, todas as regiões."
+      description={`Radar nacional da execução comercial — ${harvestLabel()}, todas as regiões.`}
     >
       <CxMetricCards metrics={metrics} />
 
