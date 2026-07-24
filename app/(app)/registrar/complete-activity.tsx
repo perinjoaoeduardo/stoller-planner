@@ -155,7 +155,7 @@ export function CompleteActivity({
                   <span
                     className={cn(
                       overdue &&
-                        "font-medium text-destructive"
+                        "font-medium text-foreground"
                     )}
                   >
                     {formatRelativeDue(activity.dueDate)}

@@ -191,7 +191,7 @@ export function PeopleTable({
               className={cn(
                 "whitespace-nowrap text-sm tabular-nums",
                 overLimit
-                  ? "font-medium text-destructive"
+                  ? "font-medium text-warning"
                   : "text-muted-foreground"
               )}
             >

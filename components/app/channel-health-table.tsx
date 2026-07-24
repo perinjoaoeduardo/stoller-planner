@@ -55,7 +55,7 @@ function LastExecutionCell({ row }: { row: ChannelHealthRow }) {
       className={cn(
         "whitespace-nowrap text-sm tabular-nums",
         overLimit
-          ? "font-medium text-destructive"
+          ? "font-medium text-warning"
           : "text-muted-foreground"
       )}
     >

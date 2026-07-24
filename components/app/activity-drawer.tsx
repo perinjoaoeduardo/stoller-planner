@@ -543,7 +543,7 @@ function HeaderContainer({
           <span
             className={cn(
               "tabular-nums",
-              isOverdue ? "font-medium text-destructive" : "text-muted-foreground"
+              isOverdue ? "font-medium text-foreground" : "text-muted-foreground"
             )}
           >
             {message}
@@ -553,12 +553,7 @@ function HeaderContainer({
               <span className="text-xs font-medium text-muted-foreground">
                 Prazo{"  "}
               </span>
-              <span
-                className={cn(
-                  "font-medium",
-                  isOverdue ? "text-destructive" : "text-foreground"
-                )}
-              >
+              <span className="font-medium text-foreground">
                 {formatDate(dueDate)}
               </span>
             </span>

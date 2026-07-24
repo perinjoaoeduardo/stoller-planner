@@ -74,7 +74,7 @@ function RegionCardItem({ region }: { region: RegionCard }) {
             aria-label={`${region.completedPercent}% de atividades concluídas`}
           />
           {region.darkChannelCount > 0 ? (
-            <p className="text-xs font-medium text-destructive">
+            <p className="text-xs font-medium text-warning">
               {region.darkChannelCount}{" "}
               {region.darkChannelCount === 1
                 ? "canal no escuro"

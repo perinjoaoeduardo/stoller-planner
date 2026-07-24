@@ -5,11 +5,14 @@ import type { ActivityStatus } from "@/components/shared/status-badge";
 import { formatRelativeDue } from "@/lib/plan-utils";
 
 /**
- * LÓGICA CANÔNICA do prazo (Constituição, item 7: existe em UM arquivo
- * só — já regrediu uma vez quando estava duplicada):
- * - concluída/não feita: SEMPRE neutro, a atividade já foi encerrada
- * - aberta e vencida: vermelho (único uso de destructive fora do asterisco)
- * - aberta, vence em 0-7 dias: âmbar de atenção
+ * LÓGICA CANÔNICA do prazo (Constituição — existe em UM arquivo só).
+ * Alarme único: badge OU texto, nunca os dois. Uma atividade vencida já
+ * mostra o badge "Atrasada" em âmbar ao lado — então a DATA não repete o
+ * alarme (não fica vermelha); só fica legível em foreground. Vermelho é
+ * exclusivo de ação destrutiva/erro, nunca de prazo.
+ * - concluída/não feita: neutro (encerrada)
+ * - aberta e vencida: foreground legível (o badge âmbar carrega o alarme)
+ * - aberta, vence em 0-7 dias: âmbar (único sinal — o badge é "Planejada")
  * - aberta, 8+ dias ou sem prazo: neutro
  */
 export function deadlineClass(
@@ -21,7 +24,7 @@ export function deadlineClass(
   }
   if (!dueDate) return "text-muted-foreground";
   const days = differenceInCalendarDays(parseISO(dueDate), new Date());
-  if (days < 0) return "font-medium text-destructive";
+  if (days < 0) return "text-foreground";
   if (days <= 7) return "text-warning";
   return "text-muted-foreground";
 }

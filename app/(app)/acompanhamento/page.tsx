@@ -53,7 +53,7 @@ function DarkChannelCard({ channel }: { channel: DarkChannel }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-3 px-4">
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-semibold tracking-tight text-destructive tabular-nums">
+          <span className="text-4xl font-semibold tracking-tight text-warning tabular-nums">
             {channel.daysSinceExecution ?? "∞"}
           </span>
           <span className="text-sm text-muted-foreground">
@@ -218,7 +218,7 @@ export default async function AcompanhamentoPage({
           ) : (
             <div className="flex flex-col gap-4">
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MoonStar className="size-4 text-destructive" />
+                <MoonStar className="size-4 text-warning" />
                 {darkChannels.length === 1
                   ? "1 canal está"
                   : `${darkChannels.length} canais estão`}{" "}

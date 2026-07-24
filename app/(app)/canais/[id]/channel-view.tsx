@@ -421,7 +421,7 @@ export function ChannelView({
                                 <span
                                   className={
                                     isLateActivity(activity)
-                                      ? "text-xs font-medium text-destructive tabular-nums"
+                                      ? "text-xs font-medium text-foreground tabular-nums"
                                       : "text-xs text-muted-foreground tabular-nums"
                                   }
                                 >

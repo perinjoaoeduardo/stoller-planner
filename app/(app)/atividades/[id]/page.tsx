@@ -226,7 +226,7 @@ export default async function AtividadePage({
         <span
           className={
             overdue
-              ? "font-medium text-destructive tabular-nums"
+              ? "font-medium text-foreground tabular-nums"
               : "tabular-nums"
           }
         >

@@ -394,7 +394,7 @@ export function RegisterFlow({
                     className={cn(
                       "text-xs tabular-nums",
                       activity.status === "atrasada"
-                        ? "font-medium text-destructive"
+                        ? "font-medium text-foreground"
                         : "text-muted-foreground"
                     )}
                   >

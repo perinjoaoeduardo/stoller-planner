@@ -142,7 +142,7 @@ export function ActivityCard({
           className={cn(
             "shrink-0 text-xs tabular-nums",
             late
-              ? "font-medium text-destructive"
+              ? "font-medium text-foreground"
               : "text-muted-foreground"
           )}
         >
