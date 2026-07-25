@@ -40,6 +40,7 @@ const db = createClient(url, serviceRoleKey, {
 // ── Faxina ─────────────────────────────────────────────────────────────
 
 const JUNK_PATTERNS: RegExp[] = [
+  /^[^\p{L}\p{N}]+$/u, // só pontuação/símbolo, sem letra nem número (¿?¿?, ",,")
   /pode excluir/i,
   /^teste\b/i,
   /^v[fv]+v?$/i, // vfvfvfvfv

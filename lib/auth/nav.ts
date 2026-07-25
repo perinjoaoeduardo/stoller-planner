@@ -2,7 +2,6 @@ import {
   BrushCleaning,
   ChartColumn,
   ClipboardList,
-  FileText,
   Home,
   ListTodo,
   Map,
@@ -42,6 +41,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],
+  // RTV: menu curto de campo. "Relatórios" saiu — o relatório de safra
+  // já abre por dentro de cada canal (botão no cabeçalho); um item de
+  // menu que só lista canais para escolher era um caminho duplicado e
+  // um destino de gestor, não de consultor.
   RTV: [
     { title: "Início", href: "/", icon: Home },
     { title: "Meus Canais", href: "/meus-canais", icon: Store },
@@ -51,7 +54,6 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
       icon: ListTodo,
     },
     { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
-    { title: "Relatórios", href: "/relatorios", icon: FileText },
   ],
 };
 

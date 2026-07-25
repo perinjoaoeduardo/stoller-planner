@@ -24,7 +24,9 @@ export type { PendencyType };
  * - sem_categoria → atividade sem categoria (legado anterior à regra)
  *
  * O chamador é responsável pelo escopo (getScopedChannelIds): DSM vê os
- * seus canais, CX vê tudo.
+ * seus canais, CX vê tudo. `mineProfileId` restringe às atividades da
+ * própria pessoa (RTV): ele só consegue resolver as dele — mostrar as
+ * dos outros seria ruído inacionável.
  */
 
 export type PendencyActivity = {
@@ -57,7 +59,8 @@ export type PendenciesSummary = {
 
 /** Pendências dos canais do escopo, agrupadas por canal (piores primeiro). */
 export async function getPendencies(
-  channelIds: string[]
+  channelIds: string[],
+  mineProfileId?: string
 ): Promise<PendenciesSummary> {
   const empty: PendenciesSummary = {
     totalsByType: { sem_foto: 0, sem_problema: 0, sem_categoria: 0 },
@@ -75,8 +78,10 @@ export async function getPendencies(
          plans(id, status,
            problems(id),
            activities(id, title, status, category, due_date, problem_id,
+             responsible_id,
              branch:branches(name),
              responsible:profiles(full_name),
+             assignees:activity_assignees(profile_id),
              photos:activity_photos(id)))`
       )
       .in("id", channelIds)
@@ -118,6 +123,17 @@ export async function getPendencies(
     const activities: PendencyActivity[] = [];
 
     for (const activity of plan.activities) {
+      // Escopo "minhas" (RTV): só o que ele consegue resolver — dele
+      // como responsável (legado) ou como assignee.
+      if (mineProfileId) {
+        const isMine =
+          activity.responsible_id === mineProfileId ||
+          (activity.assignees ?? []).some(
+            (assignee) => assignee.profile_id === mineProfileId
+          );
+        if (!isMine) continue;
+      }
+
       const issues: PendencyType[] = [];
       const isCompleted = activity.status === "concluida";
 

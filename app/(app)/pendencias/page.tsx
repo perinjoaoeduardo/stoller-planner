@@ -34,14 +34,25 @@ export default async function PendenciasPage({
     getScopedChannelIds(profile),
     searchParams,
   ]);
-  const pendencies = await getPendencies(channelIds);
+  // O RTV só vê (e resolve) as pendências das PRÓPRIAS atividades; DSM/CX
+  // veem tudo no escopo. Mostrar ao RTV as pendências de outras pessoas
+  // seria ruído inacionável.
+  const isField = profile.role === "RTV";
+  const pendencies = await getPendencies(
+    channelIds,
+    isField ? profile.id : undefined
+  );
   const rawTipo = params.tipo ?? null;
   const activeFilter = isPendencyType(rawTipo) ? rawTipo : null;
 
   return (
     <PageShell
       title="Pendências"
-      description="Registros crus do campo que precisam de um acabamento: foto, vínculo com meta ou categoria. Clique para resolver."
+      description={
+        isField
+          ? "Seus registros que precisam de um acabamento: foto, vínculo com meta ou categoria. Toque para resolver."
+          : "Registros crus do campo que precisam de um acabamento: foto, vínculo com meta ou categoria. Clique para resolver."
+      }
     >
       <PendenciasView
         data={pendencies}
