@@ -195,30 +195,8 @@ export function CompleteActivity({
             </CardContent>
           </Card>
 
-          {/* Card: Descrição da execução (opcional) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>O que aconteceu?</CardTitle>
-              <CardDescription>
-                Adicione detalhes se a execução foi diferente do planejado
-                (opcional).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              <Textarea
-                value={description}
-                maxLength={MAX_DESCRIPTION}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Ex: reunião aconteceu com 5 pessoas em vez de 3 previstas; focamos em fungicidas premium."
-                className="min-h-24 text-base"
-              />
-              <span className="self-end text-xs text-muted-foreground tabular-nums">
-                {description.length}/{MAX_DESCRIPTION}
-              </span>
-            </CardContent>
-          </Card>
-
-          {/* Card: Evidências (fotos) */}
+          {/* Card: Evidências (fotos) — a prova é o que importa no campo,
+              então vem logo depois do resumo, antes do texto opcional. */}
           <Card>
             <CardHeader>
               <CardTitle>Fotos</CardTitle>
@@ -295,6 +273,29 @@ export function CompleteActivity({
                   Alguma foto foi ignorada: use JPG, PNG ou WEBP até 10MB.
                 </p>
               ) : null}
+            </CardContent>
+          </Card>
+
+          {/* Card: Descrição da execução (opcional, secundária) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>O que aconteceu?</CardTitle>
+              <CardDescription>
+                Adicione detalhes se a execução foi diferente do planejado
+                (opcional).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              <Textarea
+                value={description}
+                maxLength={MAX_DESCRIPTION}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Ex: reunião aconteceu com 5 pessoas em vez de 3 previstas; focamos em fungicidas premium."
+                className="min-h-24 text-base"
+              />
+              <span className="self-end text-xs text-muted-foreground tabular-nums">
+                {description.length}/{MAX_DESCRIPTION}
+              </span>
             </CardContent>
           </Card>
 
