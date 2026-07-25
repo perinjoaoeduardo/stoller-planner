@@ -105,7 +105,14 @@ export function MeuCanalView({
   const [categoryFilter, setCategoryFilterRaw] = React.useState<string | null>(
     null
   );
-  const [onlyMine, setOnlyMineRaw] = React.useState(false);
+  // Esta é a visão de CANAL do RTV (/meus-canais): o padrão é "minhas"
+  // — o modelo mental dele é o próprio trabalho, não o do canal inteiro.
+  // Só desliga se ele não tiver atividade aqui (aí não há o que filtrar).
+  const [onlyMine, setOnlyMineRaw] = React.useState(() =>
+    activities.some((activity) =>
+      activity.assignees.some((assignee) => assignee.id === profileId)
+    )
+  );
   const [problemFilter, setProblemFilterRaw] =
     React.useState<ProblemRow | null>(null);
   const [problemsOpen, setProblemsOpen] = React.useState(false);

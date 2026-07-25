@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { harvestLabel } from "@/lib/config";
 import Link from "next/link";
-import { ChartColumn, Store } from "lucide-react";
+import { ChartColumn } from "lucide-react";
 
 import {
   CardArrow,
@@ -82,7 +82,6 @@ export default async function RelatoriosPage() {
             <Card key={channel.id} className={cn(clickableCardClass, "gap-3")}>
               <CardHeader>
                 <CardTitle className="flex items-start gap-2 text-base leading-snug">
-                  <Store className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                   <Link
                     href={`/canais/${channel.id}/relatorio`}
                     className="min-w-0 after:absolute after:inset-0"

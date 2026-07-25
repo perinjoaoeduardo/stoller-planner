@@ -6,11 +6,9 @@ import { redirect } from "next/navigation";
 import {
   AlertCircle,
   Camera,
-  CheckCircle2,
   ChevronRight,
   CircleCheckBig,
   Clock,
-  ListTodo,
   Store,
   Target,
   User,
@@ -445,66 +443,34 @@ function currentHourInSaoPaulo(): number {
   );
 }
 
+/**
+ * Dois números que movem o dia do RTV: quanto tem a fazer e o que já
+ * está atrasado. "Concluídas" (vaidade) e "Canais que atuo" (repetem os
+ * cards de Meus canais ao lado) saíram — menos peça competindo pela
+ * atenção. Cada card é atalho para a lista já filtrada.
+ */
 function RtvMetrics({
-  openCount,
-  completedCount,
-  totalCount,
+  abertasCount,
   lateCount,
-  channelCount,
 }: {
-  openCount: number;
-  completedCount: number;
-  totalCount: number;
+  abertasCount: number;
   lateCount: number;
-  channelCount: number;
 }) {
-  const cards = [
-    {
-      label: "Minhas atividades",
-      value: openCount,
-      hint: "abertas na safra",
-      icon: ListTodo,
-      tone: "default" as const,
-      href: "/minhas-atividades?status=abertas",
-    },
-    {
-      label: "Concluídas",
-      value: completedCount,
-      hint: `de ${totalCount} atividades`,
-      icon: CheckCircle2,
-      tone: "default" as const,
-      href: "/minhas-atividades?status=concluidas",
-    },
-    {
-      label: "Precisam de atenção",
-      value: lateCount,
-      hint: lateCount === 1 ? "atrasada" : "atrasadas",
-      icon: AlertCircle,
-      tone: lateCount > 0 ? ("alert" as const) : ("default" as const),
-      href: "/minhas-atividades?status=atrasadas",
-    },
-    {
-      label: "Canais que atuo",
-      value: channelCount,
-      hint: channelCount === 1 ? "distribuidor" : "distribuidores",
-      icon: Store,
-      tone: "default" as const,
-      href: "/meus-canais",
-    },
-  ];
-
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map((metric) => (
-        <StatCard
-          key={metric.label}
-          title={metric.label}
-          value={metric.value}
-          sublabel={metric.hint}
-          tone={metric.tone === "alert" ? "warning" : "neutral"}
-          href={metric.href}
-        />
-      ))}
+    <div className="grid grid-cols-2 gap-4">
+      <StatCard
+        title="Abertas"
+        value={abertasCount}
+        sublabel="a fazer nesta safra"
+        href="/minhas-atividades?status=abertas"
+      />
+      <StatCard
+        title="Precisam de atenção"
+        value={lateCount}
+        sublabel={lateCount === 1 ? "atrasada" : "atrasadas"}
+        tone={lateCount > 0 ? "warning" : "neutral"}
+        href="/minhas-atividades?status=atrasadas"
+      />
     </div>
   );
 }
@@ -717,8 +683,11 @@ async function FieldHome() {
     (execution) => differenceInDays(now, parseISO(execution.createdAt)) <= 7
   );
 
-  // Todas as abertas para a tabela da home.
-  const tableRows = openOrdered.map((activity) => ({
+  // A home é um LANÇADOR, não a lista inteira: só as 5 mais urgentes
+  // (atrasadas primeiro). O resto vive em /minhas-atividades — mostrar
+  // as 19 aqui só duplicaria aquela tela.
+  const HOME_PREVIEW = 5;
+  const tableRows = openOrdered.slice(0, HOME_PREVIEW).map((activity) => ({
     id: activity.id,
     title: activity.title,
     status: activity.status,
@@ -736,11 +705,8 @@ async function FieldHome() {
       descriptionClassName={contextClass}
     >
       <RtvMetrics
-        openCount={openForTable.length}
-        completedCount={completed.length}
-        totalCount={mine.length}
+        abertasCount={open.length - late.length}
         lateCount={late.length}
-        channelCount={channels.length}
       />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -750,7 +716,7 @@ async function FieldHome() {
             </CardTitle>
             {tableRows.length > 0 ? (
               <CardDescription>
-                Todas as atividades abertas, atrasadas primeiro.
+                As mais urgentes primeiro.
               </CardDescription>
             ) : null}
             <CardAction>
@@ -761,7 +727,7 @@ async function FieldHome() {
                 nativeButton={false}
                 render={<Link href="/minhas-atividades" />}
               >
-                Ver todos
+                Ver todas
                 <ChevronRight className="size-4" />
               </Button>
             </CardAction>
@@ -769,7 +735,6 @@ async function FieldHome() {
           <CardContent>
             <RtvActivitiesTable
               activities={tableRows}
-              totalOpen={openOrdered.length}
               profileId={profile.id}
               profileName={profile.fullName}
             />

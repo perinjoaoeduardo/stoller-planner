@@ -1,10 +1,5 @@
 "use client";
 
-import * as React from "react";
-import Link from "next/link";
-
-import { ChevronRight } from "lucide-react";
-
 import { useActivityDrawer } from "@/components/app/activity-drawer";
 import {
   ActivityTable,
@@ -15,7 +10,6 @@ import { ActivityCard } from "@/components/app/activity-card";
 import {
   type ActivityStatus,
 } from "@/components/shared/status-badge";
-import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -45,24 +39,22 @@ export type RtvActivityRow = {
 };
 
 /**
- * Tabela "Minhas atividades" da home do RTV: até 8 abertas + link para
- * ver todas. Desktop = Table densa; mobile = cards empilhados (viewport
- * apertado não comporta a table sem virar rolagem horizontal grosseira).
+ * Preview "Minhas atividades" da home do RTV: as poucas mais urgentes
+ * (a home já corta a lista); "Ver todas" vive no cabeçalho do card.
+ * Desktop = Table densa; mobile = cards empilhados (viewport apertado
+ * não comporta a table sem virar rolagem horizontal grosseira).
  */
 export function RtvActivitiesTable({
   activities,
-  totalOpen,
   profileId,
   profileName,
 }: {
   activities: RtvActivityRow[];
-  totalOpen: number;
   profileId: string;
   profileName: string;
 }) {
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
-  const hasMore = totalOpen > activities.length;
 
   if (activities.length === 0) {
     return (
@@ -117,21 +109,6 @@ export function RtvActivitiesTable({
           />
         ))}
       </div>
-
-      {hasMore ? (
-        <div className="mt-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            nativeButton={false}
-            render={<Link href="/minhas-atividades" />}
-          >
-            Ver todas as {totalOpen} atividades abertas
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      ) : null}
     </>
   );
 }

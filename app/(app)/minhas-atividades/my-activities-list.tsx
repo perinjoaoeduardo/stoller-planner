@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  CalendarClock,
   ChevronLeft,
   ChevronRight,
   ListTodo,
@@ -512,11 +511,6 @@ export function MyActivitiesList({
           ) : null}
         </>
       )}
-
-      {/* Ícone de calendário auxiliar (mantém import se algum dia usar). */}
-      <span className="hidden">
-        <CalendarClock />
-      </span>
     </>
   );
 }

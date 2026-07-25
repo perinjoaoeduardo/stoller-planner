@@ -58,10 +58,20 @@ export function PendenciasKpis({
     router.replace(qs ? `?${qs}` : "?", { scroll: false });
   }
 
+  // Só mostra o tipo de pendência que EXISTE — um card "Sem categoria 0"
+  // é ruído: não há o que resolver ali. As colunas se ajustam ao que sobra.
+  const visible = PENDENCY_TYPES.filter((type) => totalsByType[type] > 0);
+  const cols =
+    visible.length >= 3
+      ? "sm:grid-cols-3"
+      : visible.length === 2
+        ? "sm:grid-cols-2"
+        : "sm:grid-cols-1";
+
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {PENDENCY_TYPES.map((type) => {
+      <div className={cn("grid gap-4", cols)}>
+        {visible.map((type) => {
           const meta = ISSUE_META[type];
           const isActive = activeFilter === type;
           const count = totalsByType[type];
