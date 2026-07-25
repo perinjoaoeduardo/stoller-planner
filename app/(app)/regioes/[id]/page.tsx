@@ -83,7 +83,7 @@ export default async function RegiaoPage({
         </Breadcrumb>
       }
     >
-      <CxMetricCards metrics={region.metrics} />
+      <CxMetricCards metrics={region.metrics} linkable={false} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card className="gap-4 xl:col-span-2">
