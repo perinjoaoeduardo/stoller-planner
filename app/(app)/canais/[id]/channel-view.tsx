@@ -5,10 +5,8 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  CalendarClock,
   ChartColumn,
   ChevronRight,
-  CircleAlert,
   CircleCheckBig,
   ClipboardList,
   Plus,
@@ -182,27 +180,16 @@ export function ChannelView({
     setActivityFormOpen(true);
   }
 
+  // Sem ícone: o rótulo + número já dizem tudo (mesmo padrão dos KPIs da
+  // home e do CX). O glifo só competia pela atenção.
   const metricCards = [
-    {
-      label: "Total de atividades",
-      value: metrics.total.toString(),
-      icon: ClipboardList,
-    },
+    { label: "Total de atividades", value: metrics.total.toString() },
     {
       label: "Concluídas",
       value: `${metrics.completed} (${metrics.completedPercent}%)`,
-      icon: CircleCheckBig,
     },
-    {
-      label: "Atrasadas",
-      value: metrics.late.toString(),
-      icon: CircleAlert,
-    },
-    {
-      label: "Vencem em 7 dias",
-      value: metrics.dueSoon.toString(),
-      icon: CalendarClock,
-    },
+    { label: "Atrasadas", value: metrics.late.toString() },
+    { label: "Vencem em 7 dias", value: metrics.dueSoon.toString() },
   ];
 
   return (
@@ -246,22 +233,13 @@ export function ChannelView({
             <StickyNote />
             {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
           </Button>
+          {/* "Nova meta" vive na aba Metas (onde as metas moram) — tê-la
+              também aqui era o mesmo botão duas vezes na mesma tela. */}
           {canEdit && plan ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={() => setMetaWizardOpen(true)}
-              >
-                <Plus />
-                Nova meta
-              </Button>
-              <Button variant="brand" size="sm" className="h-9" onClick={openCreateActivity}>
-                <Plus />
-                Nova atividade
-              </Button>
-            </>
+            <Button variant="brand" size="sm" className="h-9" onClick={openCreateActivity}>
+              <Plus />
+              Nova atividade
+            </Button>
           ) : null}
         </div>
       }
@@ -309,9 +287,8 @@ export function ChannelView({
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {metricCards.map((metric) => (
               <Card key={metric.label} className="gap-2 py-4">
-                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardHeader>
                   <CardDescription>{metric.label}</CardDescription>
-                  <metric.icon className="size-4 shrink-0 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-semibold tracking-tight tabular-nums">

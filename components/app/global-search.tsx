@@ -628,7 +628,7 @@ export function GlobalSearch({
                   </CommandItem>
                   <CommandItem
                     value="acao-nova-atividade"
-                    onSelect={() => go("/canais")}
+                    onSelect={() => runAction(() => openWizard())}
                   >
                     <Plus />
                     Nova atividade

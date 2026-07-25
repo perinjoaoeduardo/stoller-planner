@@ -22,7 +22,6 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
 import { ActivityLink } from "@/components/app/activity-link";
 import { DsmMyActivities } from "@/components/app/dsm-my-activities";
 import { PageShell } from "@/components/app/page-shell";
@@ -98,28 +97,21 @@ function TitleCount({ value }: { value: number }) {
   );
 }
 
-/** FIX 1 — stat cards de gestão (não de execução). */
+/**
+ * Dois números acionáveis do gestor: quantos canais pedem olhar e o que
+ * é dele para fechar. "Canais que acompanho" repetia o card "Meus
+ * canais" ao lado; "RTVs na equipe" levava a uma tela "Em breve" (beco
+ * sem saída) — ambos saíram para reduzir carga cognitiva.
+ */
 function DsmStats({ stats }: { stats: DsmHome["stats"] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatCard
-        title="Canais que acompanho"
-        value={stats.channelCount}
-        sublabel="na safra"
-        href="/canais"
-      />
+    <div className="grid grid-cols-2 gap-4">
       <StatCard
         title="Canais em risco"
         value={stats.atRiskCount}
         sublabel="exigem acompanhamento"
         tone={stats.atRiskCount > 0 ? "warning" : "neutral"}
         href="/canais"
-      />
-      <StatCard
-        title="RTVs na equipe"
-        value={stats.rtvCount}
-        sublabel="ver equipe"
-        href="/equipe"
       />
       <StatCard
         title="Minhas pendências"
@@ -157,7 +149,21 @@ const ROW_PROGRESS_CLASS =
 
 /** FIX 2 — Meus canais: linhas divididas (sem card-em-card), pior
  *  primeiro, com scroll interno (coluna esquerda do par). */
+const HEALTH_RANK: Record<DsmHomeChannel["health"], number> = {
+  critico: 0,
+  atencao: 1,
+  em_dia: 2,
+};
 function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
+  // Pior primeiro DE FATO (o comentário dizia isso, mas vinha em ordem
+  // alfabética do banco): saúde crítica no topo, depois mais atrasadas.
+  const ordered = [...channels].sort((a, b) => {
+    if (HEALTH_RANK[a.health] !== HEALTH_RANK[b.health]) {
+      return HEALTH_RANK[a.health] - HEALTH_RANK[b.health];
+    }
+    if (a.lateCount !== b.lateCount) return b.lateCount - a.lateCount;
+    return a.name.localeCompare(b.name);
+  });
   return (
     <Card className={PAIRED_CARD}>
       <CardHeader className={PAIRED_HEADER}>
@@ -186,7 +192,7 @@ function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
           </p>
         ) : (
           <div className="flex flex-col divide-y divide-border/60 px-2 py-1">
-            {channels.map((channel) => (
+            {ordered.map((channel) => (
               <Link
                 key={channel.id}
                 href={`/canais/${channel.id}`}
@@ -372,37 +378,6 @@ function MyActivitiesSection({
   );
 }
 
-/** FIX 5 — panorama da safra (contexto de fundo, rodapé). */
-function PanoramaSection({ byStatus }: { byStatus: DsmHome["byStatus"] }) {
-  const total = byStatus.reduce((sum, row) => sum + row.total, 0);
-  const completed =
-    byStatus.find((row) => row.status === "concluida")?.total ?? 0;
-  const late = byStatus.find((row) => row.status === "atrasada")?.total ?? 0;
-  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <CardTitle className="text-base">Panorama da safra</CardTitle>
-          <CardDescription>
-            Distribuição das atividades dos seus canais.
-          </CardDescription>
-        </div>
-        <p className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          <span className="font-medium text-foreground">{percent}%</span>{" "}
-          concluídas ·{" "}
-          <span className="font-medium text-foreground">{late}</span>{" "}
-          {late === 1 ? "atrasada" : "atrasadas"}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <ActivitiesStatusChart data={byStatus} />
-      </CardContent>
-    </Card>
-  );
-}
-
 /** Home do DSM — painel de gestão híbrido (gestão protagonista, execução
  *  própria reconhecida mas secundária). */
 async function DsmHome() {
@@ -426,8 +401,6 @@ async function DsmHome() {
         activities={home.myActivities}
         viewAllHref={`/atividades?responsavel=${profile.id}`}
       />
-
-      <PanoramaSection byStatus={home.byStatus} />
     </PageShell>
   );
 }
