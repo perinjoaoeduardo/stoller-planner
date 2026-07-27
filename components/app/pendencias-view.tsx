@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ChevronRight, PartyPopper } from "lucide-react";
 
 import { ActivityLink } from "@/components/app/activity-link";
-import { PersonLink } from "@/components/shared/person-link";
 import { PendenciasKpis } from "@/components/app/pendencias-kpis";
 import {
   StatusBadge,
@@ -240,14 +239,16 @@ export function PendenciasView({
                     <span className="truncate text-sm font-medium">
                       {activity.title}
                     </span>
+                    {/* Nome em texto: a linha INTEIRA já é um link para a
+                        atividade, e âncora dentro de âncora é HTML
+                        inválido (o browser desaninha e quebra a linha).
+                        Para ir ao perfil, o caminho é a coluna
+                        Responsável da lista de atividades. */}
                     <span className="truncate text-xs text-muted-foreground">
                       {activity.branchName ?? "Sem filial"}
-                      {activity.responsibleName ? " · " : ""}
-                      <PersonLink
-                        profileId={activity.responsibleId}
-                        name={activity.responsibleName}
-                        className="hover:text-foreground"
-                      />
+                      {activity.responsibleName
+                        ? ` · ${activity.responsibleName}`
+                        : ""}
                     </span>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-1.5">

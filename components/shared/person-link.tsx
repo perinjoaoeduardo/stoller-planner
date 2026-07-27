@@ -1,3 +1,9 @@
+"use client";
+
+// Client obrigatório: o componente passa onClick ao Link, e Server
+// Component não serializa event handler. A diretiva tem de ser a
+// PRIMEIRA linha do arquivo — comentário antes dela não vale.
+
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
