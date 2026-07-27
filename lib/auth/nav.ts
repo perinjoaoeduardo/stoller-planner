@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Home,
   ListTodo,
-  Map,
   Radar,
   Store,
   type LucideIcon,
@@ -29,7 +28,6 @@ export type NavItem = {
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   CX: [
     { title: "Início", href: "/visao-geral", icon: Home },
-    { title: "Regiões", href: "/regioes", icon: Map },
     { title: "Canais", href: "/canais", icon: Store },
     { title: "Acompanhamento", href: "/acompanhamento", icon: Radar },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },

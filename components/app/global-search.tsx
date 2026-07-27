@@ -11,7 +11,6 @@ import {
   Clock,
   ListFilter,
   MapPin,
-  Map as MapIcon,
   Plus,
   Search,
   Settings,
@@ -212,8 +211,7 @@ export function GlobalSearch({
       results.channels.length +
       results.branches.length +
       results.problems.length +
-      results.people.length +
-      results.regions.length
+      results.people.length
     : 0;
   const nothingToShow =
     hasQuery &&
@@ -460,22 +458,6 @@ export function GlobalSearch({
                             {ROLE_LABELS[person.role as Role] ?? person.role}
                           </span>
                         </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ) : null}
-
-                {/* Regiões (CX) */}
-                {results && results.regions.length > 0 ? (
-                  <CommandGroup heading="Regiões">
-                    {results.regions.map((region) => (
-                      <CommandItem
-                        key={`regiao-${region.id}`}
-                        value={`regiao-${region.id}`}
-                        onSelect={() => go(`/regioes/${region.id}`, true)}
-                      >
-                        <MapIcon />
-                        {region.name}
                       </CommandItem>
                     ))}
                   </CommandGroup>
