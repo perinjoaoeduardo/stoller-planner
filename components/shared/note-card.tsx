@@ -7,9 +7,7 @@ import { MoreHorizontal, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -36,7 +34,7 @@ import {
 import { deleteNote, toggleNotePin, updateNote } from "@/lib/actions/notes";
 import type { ChannelNote } from "@/lib/db/notes";
 import { publicPhotoUrl } from "@/lib/photos";
-import { cn, getInitials } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
 
 /**
  * Card de nota do canal — feed de aprendizados sobre o cliente.
@@ -127,17 +125,20 @@ export function NoteCard({
   }
 
   return (
-    <Card
-      className={cn(
-        "group/note gap-0 p-4 transition-colors",
-        note.pinned ? "border-accent-brand/40" : "border-border"
-      )}
-    >
+    /*
+     * Linha de feed, não card. O drawer já é uma superfície: cada nota
+     * numa moldura própria era caixa dentro de caixa, e o gap entre
+     * elas cortava a leitura contínua do histórico. Divisória + respiro
+     * separam o suficiente.
+     *
+     * Sem ícone de pin e sem borda azul na nota fixada: a seção
+     * "Fixadas" já agrupa (e o menu diz "Desafixar") — eram três sinais
+     * para o mesmo fato. Sem badge de papel: o nome identifica a pessoa,
+     * e DSM/RTV em toda linha virava ruído repetido.
+     */
+    <article className="group/note py-4">
       <div className="flex items-start gap-3">
-        {note.pinned ? (
-          <Pin className="mt-2.5 size-3.5 shrink-0 text-accent-brand" />
-        ) : null}
-        <Avatar className="size-9 shrink-0">
+        <Avatar className="size-8 shrink-0">
           {note.author.avatarUrl ? (
             <AvatarImage src={note.author.avatarUrl} alt={note.author.name} />
           ) : null}
@@ -147,34 +148,39 @@ export function NoteCard({
         </Avatar>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Autor e tempo numa linha só — eram duas, gastando altura
+              para dizer o mesmo. */}
+          <div className="flex flex-wrap items-baseline gap-x-1.5 text-xs text-muted-foreground">
             <span className="text-sm font-medium text-foreground">
               {note.author.name}
             </span>
-            <Badge
-              variant="secondary"
-              className="rounded-full px-1.5 py-0.5 font-normal text-muted-foreground"
-            >
-              {note.author.role}
-            </Badge>
+            <span aria-hidden>·</span>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span>
+                    {formatDistanceToNow(parseISO(note.createdAt), {
+                      addSuffix: true,
+                      locale: ptBR,
+                    })}
+                  </span>
+                }
+              />
+              <TooltipContent>
+                {format(
+                  parseISO(note.createdAt),
+                  "dd 'de' MMMM 'de' yyyy', às' HH:mm",
+                  { locale: ptBR }
+                )}
+              </TooltipContent>
+            </Tooltip>
+            {note.edited ? (
+              <>
+                <span aria-hidden>·</span>
+                <span>editada</span>
+              </>
+            ) : null}
           </div>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span className="text-xs text-muted-foreground">
-                  {formatDistanceToNow(parseISO(note.createdAt), {
-                    addSuffix: true,
-                    locale: ptBR,
-                  })}
-                </span>
-              }
-            />
-            <TooltipContent>
-              {format(parseISO(note.createdAt), "dd 'de' MMMM 'de' yyyy', às' HH:mm", {
-                locale: ptBR,
-              })}
-            </TooltipContent>
-          </Tooltip>
         </div>
 
         {/* No mobile o menu fica sempre visível (não há hover). */}
@@ -225,8 +231,9 @@ export function NoteCard({
         </DropdownMenu>
       </div>
 
-      {/* Corpo */}
-      <div className="mt-3">
+
+      {/* Corpo alinhado ao texto do cabeçalho (avatar size-8 + gap-3). */}
+      <div className="mt-1.5 pl-11">
         {editing ? (
           <div className="flex flex-col gap-2">
             <Textarea
@@ -260,15 +267,6 @@ export function NoteCard({
         ) : (
           <>
             <NoteBody body={note.body} />
-            {note.edited ? (
-              <p className="mt-1 text-xs italic text-muted-foreground">
-                editada{" "}
-                {formatDistanceToNow(parseISO(note.updatedAt), {
-                  addSuffix: true,
-                  locale: ptBR,
-                })}
-              </p>
-            ) : null}
             {note.photoPath ? (
               <button
                 type="button"
@@ -330,6 +328,6 @@ export function NoteCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </article>
   );
 }

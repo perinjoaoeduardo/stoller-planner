@@ -6,18 +6,13 @@ import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ChartColumn,
-  ChevronRight,
-  CircleCheckBig,
   ClipboardList,
   StickyNote,
   Target,
   X,
 } from "lucide-react";
 
-import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
-import { ActivitiesStatusChart } from "@/components/app/activities-status-chart";
 import { ActivitiesTable } from "@/components/app/activities-table";
-import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { ActivityForm } from "@/components/app/activity-form";
 import { MetaWizard } from "@/components/app/meta-wizard";
 import { PageShell } from "@/components/app/page-shell";
@@ -25,15 +20,11 @@ import { ProblemsTab } from "@/components/app/problems-tab";
 import { NotesView } from "./notas/notes-view";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { SearchableSelect } from "@/components/app/searchable-select";
-import { ACTIVITY_STATUSES, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Empty,
@@ -42,14 +33,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Item,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemSeparator,
-  ItemTitle,
-} from "@/components/ui/item";
+
+
 import {
   Select,
   SelectContent,
@@ -63,7 +48,6 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   ActivityRow,
   ChannelDetail,
@@ -72,8 +56,8 @@ import type {
 } from "@/lib/db/channels";
 import type { ChannelNote } from "@/lib/db/notes";
 import { isLateActivity } from "@/lib/db/status";
-
-const PENDING = new Set<string>(OPEN_STATUSES);
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /**
  * Hub do plano do canal: métricas, visão geral (gráficos + críticas),
@@ -85,7 +69,6 @@ export function ChannelView({
   activities,
   responsibles,
   canEdit,
-  defaultTab,
   notes,
   currentUserId,
   currentUser,
@@ -95,12 +78,11 @@ export function ChannelView({
   activities: ActivityRow[];
   responsibles: ResponsibleOption[];
   canEdit: boolean;
-  defaultTab?: string;
   notes: ChannelNote[];
   currentUserId: string;
   currentUser: { name: string; avatarUrl: string | null };
 }) {
-  const { openActivity } = useActivityDrawer();
+  const isMobile = useIsMobile();
   const { openWizard } = useWizardProvider();
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [activityFormOpen, setActivityFormOpen] = React.useState(false);
@@ -151,38 +133,6 @@ export function ChannelView({
       lastDone,
     };
   }, [filtered]);
-
-  const byStatus = React.useMemo(
-    () =>
-      ACTIVITY_STATUSES.map((status) => ({
-        status,
-        total: filtered.filter((activity) => activity.status === status)
-          .length,
-      })),
-    [filtered]
-  );
-
-  const byProblem = React.useMemo(() => {
-    const rows = problems.map((problem) => ({
-      label: problem.title,
-      total: filtered.filter((activity) => activity.problemId === problem.id)
-        .length,
-    }));
-    const unlinked = filtered.filter((activity) => !activity.problemId).length;
-    rows.push({ label: "Sem meta vinculada", total: unlinked });
-    return rows;
-  }, [problems, filtered]);
-
-  const critical = React.useMemo(
-    () =>
-      filtered
-        .filter(
-          (activity) => PENDING.has(activity.status) && !!activity.dueDate
-        )
-        .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1))
-        .slice(0, 5),
-    [filtered]
-  );
 
   // Criar atividade usa o wizard canônico (mesma experiência do RTV,
   // com a bifurcação Agendar × Registrar); o form antigo fica só para
@@ -368,151 +318,45 @@ export function ChannelView({
             ))}
           </div>
 
-          <Tabs
-            defaultValue={
-              ["visao-geral", "problemas", "atividades"].includes(
-                defaultTab ?? ""
-              )
-                ? defaultTab
-                : "visao-geral"
-            }
-          >
-            <TabsList>
-              <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
-              <TabsTrigger value="atividades">
-                Atividades
-                <span className="ml-1 tabular-nums text-muted-foreground">
-                  {filtered.length}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="visao-geral" className="mt-2">
-              <div className="grid gap-4 xl:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Atividades por status</CardTitle>
-                    <CardDescription>
-                      Distribuição das atividades do plano em cada status.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ActivitiesStatusChart data={byStatus} />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Atividades por meta</CardTitle>
-                    <CardDescription>
-                      Onde o plano concentra esforço — e o débito de vínculo.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ActivitiesByProblemChart data={byProblem} />
-                  </CardContent>
-                </Card>
-                <Card className="xl:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Atividades críticas</CardTitle>
-                    <CardDescription>
-                      As 5 pendentes mais atrasadas ou próximas do prazo.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {critical.length === 0 ? (
-                      <Empty className="py-8">
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <CircleCheckBig />
-                          </EmptyMedia>
-                          <EmptyTitle>Nada crítico por aqui</EmptyTitle>
-                          <EmptyDescription>
-                            Nenhuma atividade pendente com prazo no recorte
-                            atual.
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    ) : (
-                      <ItemGroup>
-                        {critical.map((activity, index) => (
-                          <div key={activity.id}>
-                            {index > 0 ? <ItemSeparator /> : null}
-                            <Item
-                              size="sm"
-                              render={
-                                <button
-                                  type="button"
-                                  onClick={() => openActivity(activity.id)}
-                                  className="w-full cursor-pointer text-left"
-                                />
-                              }
-                              className="hover:bg-muted/60"
-                            >
-                              <ItemContent>
-                                <ItemTitle className="line-clamp-1">
-                                  {activity.title}
-                                </ItemTitle>
-                                <ItemDescription>
-                                  {activity.branchName ?? "Sem filial"} ·{" "}
-                                  {activity.responsibleName ?? "Sem responsável"}
-                                </ItemDescription>
-                              </ItemContent>
-                              <div className="flex shrink-0 items-center gap-3">
-                                <span
-                                  className={
-                                    isLateActivity(activity)
-                                      ? "text-xs font-medium text-foreground tabular-nums"
-                                      : "text-xs text-muted-foreground tabular-nums"
-                                  }
-                                >
-                                  {activity.dueDate
-                                    ? format(
-                                        parseISO(activity.dueDate),
-                                        "dd MMM yyyy",
-                                        { locale: ptBR }
-                                      )
-                                    : "—"}
-                                </span>
-                                <StatusBadge status={activity.status} />
-                                <ChevronRight className="size-4 text-muted-foreground" />
-                              </div>
-                            </Item>
-                          </div>
-                        ))}
-                      </ItemGroup>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="atividades" className="mt-2">
-              <ActivitiesTable
-                data={filtered}
-                problems={problems.map((problem) => ({
-                  value: problem.id,
-                  label: problem.title,
-                }))}
-                branches={channel.branches.map((branch) => ({
-                  value: branch.id,
-                  label: branch.name,
-                }))}
-                responsibles={responsibles.map((responsible) => ({
-                  value: responsible.id,
-                  label: responsible.name,
-                }))}
-                canEdit={canEdit}
-                onCreate={openCreateActivity}
-                onEdit={openEditActivity}
-              />
-            </TabsContent>
-          </Tabs>
+          {/* Sem aba "Visao geral": os graficos repetiam, em barras, o
+              que os 4 KPIs acima ja dizem em numero, e "Atividades
+              criticas" era um recorte da propria lista logo abaixo.
+              Com uma aba so, o Tabs virou moldura vazia — a lista e a
+              tela. */}
+          <ActivitiesTable
+            data={filtered}
+            problems={problems.map((problem) => ({
+              value: problem.id,
+              label: problem.title,
+            }))}
+            branches={channel.branches.map((branch) => ({
+              value: branch.id,
+              label: branch.name,
+            }))}
+            responsibles={responsibles.map((responsible) => ({
+              value: responsible.id,
+              label: responsible.name,
+            }))}
+            canEdit={canEdit}
+            onCreate={openCreateActivity}
+            onEdit={openEditActivity}
+          />
 
           {/* Metas em drawer — mesma experiência do RTV. A diferença do
               gestor é poder criar meta aqui dentro (ProblemsTab já traz
               o CTA quando canEdit). */}
-          <Drawer open={problemsOpen} onOpenChange={setProblemsOpen} modal>
-            <DrawerContent className="data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]">
+          <Drawer
+            open={problemsOpen}
+            onOpenChange={setProblemsOpen}
+            modal
+            swipeDirection={isMobile ? "down" : "right"}
+          >
+            <DrawerContent
+              className={cn(
+                !isMobile &&
+                  "data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]"
+              )}
+            >
               <DrawerTitle className="sr-only">Metas do plano</DrawerTitle>
               <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-6 py-4">
                 <div className="min-w-0">
@@ -577,8 +421,17 @@ export function ChannelView({
 
       {/* Notas — fora do bloco do plano: um canal sem plano ainda tem
           histórico para registrar e consultar. */}
-      <Drawer open={notesOpen} onOpenChange={setNotesOpen} modal>
-        <DrawerContent className="data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]">
+      <Drawer
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
+        modal
+        swipeDirection={isMobile ? "down" : "right"}
+      >
+        <DrawerContent
+          className={cn(
+            !isMobile && "data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]"
+          )}
+        >
           <DrawerTitle className="sr-only">Notas do canal</DrawerTitle>
           <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-6 py-4">
             <div className="min-w-0">

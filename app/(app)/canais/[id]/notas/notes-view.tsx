@@ -38,7 +38,9 @@ export function NotesView({
   const rest = notes.filter((note) => !note.pinned);
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+    // Sem max-w/mx-auto: o drawer já define a largura de leitura, e a
+    // margem dupla espremia o feed.
+    <div className="flex w-full flex-col gap-4">
       <NoteComposer
         channelId={channelId}
         user={currentUser}
@@ -68,15 +70,22 @@ export function NotesView({
         </Empty>
       ) : (
         <>
+          {/* Fixadas: as notas ficam numa caixa própria — é o único
+              destaque de que precisam (o pin por nota e a borda azul
+              saíram). Sem separador solto entre as seções: o rótulo já
+              marca a virada. */}
           {pinned.length > 0 ? (
-            <>
-              <div className="mt-6 mb-2 flex items-center gap-2">
-                <Pin className="size-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">
-                  Fixadas ({pinned.length})
+            <section className="rounded-xl border border-border bg-subtle px-4">
+              <div className="flex items-center gap-2 border-b border-border py-2.5">
+                <Pin className="size-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Fixadas
+                </span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {pinned.length}
                 </span>
               </div>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col divide-y divide-border/60">
                 {pinned.map((note) => (
                   <NoteCard
                     key={note.id}
@@ -85,23 +94,15 @@ export function NotesView({
                   />
                 ))}
               </div>
-            </>
+            </section>
           ) : null}
 
           {rest.length > 0 ? (
-            <>
-              <div
-                className={
-                  pinned.length > 0
-                    ? "mt-6 border-t border-border pt-6"
-                    : "mt-6"
-                }
-              >
-                <span className="text-sm font-medium text-muted-foreground">
-                  {pinned.length > 0 ? "Todas as notas" : "Notas"}
-                </span>
-              </div>
-              <div className="flex flex-col gap-3">
+            <section>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {pinned.length > 0 ? "Todas as notas" : "Notas"}
+              </p>
+              <div className="mt-1 flex flex-col divide-y divide-border/60">
                 {rest.map((note) => (
                   <NoteCard
                     key={note.id}
@@ -110,7 +111,7 @@ export function NotesView({
                   />
                 ))}
               </div>
-            </>
+            </section>
           ) : null}
         </>
       )}

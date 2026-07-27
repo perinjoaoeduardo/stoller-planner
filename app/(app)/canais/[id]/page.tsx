@@ -65,13 +65,10 @@ export const metadata: Metadata = {
 
 export default async function CanalPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
 
@@ -100,7 +97,6 @@ export default async function CanalPage({
       activities={board.activities}
       responsibles={responsibles}
       canEdit={canEdit}
-      defaultTab={tab}
       notes={notes}
       currentUserId={profile.id}
       currentUser={{ name: profile.fullName, avatarUrl: profile.avatarUrl }}
