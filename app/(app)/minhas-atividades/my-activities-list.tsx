@@ -42,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
+import { cn } from "@/lib/utils";
 
 const OPEN = new Set<ActivityStatus>(OPEN_STATUSES);
 
@@ -69,6 +70,7 @@ export function MyActivitiesList({
   initialStatus = "abertas",
   currentUserId,
   responsibles,
+  showKpis = true,
 }: {
   activities: ActivityRow[];
   initialStatus?: InitialStatus;
@@ -76,6 +78,8 @@ export function MyActivitiesList({
   currentUserId?: string;
   /** Habilita o filtro de responsável e a coluna de avatares. */
   responsibles?: SelectOption[];
+  /** Off dentro do canal, que já tem o próprio cockpit de números. */
+  showKpis?: boolean;
 }) {
   const isTeamView = !!responsibles && responsibles.length > 0;
   const columns: ActivityTableColumn[] = isTeamView
@@ -170,13 +174,20 @@ export function MyActivitiesList({
   }, [activities]);
   const showChannelFilter = channels.length > 1;
 
-  // Filiais e metas do canal selecionado (para o filtro hierárquico).
+  /**
+   * Canal em foco: o escolhido no filtro OU o único da lista. Dentro de
+   * um canal não existe o que escolher, e sem esse fallback Filial e
+   * Meta nunca apareciam ali — ficavam presas a uma seleção impossível.
+   */
+  const focusedChannelId = channelId ?? (channels.length === 1 ? channels[0].id : null);
+
+  // Filiais e metas do canal em foco (filtro hierárquico).
   const channelBranches = React.useMemo(() => {
-    if (!channelId) return [];
+    if (!focusedChannelId) return [];
     const seen = new Map<string, string>();
     for (const activity of activities) {
       if (
-        activity.channelId === channelId &&
+        activity.channelId === focusedChannelId &&
         activity.branchId &&
         activity.branchName &&
         !seen.has(activity.branchId)
@@ -187,14 +198,14 @@ export function MyActivitiesList({
     return [...seen.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [activities, channelId]);
+  }, [activities, focusedChannelId]);
 
   const channelMetas = React.useMemo(() => {
-    if (!channelId) return [];
+    if (!focusedChannelId) return [];
     const seen = new Map<string, string>();
     for (const activity of activities) {
       if (
-        activity.channelId === channelId &&
+        activity.channelId === focusedChannelId &&
         activity.problemId &&
         activity.problemTitle &&
         !seen.has(activity.problemId)
@@ -205,10 +216,10 @@ export function MyActivitiesList({
     return [...seen.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [activities, channelId]);
+  }, [activities, focusedChannelId]);
 
-  const showBranchFilter = !!channelId && channelBranches.length > 1;
-  const showMetaFilter = !!channelId && channelMetas.length > 0;
+  const showBranchFilter = channelBranches.length > 1;
+  const showMetaFilter = channelMetas.length > 0;
 
   const channelOptions: SelectOption[] = React.useMemo(
     () => channels.map((c) => ({ value: c.id, label: c.name })),
@@ -385,7 +396,12 @@ export function MyActivitiesList({
   return (
     <>
       {/* KPIs clicáveis */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4",
+          !showKpis && "hidden"
+        )}
+      >
         <StatCard
           title="Total"
           value={metrics.total}
@@ -477,16 +493,18 @@ export function MyActivitiesList({
           ) : null}
         </div>
 
-        {showChannelFilter ? (
+        {showChannelFilter || showBranchFilter || showMetaFilter ? (
           <div className="flex flex-wrap items-center gap-2">
-            <SearchableSelect
-              options={channelOptions}
-              value={channelId}
-              onValueChange={setChannelId}
-              placeholder="Todos os canais"
-              className="h-10 min-w-44 border-input bg-card"
-            />
-            {showBranchFilter || showMetaFilter ? (
+            {showChannelFilter ? (
+              <SearchableSelect
+                options={channelOptions}
+                value={channelId}
+                onValueChange={setChannelId}
+                placeholder="Todos os canais"
+                className="h-10 min-w-44 border-input bg-card"
+              />
+            ) : null}
+            {showChannelFilter && (showBranchFilter || showMetaFilter) ? (
               <ChevronRight
                 aria-hidden
                 className="size-4 shrink-0 text-muted-foreground"

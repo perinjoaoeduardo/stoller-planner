@@ -12,14 +12,11 @@ import {
   X,
 } from "lucide-react";
 
-import { ActivitiesTable } from "@/components/app/activities-table";
-import { ActivityForm } from "@/components/app/activity-form";
 import { MetaWizard } from "@/components/app/meta-wizard";
 import { PageShell } from "@/components/app/page-shell";
 import { ProblemsTab } from "@/components/app/problems-tab";
 import { NotesView } from "./notas/notes-view";
-import { useWizardProvider } from "@/components/app/wizard-provider";
-import { SearchableSelect } from "@/components/app/searchable-select";
+import { MyActivitiesList } from "../../minhas-atividades/my-activities-list";
 import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,39 +80,26 @@ export function ChannelView({
   currentUser: { name: string; avatarUrl: string | null };
 }) {
   const isMobile = useIsMobile();
-  const { openWizard } = useWizardProvider();
-  const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
-  const [activityFormOpen, setActivityFormOpen] = React.useState(false);
   const [metaWizardOpen, setMetaWizardOpen] = React.useState(false);
   // Metas saem da aba e viram drawer, igual ao RTV: a aba obrigava a
   // trocar de contexto (perdia a tabela de atividades de vista) para
   // consultar um plano que é referência, não destino de trabalho.
   const [problemsOpen, setProblemsOpen] = React.useState(false);
   const [notesOpen, setNotesOpen] = React.useState(false);
-  const [editingActivity, setEditingActivity] =
-    React.useState<ActivityRow | null>(null);
 
   const plan = channel.plan;
 
-  const filtered = React.useMemo(
-    () =>
-      branchFilter
-        ? activities.filter((activity) => activity.branchId === branchFilter)
-        : activities,
-    [activities, branchFilter]
-  );
-
   const metrics = React.useMemo(() => {
-    const total = filtered.length;
-    const completed = filtered.filter(
+    const total = activities.length;
+    const completed = activities.filter(
       (activity) => activity.status === "concluida"
     ).length;
-    const late = filtered.filter(isLateActivity).length;
+    const late = activities.filter(isLateActivity).length;
     // Há quanto tempo esse canal dá sinal de vida. É o único dado do
     // cockpit que NÃO dá para deduzir do resto da tela (contagem de
     // metas e de atividades já está logo abaixo) e é o que decide se o
     // gestor precisa cobrar alguém hoje.
-    const lastDone = filtered.reduce<string | null>((latest, activity) => {
+    const lastDone = activities.reduce<string | null>((latest, activity) => {
       if (!activity.completedAt) return latest;
       return !latest || activity.completedAt > latest
         ? activity.completedAt
@@ -132,19 +116,7 @@ export function ChannelView({
       daysSinceLast,
       lastDone,
     };
-  }, [filtered]);
-
-  // Criar atividade usa o wizard canônico (mesma experiência do RTV,
-  // com a bifurcação Agendar × Registrar); o form antigo fica só para
-  // edição.
-  function openCreateActivity() {
-    openWizard({ channelId: channel.id });
-  }
-
-  function openEditActivity(activity: ActivityRow) {
-    setEditingActivity(activity);
-    setActivityFormOpen(true);
-  }
+  }, [activities]);
 
   /**
    * Cockpit do canal no StatCard canônico (era um card à mão, com outro
@@ -217,9 +189,12 @@ export function ChannelView({
               </SelectContent>
             </Select>
           ) : null}
+          {/* Azul profundo: o relatório é a entrega do canal, a peça que
+              sai do app e vai para a mesa do cliente. Entre ações de
+              consulta (Notas, Metas) ele é a de maior peso. */}
           {plan ? (
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               className="h-9"
               nativeButton={false}
@@ -283,28 +258,6 @@ export function ChannelView({
         </Card>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <SearchableSelect
-              options={channel.branches.map((branch) => ({
-                value: branch.id,
-                label: branch.name,
-              }))}
-              value={branchFilter}
-              onValueChange={setBranchFilter}
-              placeholder="Todas as filiais"
-              className="w-56"
-            />
-            {branchFilter ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setBranchFilter(null)}
-              >
-                Limpar filtro
-              </Button>
-            ) : null}
-          </div>
-
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {metricCards.map((metric) => (
               <StatCard
@@ -318,28 +271,19 @@ export function ChannelView({
             ))}
           </div>
 
-          {/* Sem aba "Visao geral": os graficos repetiam, em barras, o
-              que os 4 KPIs acima ja dizem em numero, e "Atividades
-              criticas" era um recorte da propria lista logo abaixo.
-              Com uma aba so, o Tabs virou moldura vazia — a lista e a
-              tela. */}
-          <ActivitiesTable
-            data={filtered}
-            problems={problems.map((problem) => ({
-              value: problem.id,
-              label: problem.title,
-            }))}
-            branches={channel.branches.map((branch) => ({
-              value: branch.id,
-              label: branch.name,
-            }))}
+          {/* Mesma lista e mesmos filtros da tela de Atividades — dentro
+              do canal ela entra sem os proprios KPIs (o cockpit acima ja
+              da os numeros) e sem o seletor de canal, que aqui nao tem o
+              que escolher: Filial e Meta aparecem direto. */}
+          <MyActivitiesList
+            activities={activities}
+            initialStatus="todas"
+            currentUserId={currentUserId}
             responsibles={responsibles.map((responsible) => ({
               value: responsible.id,
               label: responsible.name,
             }))}
-            canEdit={canEdit}
-            onCreate={openCreateActivity}
-            onEdit={openEditActivity}
+            showKpis={false}
           />
 
           {/* Metas em drawer — mesma experiência do RTV. A diferença do
@@ -381,7 +325,7 @@ export function ChannelView({
                 <ProblemsTab
                   planId={plan.id}
                   problems={problems}
-                  activities={filtered}
+                  activities={activities}
                   canEdit={canEdit}
                   channelName={channel.name}
                 />
@@ -396,26 +340,6 @@ export function ChannelView({
             channelName={channel.name}
           />
 
-          <ActivityForm
-            open={activityFormOpen}
-            onOpenChange={setActivityFormOpen}
-            planId={plan.id}
-            activity={editingActivity}
-            options={{
-              problems: problems.map((problem) => ({
-                value: problem.id,
-                label: problem.title,
-              })),
-              branches: channel.branches.map((branch) => ({
-                value: branch.id,
-                label: branch.name,
-              })),
-              responsibles: responsibles.map((responsible) => ({
-                value: responsible.id,
-                label: responsible.name,
-              })),
-            }}
-          />
         </>
       )}
 

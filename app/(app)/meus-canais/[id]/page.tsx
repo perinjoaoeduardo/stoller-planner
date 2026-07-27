@@ -112,7 +112,7 @@ export default async function MeuCanalPage({
       actions={
         <div className="flex items-center gap-2">
           <Button
-            variant="outline"
+            variant="default"
             nativeButton={false}
             render={<Link href={`/canais/${id}/relatorio`} />}
           >
