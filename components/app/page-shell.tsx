@@ -36,7 +36,9 @@ export function PageShell({
   className,
   children,
 }: {
-  title: string;
+  /** Texto na maioria das telas; aceita nó para casos como o perfil,
+   *  onde o avatar precisa ficar ao lado do nome (dentro do h1). */
+  title: React.ReactNode;
   description?: React.ReactNode;
   descriptionClassName?: string;
   breadcrumb?: React.ReactNode;

@@ -1,31 +1,15 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatDistanceToNow, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import {
-  Camera,
-  Store,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
-import { ActivityLink } from "@/components/app/activity-link";
+import { MyActivitiesList } from "@/app/(app)/minhas-atividades/my-activities-list";
 import { PageShell } from "@/components/app/page-shell";
-import { ClickableCard } from "@/components/shared/clickable-card";
 import { StatCard } from "@/components/shared/stat-card";
-import type { ActivityRowData } from "@/components/shared/activity-row";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { daysSince, isDark } from "@/lib/db/cx";
 import { getPersonDetail } from "@/lib/db/person";
-
-import { PersonActivities } from "./person-activities";
 import { getInitials } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -41,26 +25,16 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   CX: "Excelência comercial",
 };
 
-/** Aberta primeiro (atrasada > planejada por prazo), encerrada por último. */
-function sortForProfile(activities: ActivityRowData[]): ActivityRowData[] {
-  const rank = (a: ActivityRowData) =>
-    a.status === "atrasada" ? 0 : a.status === "planejada" ? 1 : 2;
-  return [...activities].sort((a, b) => {
-    const rA = rank(a);
-    const rB = rank(b);
-    if (rA !== rB) return rA - rB;
-    if (!a.dueDate && !b.dueDate) return 0;
-    if (!a.dueDate) return 1;
-    if (!b.dueDate) return -1;
-    return a.dueDate < b.dueDate ? -1 : 1;
-  });
-}
-
 /**
- * Perfil de pessoa — aberto a partir da aba Pessoas do /acompanhamento
- * (CX) e de qualquer lugar que aponte para /pessoas/[id]. Responde
- * "como está o trabalho desta pessoa?": ritmo de registro, carga de
- * atividades, atrasos e onde ela atua.
+ * Perfil de pessoa — responde "como está o trabalho desta pessoa?":
+ * ritmo de registro, carga, atrasos e onde ela atua.
+ *
+ * A tela era um mosaico: dois cards de meia largura ("Onde atua" com um
+ * único canal ao lado de "Registros recentes") deixavam um buraco no
+ * meio da página, e "Registros recentes" repetia — em outro formato — as
+ * atividades concluídas que a lista logo abaixo já mostrava. Agora é uma
+ * coluna só: números, onde atua em uma linha, e a lista canônica de
+ * atividades (a mesma do resto do app).
  *
  * Escopo: CX vê qualquer pessoa; DSM só quem atua nos canais dele;
  * RTV/RDC só o próprio perfil.
@@ -90,57 +64,40 @@ export default async function PessoaPage({
   const days = daysSince(person.lastExecutionAt);
   const dark = isDark(person.lastExecutionAt);
   const lastRegisterValue =
-    days === null ? "Nunca" : days === 0 ? "Hoje" : `há ${days} d`;
+    days === null ? "Nunca" : days === 0 ? "Hoje" : `há ${days}d`;
 
-  const rows: ActivityRowData[] = person.activities.map((activity) => ({
-    id: activity.id,
-    title: activity.title,
-    status: activity.status,
-    category: activity.category,
-    dueDate: activity.dueDate,
-    channelName: activity.channelName,
-    branchName: activity.branchName,
-    problemTitle: activity.problemTitle,
-    assignees: activity.assignees,
-  }));
-  const sortedRows = sortForProfile(rows).slice(0, 12);
-
-  const firstName = person.name.split(" ")[0];
   const roleDescription = ROLE_DESCRIPTIONS[person.role] ?? person.role;
+  // O DSM não tem /acompanhamento — mandá-lo para lá era um beco.
+  const backHref =
+    viewer.role === "CX" ? "/acompanhamento?tab=pessoas" : "/canais";
 
   return (
     <PageShell
-      backHref="/acompanhamento?tab=pessoas"
-      title={person.name}
-      description={
-        <span className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{person.role}</Badge>
-          <span>{roleDescription}</span>
-          {person.regionNames.length > 0 ? (
-            <>
-              <span aria-hidden>·</span>
-              <span>{person.regionNames.join(", ")}</span>
-            </>
-          ) : null}
+      backHref={backHref}
+      title={
+        <span className="flex items-center gap-3">
+          <Avatar className="size-10 shrink-0 border border-border">
+            {person.avatarUrl ? (
+              <AvatarImage src={person.avatarUrl} alt={person.name} />
+            ) : null}
+            <AvatarFallback className="text-sm font-medium">
+              {getInitials(person.name)}
+            </AvatarFallback>
+          </Avatar>
+          {person.name}
         </span>
       }
-      actions={
-        <Avatar className="size-12 border border-border">
-          {person.avatarUrl ? (
-            <AvatarImage src={person.avatarUrl} alt={person.name} />
-          ) : null}
-          <AvatarFallback className="text-sm font-medium">
-            {getInitials(person.name)}
-          </AvatarFallback>
-        </Avatar>
-      }
+      // Sem badge do papel: "RTV" ao lado de "Consultor técnico de
+      // vendas" era a mesma informação duas vezes, uma delas em sigla.
+      description={[roleDescription, person.regionNames.join(", ")]
+        .filter(Boolean)
+        .join(" · ")}
     >
-      {/* Ritmo e carga */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Atividades na safra"
           value={person.stats.total}
-          sublabel="no nome dela"
+          sublabel="sob responsabilidade"
         />
         <StatCard
           title="Concluídas"
@@ -162,94 +119,41 @@ export default async function PessoaPage({
         />
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
-        {/* Onde atua */}
-        <Card className="gap-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Store className="size-4 text-muted-foreground" />
-              Onde atua
-            </CardTitle>
-            <CardDescription>
-              {person.links.length === 0
-                ? "Sem vínculos ativos."
-                : person.role === "DSM"
-                  ? "Canais sob gestão."
-                  : "Canais e filiais vinculados."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
+      {/* Onde atua em UMA linha de chips: com um canal só, o card de
+          meia tela anterior abria um buraco na página para dizer uma
+          frase. */}
+      {person.links.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {person.role === "DSM" ? "Canais sob gestão" : "Onde atua"}
+          </p>
+          <div className="flex flex-wrap gap-2">
             {person.links.map((link) => (
-              <ClickableCard
+              <Link
                 key={link.channelId}
                 href={`/canais/${link.channelId}`}
-                showArrow
-                className="flex flex-col gap-0.5 p-3.5"
+                className="group flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 transition-colors hover:border-border-hover hover:bg-hover-surface"
               >
-                <p className="truncate pr-8 text-sm font-semibold text-foreground">
+                <span className="text-sm font-medium text-foreground">
                   {link.channelName}
-                </p>
-                <p className="truncate pr-8 text-xs text-muted-foreground">
-                  {link.regionName}
+                </span>
+                <span className="text-xs text-muted-foreground">
                   {link.branchNames.length > 0
-                    ? ` · ${link.branchNames.join(", ")}`
-                    : ""}
-                </p>
-              </ClickableCard>
+                    ? link.branchNames.join(", ")
+                    : link.regionName}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-slow ease-emphasized group-hover:translate-x-0.5" />
+              </Link>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      ) : null}
 
-        {/* Registros recentes */}
-        <Card className="gap-3">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Camera className="size-4 text-muted-foreground" />
-              Registros recentes
-            </CardTitle>
-            <CardDescription>
-              As últimas execuções registradas por {firstName}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-1">
-            {person.recentExecutions.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Nenhuma execução registrada até agora.
-              </p>
-            ) : (
-              person.recentExecutions.map((execution) => (
-                <ActivityLink
-                  key={execution.id}
-                  activityId={execution.activityId}
-                  className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-hover-surface"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-foreground">
-                      {execution.activityTitle}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {[execution.channelName, execution.branchName]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {formatDistanceToNow(parseISO(execution.createdAt), {
-                      addSuffix: true,
-                      locale: ptBR,
-                    })}
-                  </span>
-                </ActivityLink>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <PersonActivities
-        activities={sortedRows}
-        viewAllHref={`/atividades?responsavel=${person.id}`}
-        personFirstName={firstName}
+      {/* A lista canônica, sem KPIs — os números já estão acima. */}
+      <MyActivitiesList
+        activities={person.activities}
+        initialStatus="todas"
+        showKpis={false}
       />
     </PageShell>
   );
