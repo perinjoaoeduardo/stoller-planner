@@ -222,16 +222,6 @@ export function ChannelView({
               </span>
             ) : null}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            nativeButton={false}
-            render={<Link href={`/canais/${channel.id}/pessoas`} />}
-          >
-            <Users />
-            Time
-          </Button>
           {plan ? (
             <Button
               variant="outline"
@@ -246,6 +236,16 @@ export function ChannelView({
               </span>
             </Button>
           ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            nativeButton={false}
+            render={<Link href={`/canais/${channel.id}/pessoas`} />}
+          >
+            <Users />
+            Time
+          </Button>
           {/* "Nova atividade" só no topbar — a ação universal tem UM
               lugar, senão o usuário procura em vários. */}
         </div>

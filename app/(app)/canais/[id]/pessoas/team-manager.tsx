@@ -2,9 +2,16 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { differenceInCalendarDays, formatDistanceToNow, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Check, MoreHorizontal, Pencil, Trash2, UserPlus, Users } from "lucide-react";
+import {
+  Check,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { PersonLink } from "@/components/shared/person-link";
@@ -21,6 +28,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +58,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -58,13 +74,24 @@ import {
   removeChannelPerson,
   setPersonBranches,
 } from "@/lib/actions/channel-people";
-import type {
-  AssignablePerson,
-  ChannelPerson,
-} from "@/lib/db/channel-people";
+import type { AssignablePerson, ChannelPerson } from "@/lib/db/channel-people";
+import { DARK_CHANNEL_DAYS } from "@/lib/config";
 import { cn, getInitials } from "@/lib/utils";
 
 type Branch = { id: string; name: string };
+
+const ROLE_LABEL: Record<string, string> = {
+  DSM: "Gestor de canais",
+  RTV: "Consultor técnico",
+};
+
+/** Busca sem acento e sem caixa — "jose" acha "José". */
+function normalize(text: string) {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
 
 /**
  * Time do canal — quem atua ali, com que carga, e a manutenção do
@@ -75,9 +102,10 @@ type Branch = { id: string; name: string };
  * sai. Sem isso, "o RTV mudou de praça" virava chamado para o time de
  * dados.
  *
- * Cada linha responde três coisas na ordem em que o gestor pergunta:
- * quem é, onde atua e como está a carga. As ações ficam no fim, atrás de
- * um menu — manutenção é exceção, não o motivo de abrir a tela.
+ * As linhas são agrupadas por papel porque os dois são estruturalmente
+ * diferentes — o gestor responde pelo canal inteiro, o consultor atua em
+ * filiais. Agrupar evita reler o cargo em cada linha para entender por
+ * que uma diz "Canal inteiro" e a outra lista filiais.
  */
 export function TeamManager({
   channelId,
@@ -94,6 +122,7 @@ export function TeamManager({
   assignable: AssignablePerson[];
   canEdit: boolean;
 }) {
+  const [search, setSearch] = React.useState("");
   const [addOpen, setAddOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<ChannelPerson | null>(null);
   const [removing, setRemoving] = React.useState<ChannelPerson | null>(null);
@@ -101,6 +130,24 @@ export function TeamManager({
 
   const memberIds = new Set(people.map((person) => person.profileId));
   const candidates = assignable.filter((person) => !memberIds.has(person.id));
+
+  const term = normalize(search.trim());
+  const filtered = term
+    ? people.filter(
+        (person) =>
+          normalize(person.name).includes(term) ||
+          person.branches.some((branch) =>
+            normalize(branch.name).includes(term)
+          )
+      )
+    : people;
+
+  const managers = filtered.filter((person) => person.role === "DSM");
+  const field = filtered.filter((person) => person.role !== "DSM");
+
+  // A busca só aparece quando há o que procurar: em time pequeno ela é
+  // moldura, não ferramenta.
+  const showSearch = people.length > 5;
 
   function remove(person: ChannelPerson) {
     startTransition(async () => {
@@ -117,12 +164,33 @@ export function TeamManager({
     });
   }
 
+  const summary = [
+    managers.length > 0
+      ? `${managers.length} ${managers.length === 1 ? "gestor" : "gestores"}`
+      : null,
+    field.length > 0
+      ? `${field.length} ${field.length === 1 ? "consultor" : "consultores"}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground tabular-nums">
-          {people.length} {people.length === 1 ? "pessoa" : "pessoas"} no time
-        </p>
+        <div className="flex flex-1 flex-wrap items-center gap-3">
+          {showSearch ? (
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nome ou filial..."
+              className="h-9 w-full max-w-xs"
+            />
+          ) : null}
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {summary || "Ninguém no time"}
+          </p>
+        </div>
         {canEdit ? (
           <Button variant="brand" size="sm" onClick={() => setAddOpen(true)}>
             <UserPlus />
@@ -151,6 +219,12 @@ export function TeamManager({
             </EmptyContent>
           ) : null}
         </Empty>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Ninguém encontrado com “{search}”.
+          </p>
+        </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-card shadow-card">
           <Table>
@@ -171,123 +245,32 @@ export function TeamManager({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {people.map((person) => (
-                <TableRow key={person.profileId}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="size-8 shrink-0">
-                        {person.avatarUrl ? (
-                          <AvatarImage
-                            src={person.avatarUrl}
-                            alt={person.name}
-                          />
-                        ) : null}
-                        <AvatarFallback className="text-xs">
-                          {getInitials(person.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <PersonLink
-                          profileId={person.profileId}
-                          name={person.name}
-                          className="block truncate text-sm font-medium text-foreground"
-                        />
-                        <span className="text-xs text-muted-foreground">
-                          {person.role === "DSM"
-                            ? "Gestor de canais"
-                            : "Consultor técnico"}
-                        </span>
-                      </div>
-                    </div>
-                  </TableCell>
-
-                  <TableCell>
-                    {person.role === "DSM" ? (
-                      <span className="text-sm text-muted-foreground">
-                        Canal inteiro
-                      </span>
-                    ) : person.branches.length === 0 ? (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1">
-                        {person.branches.map((branch) => (
-                          <Badge
-                            key={branch.id}
-                            variant="outline"
-                            className="border-transparent bg-brand-wash text-brand-wash-fg"
-                          >
-                            {branch.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </TableCell>
-
-                  <TableCell className="text-right text-sm tabular-nums">
-                    {person.openCount}
-                  </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right text-sm tabular-nums",
-                      person.lateCount > 0 && "font-medium text-warning"
-                    )}
-                  >
-                    {person.lateCount}
-                  </TableCell>
-                  <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground md:table-cell">
-                    {person.lastExecutionAt
-                      ? formatDistanceToNow(parseISO(person.lastExecutionAt), {
-                          addSuffix: true,
-                          locale: ptBR,
-                        })
-                      : "Nunca"}
-                  </TableCell>
-
-                  {canEdit ? (
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className="text-muted-foreground"
-                              aria-label={`Ações de ${person.name}`}
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          }
-                        />
-                        <DropdownMenuContent align="end" className="w-52">
-                          <DropdownMenuItem
-                            nativeButton={false}
-                            render={
-                              <Link href={`/pessoas/${person.profileId}`} />
-                            }
-                          >
-                            Ver perfil
-                          </DropdownMenuItem>
-                          {person.role === "RTV" ? (
-                            <DropdownMenuItem
-                              onClick={() => setEditing(person)}
-                            >
-                              <Pencil />
-                              Editar filiais
-                            </DropdownMenuItem>
-                          ) : null}
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => setRemoving(person)}
-                          >
-                            <Trash2 />
-                            Tirar do canal
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
+              {[
+                { label: "Gestão do canal", rows: managers },
+                { label: "Campo", rows: field },
+              ]
+                .filter((group) => group.rows.length > 0)
+                .map((group) => (
+                  <React.Fragment key={group.label}>
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell
+                        colSpan={canEdit ? 6 : 5}
+                        className="bg-subtle py-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                      >
+                        {group.label}
+                      </TableCell>
+                    </TableRow>
+                    {group.rows.map((person) => (
+                      <PersonRow
+                        key={person.profileId}
+                        person={person}
+                        canEdit={canEdit}
+                        onEdit={() => setEditing(person)}
+                        onRemove={() => setRemoving(person)}
+                      />
+                    ))}
+                  </React.Fragment>
+                ))}
             </TableBody>
           </Table>
         </div>
@@ -345,6 +328,156 @@ export function TeamManager({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function PersonRow({
+  person,
+  canEdit,
+  onEdit,
+  onRemove,
+}: {
+  person: ChannelPerson;
+  canEdit: boolean;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const daysSinceRegister = person.lastExecutionAt
+    ? differenceInCalendarDays(new Date(), parseISO(person.lastExecutionAt))
+    : null;
+  // Âmbar só quando a pessoa está no escuro — mesma régua de canal sem
+  // registro. Um "há 3 dias" não é problema e não deve acender nada.
+  const stale =
+    person.role !== "DSM" &&
+    (daysSinceRegister === null || daysSinceRegister >= DARK_CHANNEL_DAYS);
+
+  return (
+    <TableRow className="group/row">
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <Avatar className="size-8 shrink-0">
+            {person.avatarUrl ? (
+              <AvatarImage src={person.avatarUrl} alt={person.name} />
+            ) : null}
+            <AvatarFallback className="text-xs">
+              {getInitials(person.name)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <PersonLink
+              profileId={person.profileId}
+              name={person.name}
+              className="block truncate text-sm font-medium text-foreground"
+            />
+            <span className="text-xs text-muted-foreground">
+              {ROLE_LABEL[person.role] ?? person.role}
+            </span>
+          </div>
+        </div>
+      </TableCell>
+
+      <TableCell>
+        {person.role === "DSM" ? (
+          <span className="text-sm text-muted-foreground">Canal inteiro</span>
+        ) : person.branches.length === 0 ? (
+          <span className="text-sm text-muted-foreground">Sem filial</span>
+        ) : (
+          <div className="flex flex-wrap items-center gap-1">
+            {person.branches.map((branch) => (
+              <Badge
+                key={branch.id}
+                variant="outline"
+                className="border-transparent bg-brand-wash text-brand-wash-fg"
+              >
+                {branch.name}
+              </Badge>
+            ))}
+            {/* Editar filial é a manutenção mais comum (RTV muda de
+                praça), então tem atalho na própria linha além do menu. */}
+            {canEdit ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={onEdit}
+                aria-label={`Editar filiais de ${person.name}`}
+                className="text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-100 focus-visible:opacity-100"
+              >
+                <Pencil />
+              </Button>
+            ) : null}
+          </div>
+        )}
+      </TableCell>
+
+      <TableCell
+        className={cn(
+          "text-right text-sm tabular-nums",
+          person.openCount === 0 && "text-muted-foreground"
+        )}
+      >
+        {person.openCount}
+      </TableCell>
+      <TableCell
+        className={cn(
+          "text-right text-sm tabular-nums",
+          person.lateCount > 0
+            ? "font-medium text-warning"
+            : "text-muted-foreground"
+        )}
+      >
+        {person.lateCount}
+      </TableCell>
+      <TableCell
+        className={cn(
+          "hidden whitespace-nowrap text-sm md:table-cell",
+          stale ? "text-warning" : "text-muted-foreground"
+        )}
+      >
+        {person.lastExecutionAt
+          ? formatDistanceToNow(parseISO(person.lastExecutionAt), {
+              addSuffix: true,
+              locale: ptBR,
+            })
+          : "Nunca registrou"}
+      </TableCell>
+
+      {canEdit ? (
+        <TableCell>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-muted-foreground"
+                  aria-label={`Ações de ${person.name}`}
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                nativeButton={false}
+                render={<Link href={`/pessoas/${person.profileId}`} />}
+              >
+                Ver perfil
+              </DropdownMenuItem>
+              {person.role !== "DSM" ? (
+                <DropdownMenuItem onClick={onEdit}>
+                  <Pencil />
+                  Editar filiais
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem variant="destructive" onClick={onRemove}>
+                <Trash2 />
+                Tirar do canal
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      ) : null}
+    </TableRow>
   );
 }
 
@@ -410,7 +543,10 @@ function AddPersonDialog({
   const canSubmit =
     !!person && (!needsBranches || branchIds.length > 0) && !pending;
 
-  // Reset no evento de fechar (nao em effect): setState dentro de effect
+  const managers = candidates.filter((candidate) => candidate.role === "DSM");
+  const field = candidates.filter((candidate) => candidate.role !== "DSM");
+
+  // Reset no evento de fechar (não em effect): setState dentro de effect
   // dispara render em cascata e o lint do projeto barra.
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -429,7 +565,7 @@ function AddPersonDialog({
         branchIds: needsBranches ? branchIds : [],
       });
       if (result.ok) {
-        onOpenChange(false);
+        handleOpenChange(false);
         toast.success(`${person.name} entrou no time de ${channelName}.`);
       } else {
         toast.error(result.error);
@@ -453,59 +589,58 @@ function AddPersonDialog({
           </p>
         ) : (
           <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <Label>Pessoa</Label>
-              <div className="max-h-56 overflow-y-auto rounded-lg border">
-                {candidates.map((candidate) => {
-                  const active = candidate.id === profileId;
-                  return (
-                    <button
-                      key={candidate.id}
-                      type="button"
-                      onClick={() => {
-                        setProfileId(candidate.id);
-                        setBranchIds([]);
-                      }}
-                      aria-pressed={active}
-                      className={cn(
-                        "flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition-colors",
-                        active ? "bg-accent-brand/10" : "hover:bg-muted/60"
-                      )}
-                    >
-                      <Avatar className="size-8 shrink-0">
-                        {candidate.avatarUrl ? (
-                          <AvatarImage
-                            src={candidate.avatarUrl}
-                            alt={candidate.name}
-                          />
-                        ) : null}
-                        <AvatarFallback className="text-xs">
-                          {getInitials(candidate.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-foreground">
-                          {candidate.name}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {candidate.role === "DSM"
-                            ? "Gestor de canais"
-                            : "Consultor técnico"}
-                        </span>
-                      </span>
-                      {active ? (
-                        <Check className="size-4 shrink-0 text-accent-brand" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Command: busca por digitação + navegação por teclado, e
+                agrupa por papel. A lista rolável sem busca não escala —
+                com o cadastro real são dezenas de nomes. */}
+            <Command className="rounded-lg border bg-card p-0">
+              <CommandInput placeholder="Buscar pessoa..." />
+              <CommandList className="max-h-60">
+                <CommandEmpty>Ninguém com esse nome.</CommandEmpty>
+                {[
+                  { label: "Gestores de canal", rows: managers },
+                  { label: "Consultores técnicos", rows: field },
+                ]
+                  .filter((group) => group.rows.length > 0)
+                  .map((group) => (
+                    <CommandGroup key={group.label} heading={group.label}>
+                      {group.rows.map((candidate) => (
+                        <CommandItem
+                          key={candidate.id}
+                          value={candidate.name}
+                          onSelect={() => {
+                            setProfileId(candidate.id);
+                            setBranchIds([]);
+                          }}
+                          className="gap-3"
+                        >
+                          <Avatar className="size-7 shrink-0">
+                            {candidate.avatarUrl ? (
+                              <AvatarImage
+                                src={candidate.avatarUrl}
+                                alt={candidate.name}
+                              />
+                            ) : null}
+                            <AvatarFallback className="text-[10px]">
+                              {getInitials(candidate.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="min-w-0 flex-1 truncate">
+                            {candidate.name}
+                          </span>
+                          {candidate.id === profileId ? (
+                            <Check className="size-4 shrink-0 text-accent-brand" />
+                          ) : null}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ))}
+              </CommandList>
+            </Command>
 
             {person ? (
               needsBranches ? (
                 <div className="flex flex-col gap-2">
-                  <Label>Filiais em que atua</Label>
+                  <Label>Filiais de {person.name.split(" ")[0]}</Label>
                   <BranchPicker
                     branches={branches}
                     selected={branchIds}
@@ -580,6 +715,8 @@ function EditBranchesDialog({
     });
   }
 
+  const allSelected = branchIds.length === branches.length;
+
   return (
     <Dialog open onOpenChange={(next) => (next ? undefined : onClose())}>
       <DialogContent className="sm:max-w-lg">
@@ -590,17 +727,38 @@ function EditBranchesDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <BranchPicker
-          branches={branches}
-          selected={branchIds}
-          onToggle={(id) =>
-            setBranchIds((current) =>
-              current.includes(id)
-                ? current.filter((value) => value !== id)
-                : [...current, id]
-            )
-          }
-        />
+        <div className="flex flex-col gap-3">
+          <BranchPicker
+            branches={branches}
+            selected={branchIds}
+            onToggle={(id) =>
+              setBranchIds((current) =>
+                current.includes(id)
+                  ? current.filter((value) => value !== id)
+                  : [...current, id]
+              )
+            }
+          />
+          {branches.length > 2 ? (
+            <button
+              type="button"
+              onClick={() =>
+                setBranchIds(
+                  allSelected ? [] : branches.map((branch) => branch.id)
+                )
+              }
+              className="w-fit cursor-pointer text-xs text-accent-brand underline-offset-4 hover:underline"
+            >
+              {allSelected ? "Limpar seleção" : "Selecionar todas"}
+            </button>
+          ) : null}
+          {branchIds.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              Sem nenhuma filial o consultor não vê nada deste canal — se a
+              ideia é tirá-lo daqui, use “Tirar do canal”.
+            </p>
+          ) : null}
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
