@@ -23,7 +23,7 @@ import {
   getChannelResponsibles,
   getPlanBoard,
 } from "@/lib/db/channels";
-import { getChannelNoteCount } from "@/lib/db/notes";
+import { getChannelNotes } from "@/lib/db/notes";
 
 import { ChannelView } from "./channel-view";
 
@@ -81,7 +81,7 @@ export default async function CanalPage({
   const channel = await getChannelDetail(id);
   if (!channel) return <ChannelNotFound />;
 
-  const [board, responsibles, canEdit, noteCount] = await Promise.all([
+  const [board, responsibles, canEdit, notes] = await Promise.all([
     channel.plan
       ? getPlanBoard(channel.plan.id, { id: channel.id, name: channel.name })
       : Promise.resolve({ problems: [], activities: [] }),
@@ -90,7 +90,7 @@ export default async function CanalPage({
       channel.branches.map((branch) => branch.id)
     ),
     canEditPlan(profile, channel.id),
-    getChannelNoteCount(channel.id),
+    getChannelNotes(channel.id),
   ]);
 
   return (
@@ -101,7 +101,9 @@ export default async function CanalPage({
       responsibles={responsibles}
       canEdit={canEdit}
       defaultTab={tab}
-      noteCount={noteCount}
+      notes={notes}
+      currentUserId={profile.id}
+      currentUser={{ name: profile.fullName, avatarUrl: profile.avatarUrl }}
     />
   );
 }

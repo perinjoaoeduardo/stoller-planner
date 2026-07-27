@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { harvestLabel } from "@/lib/config";
 import Link from "next/link";
-import { FileText, StickyNote, Store } from "lucide-react";
+import { FileText, Store } from "lucide-react";
 
 import { PageShell } from "@/components/app/page-shell";
 import {
@@ -23,9 +23,10 @@ import {
 } from "@/components/ui/empty";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelDetail, getPlanBoard } from "@/lib/db/channels";
-import { getChannelNoteCount } from "@/lib/db/notes";
+import { getChannelNotes } from "@/lib/db/notes";
 
 import { MeuCanalView } from "./meu-canal-view";
+import { NotesSheetButton } from "./notes-sheet-button";
 import { ProblemsSheetButton } from "./problems-sheet-button";
 
 export const dynamic = "force-dynamic";
@@ -79,14 +80,14 @@ export default async function MeuCanalPage({
   const channel = await getChannelDetail(id);
   if (!channel) return <ChannelNotFound />;
 
-  const [board, noteCount] = await Promise.all([
+  const [board, notes] = await Promise.all([
     channel.plan
       ? getPlanBoard(channel.plan.id, {
           id: channel.id,
           name: channel.name,
         })
       : Promise.resolve({ problems: [], activities: [] }),
-    getChannelNoteCount(id),
+    getChannelNotes(id),
   ]);
 
   return (
@@ -118,16 +119,7 @@ export default async function MeuCanalPage({
             <FileText className="size-4" />
             <span className="hidden md:inline">Relatório de safra</span>
           </Button>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href={`/canais/${id}/notas`} />}
-          >
-            <StickyNote className="size-4" />
-            <span className="hidden md:inline">
-              {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
-            </span>
-          </Button>
+          <NotesSheetButton count={notes.length} />
           {board.problems.length > 0 ? (
             <ProblemsSheetButton count={board.problems.length} />
           ) : null}
@@ -139,6 +131,8 @@ export default async function MeuCanalPage({
         problems={board.problems}
         activities={board.activities}
         profileId={profile.id}
+        notes={notes}
+        currentUser={{ name: profile.fullName, avatarUrl: profile.avatarUrl }}
       />
     </PageShell>
   );

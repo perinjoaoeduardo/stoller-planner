@@ -50,7 +50,9 @@ import type {
   ChannelDetail,
   ProblemRow,
 } from "@/lib/db/channels";
+import type { ChannelNote } from "@/lib/db/notes";
 import { isLateActivity, todayISO } from "@/lib/db/status";
+import { NotesView } from "../../canais/[id]/notas/notes-view";
 import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
@@ -87,11 +89,15 @@ export function MeuCanalView({
   problems,
   activities,
   profileId,
+  notes,
+  currentUser,
 }: {
   channel: ChannelDetail;
   problems: ProblemRow[];
   activities: ActivityRow[];
   profileId: string;
+  notes: ChannelNote[];
+  currentUser: { name: string; avatarUrl: string | null };
 }) {
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
@@ -119,6 +125,7 @@ export function MeuCanalView({
   const [problemFilter, setProblemFilterRaw] =
     React.useState<ProblemRow | null>(null);
   const [problemsOpen, setProblemsOpen] = React.useState(false);
+  const [notesOpen, setNotesOpen] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<SortKey>("prazo");
   const [sortDir, setSortDir] = React.useState<SortDir>("asc");
   const [page, setPage] = React.useState(1);
@@ -654,8 +661,69 @@ export function MeuCanalView({
           "handle" via CustomEvent para permitir controle externo. */}
       <ProblemsSheetOpener onClick={() => setProblemsOpen(true)} />
 
+      {/* Notas em drawer: material de consulta do canal, não uma tela de
+          destino — abrir outra rota fazia perder o contexto do plano
+          para ler um bilhete. */}
+      <SheetOpener event="open-notes-sheet" onOpen={() => setNotesOpen(true)} />
+      <Drawer
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
+        modal
+        swipeDirection={isMobile ? "down" : "right"}
+      >
+        <DrawerContent
+          className={cn(
+            !isMobile && "data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]"
+          )}
+        >
+          <DrawerTitle className="sr-only">Notas do canal</DrawerTitle>
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-6 py-4">
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-foreground">
+                Notas do canal
+              </p>
+              <DrawerDescription className="mt-0.5">
+                Aprendizados e observações do time sobre {channel.name}.
+              </DrawerDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setNotesOpen(false)}
+              className="shrink-0"
+            >
+              <X className="size-4" />
+              <span className="sr-only">Fechar</span>
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            <NotesView
+              channelId={channel.id}
+              notes={notes}
+              currentUserId={profileId}
+              currentUser={currentUser}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
     </>
   );
+}
+
+/** Ponte genérica CustomEvent → state (o botão vive no PageShell). */
+function SheetOpener({
+  event,
+  onOpen,
+}: {
+  event: string;
+  onOpen: () => void;
+}) {
+  React.useEffect(() => {
+    const handler = () => onOpen();
+    window.addEventListener(event, handler);
+    return () => window.removeEventListener(event, handler);
+  }, [event, onOpen]);
+  return null;
 }
 
 /**

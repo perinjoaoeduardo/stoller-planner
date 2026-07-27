@@ -22,6 +22,7 @@ import { ActivityForm } from "@/components/app/activity-form";
 import { MetaWizard } from "@/components/app/meta-wizard";
 import { PageShell } from "@/components/app/page-shell";
 import { ProblemsTab } from "@/components/app/problems-tab";
+import { NotesView } from "./notas/notes-view";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import { ACTIVITY_STATUSES, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
@@ -69,6 +70,7 @@ import type {
   ProblemRow,
   ResponsibleOption,
 } from "@/lib/db/channels";
+import type { ChannelNote } from "@/lib/db/notes";
 import { isLateActivity } from "@/lib/db/status";
 
 const PENDING = new Set<string>(OPEN_STATUSES);
@@ -84,7 +86,9 @@ export function ChannelView({
   responsibles,
   canEdit,
   defaultTab,
-  noteCount = 0,
+  notes,
+  currentUserId,
+  currentUser,
 }: {
   channel: ChannelDetail;
   problems: ProblemRow[];
@@ -92,8 +96,9 @@ export function ChannelView({
   responsibles: ResponsibleOption[];
   canEdit: boolean;
   defaultTab?: string;
-  /** Total de notas do canal — vira o contador do botão "Notas (N)". */
-  noteCount?: number;
+  notes: ChannelNote[];
+  currentUserId: string;
+  currentUser: { name: string; avatarUrl: string | null };
 }) {
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
@@ -104,6 +109,7 @@ export function ChannelView({
   // trocar de contexto (perdia a tabela de atividades de vista) para
   // consultar um plano que é referência, não destino de trabalho.
   const [problemsOpen, setProblemsOpen] = React.useState(false);
+  const [notesOpen, setNotesOpen] = React.useState(false);
   const [editingActivity, setEditingActivity] =
     React.useState<ActivityRow | null>(null);
 
@@ -273,15 +279,22 @@ export function ChannelView({
               Relatório de safra
             </Button>
           ) : null}
+          {/* Notas em drawer: é material de consulta do canal, não uma
+              tela de destino — mandar o usuário para outra rota fazia
+              perder o contexto do plano para ler um bilhete. */}
           <Button
             variant="outline"
             size="sm"
             className="h-9"
-            nativeButton={false}
-            render={<Link href={`/canais/${channel.id}/notas`} />}
+            onClick={() => setNotesOpen(true)}
           >
             <StickyNote />
-            {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
+            Notas
+            {notes.length > 0 ? (
+              <span className="tabular-nums text-muted-foreground">
+                {notes.length}
+              </span>
+            ) : null}
           </Button>
           {plan ? (
             <Button
@@ -561,6 +574,41 @@ export function ChannelView({
           />
         </>
       )}
+
+      {/* Notas — fora do bloco do plano: um canal sem plano ainda tem
+          histórico para registrar e consultar. */}
+      <Drawer open={notesOpen} onOpenChange={setNotesOpen} modal>
+        <DrawerContent className="data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]">
+          <DrawerTitle className="sr-only">Notas do canal</DrawerTitle>
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-6 py-4">
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-foreground">
+                Notas do canal
+              </p>
+              <DrawerDescription className="mt-0.5">
+                Aprendizados e observações do time sobre {channel.name}.
+              </DrawerDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setNotesOpen(false)}
+              className="shrink-0"
+            >
+              <X className="size-4" />
+              <span className="sr-only">Fechar</span>
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6">
+            <NotesView
+              channelId={channel.id}
+              notes={notes}
+              currentUserId={currentUserId}
+              currentUser={currentUser}
+            />
+          </div>
+        </DrawerContent>
+      </Drawer>
     </PageShell>
   );
 }
