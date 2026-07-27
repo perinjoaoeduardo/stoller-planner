@@ -579,31 +579,76 @@ export function ReportView({
         </Breadcrumb>
       </div>
 
-      {/* FIX 1 — Header. No papel some: quem abre o documento é a capa. */}
+      {/*
+        Header em DOIS níveis, igual para os três perfis:
+        1) identidade do documento (quem é + o que é) com as ações do
+           documento à direita — Copiar link e Exportar PDF agem sobre o
+           relatório inteiro, então pertencem ao título, não à fileira de
+           filtros;
+        2) controles, com o Interno/Externo PRIMEIRO (é a decisão que
+           muda o documento) e o recorte depois do divisor.
+        No papel some: quem abre o documento é a capa. "Corteva Planner"
+        saiu daqui — a marca já está no chrome do app e na capa/rodapé do
+        PDF; solta no canto, era só um rótulo órfão.
+      */}
       <Card className="rounded-xl border border-border bg-card p-6 print:hidden">
-        <div className="flex flex-wrap items-center gap-4">
-          <ChannelAvatar name={report.channel.name} />
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-muted-foreground">
-              Relatório de safra
-            </p>
-            <h1 className="truncate text-2xl font-semibold tracking-tight">
-              {report.channel.name}
-            </h1>
-            <p className="truncate text-sm text-muted-foreground">
-              {report.channel.region}
-              {report.plan ? ` · ${report.plan.harvest}` : ""}
-              {branchName ? ` · ${branchName}` : ""}
-              {categoryName ? ` · ${categoryName}` : ""}
-            </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <ChannelAvatar name={report.channel.name} />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">
+                Relatório de safra
+              </p>
+              <h1 className="truncate text-2xl font-semibold tracking-tight">
+                {report.channel.name}
+              </h1>
+              <p className="truncate text-sm text-muted-foreground">
+                {report.channel.region}
+                {report.plan ? ` · ${report.plan.harvest}` : ""}
+                {branchName ? ` · ${branchName}` : ""}
+                {categoryName ? ` · ${categoryName}` : ""}
+              </p>
+            </div>
           </div>
-          <span className="ml-auto text-sm font-semibold text-foreground/70">
-            Corteva Planner
-          </span>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleCopyLink}>
+              <Link2 className="size-4" />
+              <span className="hidden sm:inline">Copiar link</span>
+            </Button>
+            {/* Mesmo cabeçalho para todos os perfis: o RTV também
+                apresenta o relatório ao canal. */}
+            <Button variant="brand" size="sm" onClick={() => window.print()}>
+              <Download className="size-4" />
+              Exportar PDF
+            </Button>
+          </div>
         </div>
 
         {/* Controles */}
-        <div className="mt-6 flex flex-wrap items-center gap-3 print:hidden">
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-4 print:hidden">
+          {/* Interno / Externo — a decisão que define QUE documento é. */}
+          <div className="flex rounded-lg bg-muted p-1">
+            {(["interno", "externo"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => changeMode(option)}
+                aria-pressed={mode === option}
+                className={cn(
+                  "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                  mode === option
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+
+          <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+
           <Popover>
             <PopoverTrigger
               render={
@@ -692,40 +737,6 @@ export function ReportView({
             className="w-44"
           />
 
-          <span aria-hidden className="mx-1 h-6 w-px bg-border" />
-
-          {/* FIX 9 — Interno / Externo */}
-          <div className="flex rounded-lg bg-muted p-1">
-            {(["interno", "externo"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => changeMode(option)}
-                aria-pressed={mode === option}
-                className={cn(
-                  "cursor-pointer rounded-md px-3 py-1.5 text-xs font-medium capitalize transition-colors",
-                  mode === option
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleCopyLink}>
-              <Link2 className="size-4" />
-              <span className="hidden sm:inline">Copiar link</span>
-            </Button>
-            {!isField && (
-              <Button variant="brand" size="sm" onClick={() => window.print()}>
-                <Download className="size-4" />
-                Exportar PDF
-              </Button>
-            )}
-          </div>
         </div>
       </Card>
 

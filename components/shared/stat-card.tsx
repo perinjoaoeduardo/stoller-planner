@@ -56,8 +56,9 @@ export function StatCard({
   valueClassName?: string;
 }) {
   // Zero não ganha cor: "0 atrasadas" pintado de âmbar acende um alarme
-  // que não existe. Cor de status só quando há o que contar.
-  const isZero = value === 0;
+  // que não existe. Cor de status só quando há o que contar. Aceita
+  // número e string ("0", "0%") — os callers passam os dois.
+  const isZero = value === 0 || value === "0" || value === "0%";
   const accentClass =
     isZero || tone === "neutral"
       ? null

@@ -363,19 +363,12 @@ export function PanoramaBlock({
     // Card Evidências some quando não há foto — mostrar "0 fotos" para o
     // canal soa como cobrança contra o time. Menos > mal-vendido.
     const showEvidencias = stats.photoCount > 0;
-    // "Ações realizadas em" mostra os meses; só cai para o resumo
-    // "N meses ativos" quando a lista fica longa demais.
-    const monthsValue =
-      stats.activeMonthLabels.length === 0
-        ? "—"
-        : stats.activeMonthLabels.length <= 4
-          ? stats.activeMonthLabels.join(" · ")
-          : `${stats.activeMonths} meses ativos`;
+    // Sublabel = quais meses (lista curta) ou o intervalo (lista longa).
     const monthsSublabel =
       stats.activeMonthLabels.length === 0
         ? "sem execuções registradas"
         : stats.activeMonthLabels.length <= 4
-          ? "de 12 meses da safra"
+          ? stats.activeMonthLabels.join(" · ")
           : `${stats.activeMonthLabels[0]} a ${stats.activeMonthLabels[stats.activeMonthLabels.length - 1]}`;
 
     return (
@@ -404,18 +397,14 @@ export function PanoramaBlock({
             sublabel="fotos em campo"
           />
         ) : null}
+        {/* Número, como os outros três da fileira. Antes o valor era a
+            LISTA de meses ("8 meses ativos" / "mai · jun · jul"), que em
+            3xl quebrava em duas linhas e esticava a fileira inteira. Os
+            meses viraram sublabel — é detalhe, não o dado. */}
         <StatCard
-          title="Ações realizadas em"
-          value={monthsValue}
+          title="Meses com ação"
+          value={stats.activeMonths}
           sublabel={monthsSublabel}
-          // Lista de meses é TEXTO: em 3xl quebrava em 2 linhas e
-          // esticava a fileira inteira (mesmo caso do Status geral).
-          valueClassName={
-            stats.activeMonthLabels.length > 0 &&
-            stats.activeMonthLabels.length <= 4
-              ? "text-xl leading-snug"
-              : undefined
-          }
         />
       </div>
     );

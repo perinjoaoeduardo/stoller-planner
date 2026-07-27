@@ -37,7 +37,9 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   DSM: [
     { title: "Início", href: "/", icon: Home },
     { title: "Meus Canais", href: "/canais", icon: Store },
-    { title: "Atividades", href: "/atividades", icon: ClipboardList },
+    // "Todas as atividades": o DSM tem as dele E as do time na mesma
+    // tela — o rótulo tem de deixar claro que a lista não é pessoal.
+    { title: "Todas Atividades", href: "/atividades", icon: ClipboardList },
     { title: "Pendências", href: "/pendencias", icon: BrushCleaning },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],

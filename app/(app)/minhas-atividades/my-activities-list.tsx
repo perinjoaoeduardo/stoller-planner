@@ -39,6 +39,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 
@@ -50,29 +51,36 @@ type SortKey = "prazo" | "status";
 type SortDir = "asc" | "desc";
 
 
-const LIST_COLUMNS: ActivityTableColumn[] = [
-  "atividade",
-  "meta",
-  "prazo",
-  "status",
-  "acao",
-];
-
 /** Aceita o mesmo range de status já usado no page.tsx. */
 export type InitialStatus = KpiFilter | "todas";
 
 /**
- * Visão pessoal do RTV — herda o padrão da visão do canal: KPIs
- * clicáveis funcionam como filtros de status na tabela densa abaixo.
- * Filtros hierárquicos: Canal → Filial → Meta.
+ * Lista de atividades ÚNICA do app — serve o RTV (só as dele) e o DSM
+ * (as do time, com filtro de responsável e toggle "Só minhas"). Antes o
+ * DSM tinha uma lista própria, em seções colapsáveis, com outra cara e
+ * outra ordenação para a mesma informação: dois jeitos de ler a mesma
+ * coisa é carga cognitiva pura (Nielsen #4, consistência).
+ *
+ * Padrão: KPIs clicáveis filtram por status a tabela densa abaixo;
+ * filtros hierárquicos Canal → Filial → Meta.
  */
 export function MyActivitiesList({
   activities,
   initialStatus = "abertas",
+  currentUserId,
+  responsibles,
 }: {
   activities: ActivityRow[];
   initialStatus?: InitialStatus;
+  /** Habilita o toggle "Só minhas" (gestor que também executa). */
+  currentUserId?: string;
+  /** Habilita o filtro de responsável e a coluna de avatares. */
+  responsibles?: SelectOption[];
 }) {
+  const isTeamView = !!responsibles && responsibles.length > 0;
+  const columns: ActivityTableColumn[] = isTeamView
+    ? ["atividade", "meta", "responsaveis", "prazo", "status", "acao"]
+    : ["atividade", "meta", "prazo", "status", "acao"];
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
 
@@ -90,6 +98,10 @@ export function MyActivitiesList({
     null
   );
   const [metaFilter, setMetaFilterRaw] = React.useState<string | null>(null);
+  const [responsibleFilter, setResponsibleFilterRaw] = React.useState<
+    string | null
+  >(null);
+  const [onlyMine, setOnlyMineRaw] = React.useState(false);
   const [sortKey, setSortKey] = React.useState<SortKey>("prazo");
   const [sortDir, setSortDir] = React.useState<SortDir>("asc");
   const [page, setPage] = React.useState(1);
@@ -116,6 +128,26 @@ export function MyActivitiesList({
     setMetaFilterRaw(value);
     setPage(1);
   };
+  const setResponsibleFilter = (value: string | null) => {
+    setResponsibleFilterRaw(value);
+    setPage(1);
+  };
+  const setOnlyMine = (value: boolean) => {
+    setOnlyMineRaw(value);
+    // "Só minhas" e o seletor de responsável dizem a mesma coisa —
+    // deixar os dois ligados ao mesmo tempo gera estado contraditório.
+    if (value) setResponsibleFilterRaw(null);
+    setPage(1);
+  };
+
+  /** É do usuário se ele responde por ela ou está entre os assignees. */
+  const isMine = React.useCallback(
+    (activity: ActivityRow) =>
+      !!currentUserId &&
+      (activity.responsibleId === currentUserId ||
+        activity.assignees.some((a) => a.id === currentUserId)),
+    [currentUserId]
+  );
   // Trocar de canal também derruba filial e meta (filtros hierárquicos).
   const setChannelId = (value: string | null) => {
     setChannelIdRaw(value);
@@ -249,8 +281,27 @@ export function MyActivitiesList({
         rows = rows.filter((a) => a.problemId === metaFilter);
       }
     }
+    if (onlyMine) {
+      rows = rows.filter(isMine);
+    } else if (responsibleFilter) {
+      rows = rows.filter(
+        (a) =>
+          a.responsibleId === responsibleFilter ||
+          a.assignees.some((assignee) => assignee.id === responsibleFilter)
+      );
+    }
     return rows;
-  }, [filteredByKpi, search, channelId, branchId, categoryFilter, metaFilter]);
+  }, [
+    filteredByKpi,
+    search,
+    channelId,
+    branchId,
+    categoryFilter,
+    metaFilter,
+    onlyMine,
+    responsibleFilter,
+    isMine,
+  ]);
 
   const sorted = React.useMemo(() => {
     const rows = [...filtered];
@@ -285,7 +336,9 @@ export function MyActivitiesList({
     channelId !== null ||
     branchId !== null ||
     categoryFilter !== null ||
-    metaFilter !== null;
+    metaFilter !== null ||
+    responsibleFilter !== null ||
+    onlyMine;
 
   function clearFilters() {
     setKpiFilter("todos");
@@ -294,6 +347,8 @@ export function MyActivitiesList({
     setBranchId(null);
     setCategoryFilter(null);
     setMetaFilter(null);
+    setResponsibleFilter(null);
+    setOnlyMine(false);
   }
 
   function toggleSort(key: SortKey) {
@@ -313,7 +368,11 @@ export function MyActivitiesList({
           <EmptyMedia variant="icon">
             <ListTodo />
           </EmptyMedia>
-          <EmptyTitle>Nenhuma atividade atribuída a você</EmptyTitle>
+          <EmptyTitle>
+            {isTeamView
+              ? "Nenhuma atividade nos seus canais"
+              : "Nenhuma atividade atribuída a você"}
+          </EmptyTitle>
           <EmptyDescription>
             Use “Nova atividade” no topo da tela para registrar uma ação
             avulsa a qualquer momento.
@@ -366,7 +425,15 @@ export function MyActivitiesList({
         />
       </div>
 
-      {/* Filtros da tabela */}
+      {/*
+        Filtros em DUAS linhas com significados separados, em vez de uma
+        fileira única que rearranjava tudo a cada seleção:
+        1) "o quê / de quem" — busca, categoria e o recorte de pessoa;
+        2) "onde" — o drill hierárquico Canal → Filial → Meta.
+        Filial e Meta nascem DENTRO da linha do canal, então aparecem
+        como desdobramento dele e não como filtros novos empurrando a
+        primeira linha para baixo.
+      */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-64 flex-1 max-w-md">
@@ -378,24 +445,6 @@ export function MyActivitiesList({
               className="h-10 border-input bg-card pl-9"
             />
           </div>
-          {showChannelFilter ? (
-            <SearchableSelect
-              options={channelOptions}
-              value={channelId}
-              onValueChange={setChannelId}
-              placeholder="Todos os canais"
-              className="h-10 min-w-44 border-input bg-card"
-            />
-          ) : null}
-          {showBranchFilter ? (
-            <SearchableSelect
-              options={branchOptions}
-              value={branchId}
-              onValueChange={setBranchId}
-              placeholder="Todas as filiais"
-              className="h-10 min-w-44 border-input bg-card"
-            />
-          ) : null}
           {categoryOptions.length > 0 ? (
             <SearchableSelect
               options={categoryOptions}
@@ -405,19 +454,80 @@ export function MyActivitiesList({
               className="h-10 min-w-40 border-input bg-card"
             />
           ) : null}
-          {showMetaFilter ? (
+          {isTeamView ? (
             <SearchableSelect
-              options={metaOptions}
-              value={metaFilter}
-              onValueChange={setMetaFilter}
-              placeholder="Meta"
+              options={responsibles!}
+              value={responsibleFilter}
+              onValueChange={(value) => {
+                setResponsibleFilter(value);
+                if (value) setOnlyMineRaw(false);
+              }}
+              placeholder="Responsável"
               className="h-10 min-w-44 border-input bg-card"
             />
           ) : null}
+          {currentUserId ? (
+            <label className="flex shrink-0 items-center gap-2 text-sm text-foreground">
+              <Switch
+                checked={onlyMine}
+                onCheckedChange={(checked) => setOnlyMine(checked)}
+              />
+              Só minhas
+            </label>
+          ) : null}
         </div>
-        <p className="text-sm text-muted-foreground tabular-nums">
-          {sorted.length} de {activities.length} atividades
-        </p>
+
+        {showChannelFilter ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <SearchableSelect
+              options={channelOptions}
+              value={channelId}
+              onValueChange={setChannelId}
+              placeholder="Todos os canais"
+              className="h-10 min-w-44 border-input bg-card"
+            />
+            {showBranchFilter || showMetaFilter ? (
+              <ChevronRight
+                aria-hidden
+                className="size-4 shrink-0 text-muted-foreground"
+              />
+            ) : null}
+            {showBranchFilter ? (
+              <SearchableSelect
+                options={branchOptions}
+                value={branchId}
+                onValueChange={setBranchId}
+                placeholder="Todas as filiais"
+                className="h-10 min-w-44 border-input bg-card"
+              />
+            ) : null}
+            {showMetaFilter ? (
+              <SearchableSelect
+                options={metaOptions}
+                value={metaFilter}
+                onValueChange={setMetaFilter}
+                placeholder="Meta"
+                className="h-10 min-w-44 border-input bg-card"
+              />
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {sorted.length} de {activities.length} atividades
+          </p>
+          {filtersActive ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-muted-foreground hover:text-foreground"
+              onClick={clearFilters}
+            >
+              Limpar filtros
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {/* Tabela ou empty */}
@@ -447,7 +557,7 @@ export function MyActivitiesList({
           <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
             <ActivityTable
               activities={paged}
-              columns={LIST_COLUMNS}
+              columns={columns}
               onRowClick={(activity) => openActivity(activity.id)}
               rowAction="menu"
               onRegister={(activity) =>

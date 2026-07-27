@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { CalendarDays, ListTodo } from "lucide-react";
 
-import { ActivitiesTable } from "@/components/app/activities-table";
 import { PageShell } from "@/components/app/page-shell";
 import type { SelectOption } from "@/components/app/searchable-select";
 import { ViewSwitch } from "@/components/app/view-switch";
@@ -9,6 +8,7 @@ import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getScopedActivities } from "@/lib/db/channels";
 
 import { CalendarView } from "../calendario/calendar-view";
+import { MyActivitiesList } from "../minhas-atividades/my-activities-list";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +70,7 @@ export default async function AtividadesPage() {
 
   return (
     <PageShell
-      title={isField ? "Minhas Atividades" : "Atividades"}
+      title={isField ? "Minhas Atividades" : "Todas Atividades"}
       description={
         isField
           ? "Todas as atividades dos canais em que você atua."
@@ -85,16 +85,11 @@ export default async function AtividadesPage() {
             label: "Lista",
             icon: <ListTodo className="size-4" />,
             node: (
-              <ActivitiesTable
-                data={activities}
-                problems={[]}
-                branches={[]}
-                responsibles={responsibles}
-                channels={channels}
+              <MyActivitiesList
+                activities={activities}
+                initialStatus="todas"
                 currentUserId={profile.id}
-                canEdit={false}
-                showChannel
-                variant="global"
+                responsibles={responsibles}
               />
             ),
           },

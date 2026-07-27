@@ -111,18 +111,25 @@ export function ChannelView({
       (activity) => activity.status === "concluida"
     ).length;
     const late = filtered.filter(isLateActivity).length;
-    // Atividade sem meta é trabalho que não conta para nenhum objetivo
-    // do plano — é o débito que o DSM tem de fechar, e ele não aparecia
-    // em lugar nenhum do cockpit.
-    const unlinked = filtered.filter((activity) => !activity.problemId).length;
+    // Meta mapeada sem NENHUMA atividade é o buraco que só o gestor
+    // fecha: o problema foi reconhecido e ninguém planejou ação. Vale
+    // mais no cockpit do que contar atividade sem vínculo — isso é
+    // faxina de registro e já mora em Pendências.
+    const planned = new Set(
+      filtered.map((activity) => activity.problemId).filter(Boolean)
+    );
+    const problemsWithoutPlan = problems.filter(
+      (problem) => !planned.has(problem.id)
+    ).length;
     return {
       total,
       completed,
       completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
       late,
-      unlinked,
+      problemsWithoutPlan,
+      problemCount: problems.length,
     };
-  }, [filtered]);
+  }, [filtered, problems]);
 
   const byStatus = React.useMemo(
     () =>
@@ -201,11 +208,11 @@ export function ChannelView({
       valueClass: "",
     },
     {
-      label: "Sem meta vinculada",
-      value: metrics.unlinked.toString(),
-      tone: "neutral" as const,
-      sublabel: "não contam para nenhum objetivo",
-      valueClass: metrics.unlinked > 0 ? "text-pend-meta-fg" : "",
+      label: "Metas sem plano",
+      value: metrics.problemsWithoutPlan.toString(),
+      tone: "warning" as const,
+      sublabel: `de ${metrics.problemCount} metas mapeadas`,
+      valueClass: "",
     },
   ];
 
