@@ -577,6 +577,9 @@ export function MyActivitiesList({
             <ActivityTable
               activities={paged}
               columns={columns}
+              // Lista que cruza canais precisa dizer de qual canal é cada
+              // linha; dentro de um canal só, seria repetir o cabeçalho.
+              showChannel={channels.length > 1 && !channelId}
               onRowClick={(activity) => openActivity(activity.id)}
               rowAction="menu"
               onRegister={(activity) =>

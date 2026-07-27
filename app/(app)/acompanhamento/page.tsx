@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MoonStar, PartyPopper } from "lucide-react";
 
-import { ActivitiesTable } from "@/components/app/activities-table";
+import { MyActivitiesList } from "../minhas-atividades/my-activities-list";
 import { ActivityLink } from "@/components/app/activity-link";
 import { CopySummaryMenu } from "@/components/app/copy-summary-menu";
 import { PageShell } from "@/components/app/page-shell";
@@ -125,22 +125,6 @@ export default async function AcompanhamentoPage({
     }
     return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
   };
-  const problems = dedupe(
-    lateActivities
-      .filter((activity) => activity.problemId && activity.problemTitle)
-      .map((activity) => ({
-        value: activity.problemId!,
-        label: activity.problemTitle!,
-      }))
-  );
-  const branches = dedupe(
-    lateActivities
-      .filter((activity) => activity.branchId && activity.branchName)
-      .map((activity) => ({
-        value: activity.branchId!,
-        label: activity.branchName!,
-      }))
-  );
   const responsibles = dedupe(
     lateActivities
       .filter((activity) => activity.responsibleId && activity.responsibleName)
@@ -251,25 +235,21 @@ export default async function AcompanhamentoPage({
           </Card>
         </TabsContent>
 
-        <TabsContent value="atrasadas" className="mt-2">
-          <Card className="gap-4">
-            <CardHeader>
-              <CardDescription>
-                Todas as atividades atrasadas da safra (incluindo as com prazo
-                vencido), das mais antigas para as mais recentes.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ActivitiesTable
-                data={lateActivities}
-                problems={problems}
-                branches={branches}
-                responsibles={responsibles}
-                canEdit={false}
-                showChannel
-              />
-            </CardContent>
-          </Card>
+        {/* Mesma lista de Atividades do resto do app — sem os KPIs, que
+            aqui nao dizem nada: TUDO nesta aba e atrasada. O filtro de
+            responsavel e a coluna de avatares sao o que o CX usa para
+            cobrar; o de canal aparece porque a lista cruza canais. */}
+        <TabsContent value="atrasadas" className="mt-2 flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Todas as atividades atrasadas da safra, das mais antigas para as
+            mais recentes.
+          </p>
+          <MyActivitiesList
+            activities={lateActivities}
+            initialStatus="todas"
+            responsibles={responsibles}
+            showKpis={false}
+          />
         </TabsContent>
       </Tabs>
     </PageShell>
