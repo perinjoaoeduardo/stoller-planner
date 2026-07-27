@@ -66,15 +66,18 @@ export default async function AtividadesPage() {
   );
 
   const isField = profile.role === "RTV";
+  const isCx = profile.role === "CX";
   const calendarChannels = channels.map((c) => ({ id: c.value, name: c.label }));
 
   return (
     <PageShell
-      title={isField ? "Minhas Atividades" : "Todas Atividades"}
+      title={isField ? "Minhas Atividades" : "Todas as Atividades"}
       description={
         isField
           ? "Todas as atividades dos canais em que você atua."
-          : "Todas as atividades dos seus canais na safra, em um só lugar."
+          : isCx
+            ? "Toda a execução da safra, de todos os canais. Filtre por regional, canal, filial, meta ou responsável."
+            : "Todas as atividades dos seus canais na safra, em um só lugar."
       }
     >
       <ViewSwitch

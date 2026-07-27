@@ -200,6 +200,9 @@ export type ActivityRow = {
   photoCount: number;
   channelId: string;
   channelName: string;
+  /** Só preenchido nas listas que cruzam canais (filtro de regional). */
+  regionId?: string | null;
+  regionName?: string | null;
 };
 
 export type PlanBoard = {
@@ -329,7 +332,8 @@ export async function getScopedActivities(
        responsible_id, responsible:profiles(id, full_name),
        activity_assignees(profile:profiles(id, full_name)),
        photos:activity_photos(id),
-       plan:plans!inner(channel_id, status, channel:channels(id, name))`
+       plan:plans!inner(channel_id, status,
+         channel:channels(id, name, region:regions(id, name)))`
     )
     .eq("plan.status", "ativo")
     .in("plan.channel_id", channelIds)
@@ -362,6 +366,8 @@ export async function getScopedActivities(
     photoCount: activity.photos.length,
     channelId: activity.plan?.channel?.id ?? "",
     channelName: activity.plan?.channel?.name ?? "—",
+    regionId: activity.plan?.channel?.region?.id ?? null,
+    regionName: activity.plan?.channel?.region?.name ?? null,
   }));
 }
 

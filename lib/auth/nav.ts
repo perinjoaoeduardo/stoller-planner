@@ -29,6 +29,10 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   CX: [
     { title: "Início", href: "/visao-geral", icon: Home },
     { title: "Canais", href: "/canais", icon: Store },
+    // O CX ve TUDO de todos os canais; a filtragem (Regional -> Canal ->
+    // Filial -> Meta, mais responsavel e categoria) e o que torna a lista
+    // nacional navegavel.
+    { title: "Todas as Atividades", href: "/atividades", icon: ClipboardList },
     { title: "Acompanhamento", href: "/acompanhamento", icon: Radar },
     { title: "Relatórios", href: "/relatorios", icon: ChartColumn },
   ],

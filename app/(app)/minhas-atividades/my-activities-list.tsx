@@ -97,6 +97,7 @@ export function MyActivitiesList({
     mapInitial(initialStatus)
   );
   const [search, setSearchRaw] = React.useState("");
+  const [regionId, setRegionIdRaw] = React.useState<string | null>(null);
   const [channelId, setChannelIdRaw] = React.useState<string | null>(null);
   const [branchId, setBranchIdRaw] = React.useState<string | null>(null);
   const [categoryFilter, setCategoryFilterRaw] = React.useState<string | null>(
@@ -153,7 +154,18 @@ export function MyActivitiesList({
         activity.assignees.some((a) => a.id === currentUserId)),
     [currentUserId]
   );
-  // Trocar de canal também derruba filial e meta (filtros hierárquicos).
+  /**
+   * Cascata Regional → Canal → Filial → Meta: trocar um nível derruba os
+   * de baixo. Sem isso sobrava estado impossível ("Regional Sul" + uma
+   * filial do Centro-Oeste) e a lista vinha vazia sem explicar por quê.
+   */
+  const setRegionId = (value: string | null) => {
+    setRegionIdRaw(value);
+    setChannelIdRaw(null);
+    setBranchIdRaw(null);
+    setMetaFilterRaw(null);
+    setPage(1);
+  };
   const setChannelId = (value: string | null) => {
     setChannelIdRaw(value);
     setBranchIdRaw(null);
@@ -161,9 +173,25 @@ export function MyActivitiesList({
     setPage(1);
   };
 
+  const regions = React.useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const activity of activities) {
+      if (activity.regionId && activity.regionName) {
+        seen.set(activity.regionId, activity.regionName);
+      }
+    }
+    return [...seen.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activities]);
+  const showRegionFilter = regions.length > 1;
+
+  // Canais do recorte atual: escolher a regional já enxuga a lista de
+  // canais, em vez de manter um seletor nacional inteiro aberto.
   const channels = React.useMemo(() => {
     const seen = new Map<string, string>();
     for (const activity of activities) {
+      if (regionId && activity.regionId !== regionId) continue;
       if (activity.channelId && !seen.has(activity.channelId)) {
         seen.set(activity.channelId, activity.channelName);
       }
@@ -171,7 +199,7 @@ export function MyActivitiesList({
     return [...seen.entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [activities]);
+  }, [activities, regionId]);
   const showChannelFilter = channels.length > 1;
 
   /**
@@ -221,6 +249,10 @@ export function MyActivitiesList({
   const showBranchFilter = channelBranches.length > 1;
   const showMetaFilter = channelMetas.length > 0;
 
+  const regionOptions: SelectOption[] = React.useMemo(
+    () => regions.map((r) => ({ value: r.id, label: r.name })),
+    [regions]
+  );
   const channelOptions: SelectOption[] = React.useMemo(
     () => channels.map((c) => ({ value: c.id, label: c.name })),
     [channels]
@@ -295,6 +327,9 @@ export function MyActivitiesList({
       const term = search.trim().toLowerCase();
       rows = rows.filter((a) => a.title.toLowerCase().includes(term));
     }
+    if (regionId) {
+      rows = rows.filter((a) => a.regionId === regionId);
+    }
     if (channelId) {
       rows = rows.filter((a) => a.channelId === channelId);
     }
@@ -312,7 +347,15 @@ export function MyActivitiesList({
       }
     }
     return rows;
-  }, [filteredByKpi, search, channelId, branchId, categoryFilter, metaFilter]);
+  }, [
+    filteredByKpi,
+    search,
+    regionId,
+    channelId,
+    branchId,
+    categoryFilter,
+    metaFilter,
+  ]);
 
   const sorted = React.useMemo(() => {
     const rows = [...filtered];
@@ -344,6 +387,7 @@ export function MyActivitiesList({
   const filtersActive =
     (kpiFilter !== null && kpiFilter !== "todos") ||
     search.trim().length > 0 ||
+    regionId !== null ||
     channelId !== null ||
     branchId !== null ||
     categoryFilter !== null ||
@@ -354,6 +398,7 @@ export function MyActivitiesList({
   function clearFilters() {
     setKpiFilter(null);
     setSearch("");
+    setRegionId(null);
     setChannelId(null);
     setBranchId(null);
     setCategoryFilter(null);
@@ -493,8 +538,28 @@ export function MyActivitiesList({
           ) : null}
         </div>
 
-        {showChannelFilter || showBranchFilter || showMetaFilter ? (
+        {/* Linha do "onde": Regional → Canal → Filial → Meta, do mais
+            largo para o mais estreito, com a seta marcando a cascata. */}
+        {showRegionFilter ||
+        showChannelFilter ||
+        showBranchFilter ||
+        showMetaFilter ? (
           <div className="flex flex-wrap items-center gap-2">
+            {showRegionFilter ? (
+              <SearchableSelect
+                options={regionOptions}
+                value={regionId}
+                onValueChange={setRegionId}
+                placeholder="Todas as regionais"
+                className="h-10 min-w-44 border-input bg-card"
+              />
+            ) : null}
+            {showRegionFilter && showChannelFilter ? (
+              <ChevronRight
+                aria-hidden
+                className="size-4 shrink-0 text-muted-foreground"
+              />
+            ) : null}
             {showChannelFilter ? (
               <SearchableSelect
                 options={channelOptions}
