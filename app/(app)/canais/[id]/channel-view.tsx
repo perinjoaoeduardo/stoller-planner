@@ -9,6 +9,7 @@ import {
   ClipboardList,
   StickyNote,
   Target,
+  Users,
   X,
 } from "lucide-react";
 
@@ -220,6 +221,16 @@ export function ChannelView({
                 {notes.length}
               </span>
             ) : null}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            nativeButton={false}
+            render={<Link href={`/canais/${channel.id}/pessoas`} />}
+          >
+            <Users />
+            Time
           </Button>
           {plan ? (
             <Button
