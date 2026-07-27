@@ -42,7 +42,7 @@ const ISSUE_BADGE_CLASS: Record<PendencyType, string> = {
   // do prazo vencido em aberto (Constituição, item 2).
   sem_foto: "border-warning/40 bg-warning/10 text-warning-fg",
   sem_problema:
-    "border-warning/40 bg-warning/10 text-warning-fg",
+    "border-accent-brand/40 bg-accent-brand/10 text-accent-brand",
   sem_categoria:
     "border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground",
 };

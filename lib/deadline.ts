@@ -11,9 +11,12 @@ import { formatRelativeDue } from "@/lib/plan-utils";
  * alarme (não fica vermelha); só fica legível em foreground. Vermelho é
  * exclusivo de ação destrutiva/erro, nunca de prazo.
  * - concluída/não feita: neutro (encerrada)
- * - aberta e vencida: foreground legível (o badge âmbar carrega o alarme)
- * - aberta, vence em 0-7 dias: âmbar (único sinal — o badge é "Planejada")
- * - aberta, 8+ dias ou sem prazo: neutro
+ * Âmbar = ATRASADO, e só isso. "Vence em breve" não é atraso — pintar os
+ * dois de âmbar faz o leitor tratar duas situações diferentes como a
+ * mesma. Prazo futuro é informação (neutro), prazo estourado é alarme.
+ * - concluída/não feita: neutro (encerrada)
+ * - aberta e vencida (days<0): âmbar — o único alarme de prazo
+ * - aberta, vence hoje ou no futuro: neutro (só informa a data)
  */
 export function deadlineClass(
   dueDate: string | null,
@@ -24,8 +27,7 @@ export function deadlineClass(
   }
   if (!dueDate) return "text-muted-foreground";
   const days = differenceInCalendarDays(parseISO(dueDate), new Date());
-  if (days < 0) return "text-foreground";
-  if (days <= 7) return "text-warning";
+  if (days < 0) return "text-warning";
   return "text-muted-foreground";
 }
 

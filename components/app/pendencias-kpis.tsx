@@ -22,7 +22,7 @@ const ISSUE_META: Record<
     description: "Atividades concluídas sem nenhuma foto de evidência.",
   },
   sem_problema: {
-    activeClass: "border-warning/60 bg-warning/5 dark:bg-warning/10",
+    activeClass: "border-accent-brand/60 bg-accent-brand/5 dark:bg-accent-brand/10",
     description: "Atividades concluídas sem vínculo com uma meta do plano.",
   },
   sem_categoria: {

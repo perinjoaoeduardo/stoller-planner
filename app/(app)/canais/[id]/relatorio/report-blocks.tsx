@@ -6,7 +6,6 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  ChevronDown,
   ChevronRight,
   ImageOff,
   Pencil,
@@ -33,13 +32,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+
+
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -238,17 +233,23 @@ export function GalleryThumb({
   );
 }
 
-/** Linha escaneável de atividade dentro do bloco de meta. */
+/**
+ * Linha escaneável de atividade + suas fotos logo abaixo. A evidência
+ * vive junto da ação que a gerou (proximidade): quem lê "o que foi
+ * feito" vê a prova sem procurar numa galeria separada no fim do bloco.
+ */
 function ActivityLine({
   activity,
   showResponsible,
   mode,
   onOpen,
+  onOpenPhoto,
 }: {
   activity: ReportActivity;
   showResponsible: boolean;
   mode: ReportMode;
   onOpen: (id: string) => void;
+  onOpenPhoto: (photo: ReportPhoto) => void;
 }) {
   const executedAt = activity.lastExecution?.createdAt ?? null;
   // No externo o status "ruim" some: o canal vê o que foi feito, não a
@@ -256,48 +257,62 @@ function ActivityLine({
   const showStatus = mode === "interno" || activity.status === "concluida";
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(activity.id)}
-      style={{ breakInside: "avoid" }}
-      // -mx-2 compensa o px-2 do hover para a barra do hover ficar
-      // "flutuando" dentro do card com respiro nas bordas — sem isso a
-      // linha do hover encostava nas paredes do card e parecia crua.
-      className="group -mx-2 flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-3 text-left transition-colors duration-base ease-standard hover:bg-hover-surface"
-    >
-      <CategoryIconBox
-        category={activity.category}
-        size="md"
-        withTooltip
-        className="self-center"
-      />
-      <div className="min-w-0 flex-1">
-        <TruncatedText
-          text={activity.title}
-          className="text-sm font-medium text-foreground"
+    <div style={{ breakInside: "avoid" }}>
+      <button
+        type="button"
+        onClick={() => onOpen(activity.id)}
+        // -mx-2 compensa o px-2 do hover para a barra do hover ficar
+        // "flutuando" dentro do card com respiro nas bordas — sem isso a
+        // linha do hover encostava nas paredes do card e parecia crua.
+        className="group -mx-2 flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-3 text-left transition-colors duration-base ease-standard hover:bg-hover-surface"
+      >
+        <CategoryIconBox
+          category={activity.category}
+          size="md"
+          withTooltip
+          className="self-center"
         />
-        {showResponsible ? (
-          <p className="truncate text-xs text-muted-foreground">
-            {activity.responsibleName ?? "Sem responsável"}
-            {activity.branchName ? ` · ${activity.branchName}` : ""}
-          </p>
+        <div className="min-w-0 flex-1">
+          <TruncatedText
+            text={activity.title}
+            className="text-sm font-medium text-foreground"
+          />
+          {showResponsible ? (
+            <p className="truncate text-xs text-muted-foreground">
+              {activity.responsibleName ?? "Sem responsável"}
+              {activity.branchName ? ` · ${activity.branchName}` : ""}
+            </p>
+          ) : null}
+        </div>
+        {executedAt ? (
+          <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular-nums">
+            {formatDate(executedAt)}
+          </span>
+        ) : mode === "interno" ? (
+          <DeadlineText
+            dueDate={activity.dueDate}
+            status={activity.status}
+            format="date"
+            className="shrink-0 whitespace-nowrap text-xs"
+          />
         ) : null}
-      </div>
-      {executedAt ? (
-        <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground tabular-nums">
-          {formatDate(executedAt)}
-        </span>
-      ) : mode === "interno" ? (
-        <DeadlineText
-          dueDate={activity.dueDate}
-          status={activity.status}
-          format="date"
-          className="shrink-0 whitespace-nowrap text-xs"
-        />
+        {showStatus ? <StatusBadge status={activity.status} /> : null}
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground print:hidden" />
+      </button>
+
+      {activity.photos.length > 0 ? (
+        // Alinhado ao título (pl compensa o ícone de categoria + gap).
+        <div className="grid grid-cols-3 gap-2 pb-3 pl-12 sm:grid-cols-4 lg:grid-cols-6">
+          {activity.photos.map((photo) => (
+            <GalleryThumb
+              key={photo.id}
+              photo={photo}
+              onClick={() => onOpenPhoto(photo)}
+            />
+          ))}
+        </div>
       ) : null}
-      {showStatus ? <StatusBadge status={activity.status} /> : null}
-      <ChevronRight className="size-4 shrink-0 text-muted-foreground print:hidden" />
-    </button>
+    </div>
   );
 }
 
@@ -636,10 +651,6 @@ export function MetaBlock({
   ).length;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-  const withPhotos = activities.filter((a) => a.photos.length > 0);
-  const photoCount = withPhotos.reduce((sum, a) => sum + a.photos.length, 0);
-  const groupPhotos = withPhotos.length > 0 && withPhotos.length <= 3;
-
   const showResponsible =
     new Set(activities.map((activity) => activity.responsibleName ?? "—"))
       .size > 1;
@@ -704,100 +715,13 @@ export function MetaBlock({
                 showResponsible={showResponsible}
                 mode={mode}
                 onOpen={openActivity}
+                onOpenPhoto={onOpenPhoto}
               />
             ))}
           </div>
         )}
-
-        {/* Evidências — agrupadas por atividade quando são poucas */}
-        {photoCount > 0 ? (
-          <>
-            <Separator />
-            <div>
-              <p className="mb-2 text-sm font-medium text-foreground">
-                Evidências ({photoCount})
-              </p>
-              {groupPhotos ? (
-                <div className="flex flex-col gap-1">
-                  {withPhotos.map((activity) => (
-                    <EvidenceGroup
-                      key={activity.id}
-                      activity={activity}
-                      onOpenPhoto={onOpenPhoto}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-                  {withPhotos.flatMap((activity) =>
-                    activity.photos.map((photo) => (
-                      <GalleryThumb
-                        key={photo.id}
-                        photo={photo}
-                        onClick={() => onOpenPhoto(photo)}
-                        originLabel={activity.title}
-                        originCategory={activity.category}
-                      />
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          </>
-        ) : null}
       </CardContent>
     </Card>
-  );
-}
-
-/** Evidências de UMA atividade, colapsáveis. */
-function EvidenceGroup({
-  activity,
-  onOpenPhoto,
-}: {
-  activity: ReportActivity;
-  onOpenPhoto: (photo: ReportPhoto) => void;
-}) {
-  const [open, setOpen] = React.useState(true);
-  const when = activity.lastExecution?.createdAt ?? activity.dueDate;
-
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger
-        render={
-          <button
-            type="button"
-            className="flex w-full cursor-pointer items-center gap-2 rounded-md py-1.5 text-left transition-colors hover:bg-hover-surface"
-          >
-            <ChevronDown
-              className={cn(
-                "size-4 shrink-0 text-muted-foreground transition-transform duration-base",
-                open ? "rotate-0" : "-rotate-90"
-              )}
-            />
-            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">
-                {activity.title}
-              </span>
-              {when ? ` · ${formatDate(when, "dd MMM")}` : ""} ·{" "}
-              {activity.photos.length}{" "}
-              {activity.photos.length === 1 ? "foto" : "fotos"}
-            </span>
-          </button>
-        }
-      />
-      <CollapsibleContent>
-        <div className="grid grid-cols-3 gap-2 pt-1 pb-2 sm:grid-cols-4">
-          {activity.photos.map((photo) => (
-            <GalleryThumb
-              key={photo.id}
-              photo={photo}
-              onClick={() => onOpenPhoto(photo)}
-            />
-          ))}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
 
