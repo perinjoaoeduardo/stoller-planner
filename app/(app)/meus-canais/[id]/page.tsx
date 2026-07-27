@@ -3,7 +3,6 @@ import { harvestLabel } from "@/lib/config";
 import Link from "next/link";
 import { FileText, StickyNote, Store } from "lucide-react";
 
-import { NewActivityButton } from "@/components/app/new-activity-button";
 import { PageShell } from "@/components/app/page-shell";
 import {
   Breadcrumb,
@@ -132,10 +131,6 @@ export default async function MeuCanalPage({
           {board.problems.length > 0 ? (
             <ProblemsSheetButton count={board.problems.length} />
           ) : null}
-          <NewActivityButton
-            channelId={id}
-            className="hidden md:flex"
-          />
         </div>
       }
     >

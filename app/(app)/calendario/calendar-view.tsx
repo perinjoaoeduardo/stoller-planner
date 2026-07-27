@@ -23,13 +23,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Plus,
 } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { CategoryIconBox } from "@/components/shared/icon-box";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
-import { NewActivityButton } from "@/components/app/new-activity-button";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import { StatusBadge, STATUS_LABELS } from "@/components/shared/status-badge";
 import type { ActivityStatus } from "@/components/shared/status-badge";
@@ -57,10 +55,13 @@ import { formatRelativeDue } from "@/lib/plan-utils";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
-// ── Pills: sistema de status do app (FIX 2) — sem azul ────────────────
+// ── Pills: mesma semântica de cor do StatusBadge ──────────────────────
+// Azul = planejada, verde = concluída, âmbar = atrasada, neutro =
+// cancelada. A pill do calendário e o badge da lista têm que dizer a
+// mesma coisa com a mesma cor.
 
 const PILL_COLORS: Record<ActivityStatus, string> = {
-  planejada: "bg-muted text-foreground",
+  planejada: "bg-info-bg text-info-fg",
   concluida:
     "bg-success-bg text-success-fg",
   atrasada:
@@ -69,7 +70,7 @@ const PILL_COLORS: Record<ActivityStatus, string> = {
 };
 
 const DOT_COLORS: Record<ActivityStatus, string> = {
-  planejada: "bg-accent-brand/50",
+  planejada: "bg-accent-brand",
   concluida: "bg-success",
   atrasada: "bg-warning",
   nao_feita: "bg-muted-foreground/40",
@@ -338,7 +339,6 @@ export function CalendarView({
             days={days}
             currentMonth={currentMonth}
             activityMap={activityMap}
-            channelFilter={channelFilter}
             highlightId={highlightId}
           />
         ) : (
@@ -346,21 +346,18 @@ export function CalendarView({
             days={days}
             currentMonth={currentMonth}
             activityMap={activityMap}
-            channelFilter={channelFilter}
           />
         )
       ) : isDesktop ? (
         <WeekGrid
           days={weekDays}
           activityMap={activityMap}
-          channelFilter={channelFilter}
           highlightId={highlightId}
         />
       ) : (
         <WeekAgenda
           days={weekDays}
           activityMap={activityMap}
-          channelFilter={channelFilter}
           highlightId={highlightId}
         />
       )}
@@ -371,15 +368,10 @@ export function CalendarView({
 // ── Day popover content (shared) ──────────────────────────────────────
 
 function DayActivitiesList({
-  day,
   activities,
-  channelFilter,
 }: {
-  day: Date;
   activities: ActivityRow[];
-  channelFilter: string | null;
 }) {
-  const dateStr = format(day, "yyyy-MM-dd");
   const { openActivity } = useActivityDrawer();
 
   return (
@@ -409,16 +401,6 @@ function DayActivitiesList({
           ))}
         </div>
       )}
-      <NewActivityButton
-        mode="agendar"
-        date={dateStr}
-        channelId={channelFilter ?? undefined}
-        label="Agendar nesta data"
-        variant="outline"
-        size="sm"
-        className="w-full hover:bg-muted"
-        icon={<Plus className="mr-1.5 size-3.5" />}
-      />
     </div>
   );
 }
@@ -429,13 +411,11 @@ function DesktopGrid({
   days,
   currentMonth,
   activityMap,
-  channelFilter,
   highlightId,
 }: {
   days: Date[];
   currentMonth: Date;
   activityMap: Map<string, ActivityRow[]>;
-  channelFilter: string | null;
   highlightId: string | null;
 }) {
   const { openActivity } = useActivityDrawer();
@@ -517,11 +497,7 @@ function DesktopGrid({
                     {format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                   </PopoverTitle>
                 </PopoverHeader>
-                <DayActivitiesList
-                  day={day}
-                  activities={dayActivities}
-                  channelFilter={channelFilter}
-                />
+                <DayActivitiesList activities={dayActivities} />
               </PopoverContent>
             </Popover>
           );
@@ -597,12 +573,10 @@ function WeekMiniCard({
 function WeekGrid({
   days,
   activityMap,
-  channelFilter,
   highlightId,
 }: {
   days: Date[];
   activityMap: Map<string, ActivityRow[]>;
-  channelFilter: string | null;
   highlightId: string | null;
 }) {
   const { openActivity } = useActivityDrawer();
@@ -625,11 +599,7 @@ function WeekGrid({
                 {format(day, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </PopoverTitle>
             </PopoverHeader>
-            <DayActivitiesList
-              day={day}
-              activities={dayActivities}
-              channelFilter={channelFilter}
-            />
+            <DayActivitiesList activities={dayActivities} />
           </PopoverContent>
         );
 
@@ -669,16 +639,6 @@ function WeekGrid({
                 </PopoverTrigger>
                 {popoverContent}
               </Popover>
-              <NewActivityButton
-                mode="agendar"
-                date={key}
-                channelId={channelFilter ?? undefined}
-                label=""
-                variant="ghost"
-                size="icon-sm"
-                className="h-6 w-6 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-                icon={<Plus className="size-3.5" />}
-              />
             </div>
 
             {/* Corpo — mini-cards ou vazio */}
@@ -729,12 +689,10 @@ function WeekGrid({
 function WeekAgenda({
   days,
   activityMap,
-  channelFilter,
   highlightId,
 }: {
   days: Date[];
   activityMap: Map<string, ActivityRow[]>;
-  channelFilter: string | null;
   highlightId: string | null;
 }) {
   const { openActivity } = useActivityDrawer();
@@ -756,19 +714,6 @@ function WeekAgenda({
           </span>
         ) : null;
 
-        const agendarBtn = (
-          <NewActivityButton
-            mode="agendar"
-            date={key}
-            channelId={channelFilter ?? undefined}
-            label=""
-            variant="ghost"
-            size="icon-sm"
-            className="ml-auto text-muted-foreground hover:text-foreground"
-            icon={<Plus className="size-4" />}
-          />
-        );
-
         // Dia vazio = linha compacta, sem card wrapper.
         if (!hasActivities) {
           return (
@@ -777,7 +722,6 @@ function WeekAgenda({
                 {dayLabel}
               </p>
               {todayChip}
-              {agendarBtn}
             </div>
           );
         }
@@ -794,7 +738,6 @@ function WeekAgenda({
                 {dayLabel}
               </p>
               {todayChip}
-              {agendarBtn}
             </div>
             <div className="mt-3 flex flex-col gap-1">
               {dayActivities.map((activity) => (
@@ -834,12 +777,10 @@ function MobileList({
   days,
   currentMonth,
   activityMap,
-  channelFilter,
 }: {
   days: Date[];
   currentMonth: Date;
   activityMap: Map<string, ActivityRow[]>;
-  channelFilter: string | null;
 }) {
   const { openActivity } = useActivityDrawer();
   const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
@@ -930,11 +871,7 @@ function MobileList({
           </SheetHeader>
           <div className="px-6 pb-6">
             {selectedDay && (
-              <DayActivitiesList
-                day={selectedDay}
-                activities={selectedActivities}
-                channelFilter={channelFilter}
-              />
+              <DayActivitiesList activities={selectedActivities} />
             )}
           </div>
         </SheetContent>

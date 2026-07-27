@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 export default async function PendenciasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string }>;
+  searchParams: Promise<{ tipo?: string; escopo?: string }>;
 }) {
   const profile = await getCurrentProfile();
 
@@ -38,9 +38,13 @@ export default async function PendenciasPage({
   // veem tudo no escopo. Mostrar ao RTV as pendências de outras pessoas
   // seria ruído inacionável.
   const isField = profile.role === "RTV";
+  // DSM/CX podem estreitar para "só minhas" — é como a home entra quando
+  // o gestor clica em "Minhas pendências": o número prometido no card
+  // tem que ser a lista que abre.
+  const onlyMine = isField || params.escopo === "minhas";
   const pendencies = await getPendencies(
     channelIds,
-    isField ? profile.id : undefined
+    onlyMine ? profile.id : undefined
   );
   const rawTipo = params.tipo ?? null;
   const activeFilter = isPendencyType(rawTipo) ? rawTipo : null;
@@ -58,6 +62,8 @@ export default async function PendenciasPage({
         data={pendencies}
         showDsm={profile.role === "CX"}
         activeFilter={activeFilter}
+        onlyMine={onlyMine}
+        canToggleScope={!isField}
       />
     </PageShell>
   );

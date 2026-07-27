@@ -146,12 +146,13 @@ export default async function PessoaPage({
           title="Concluídas"
           value={`${person.stats.completedPercent}%`}
           sublabel={`${person.stats.completed} de ${person.stats.total}`}
+          tone="success"
         />
         <StatCard
           title="Atrasadas"
           value={person.stats.late}
           sublabel="vencidas ainda abertas"
-          tone={person.stats.late > 0 ? "warning" : "neutral"}
+          tone="warning"
         />
         <StatCard
           title="Último registro"

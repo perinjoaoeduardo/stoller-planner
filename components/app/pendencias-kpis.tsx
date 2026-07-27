@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import {
   PENDENCY_LABELS,
   PENDENCY_TYPES,
@@ -11,22 +12,29 @@ import {
 } from "@/lib/pendencias-shared";
 import { cn } from "@/lib/utils";
 
+/**
+ * Cada tipo de pendência tem UMA cor, a mesma do badge na lista abaixo
+ * (ISSUE_BADGE_CLASS) — o número no topo e o chip na linha têm que ser
+ * lidos como a mesma coisa. Família própria, fora do vocabulário de
+ * status: âmbar/azul/verde já significam atrasada/planejada/concluída.
+ */
 const ISSUE_META: Record<
   PendencyType,
-  { activeClass: string; description: string }
+  { activeClass: string; valueClass: string; description: string }
 > = {
   sem_foto: {
-    // Âmbar, não vermelho: pendência é atenção — destructive é
-    // exclusivo do prazo vencido em aberto (Constituição, item 2).
-    activeClass: "border-warning/60 bg-warning/5 dark:bg-warning/10",
+    activeClass: "border-pend-foto-fg/40 bg-pend-foto-bg/50",
+    valueClass: "text-pend-foto-fg",
     description: "Atividades concluídas sem nenhuma foto de evidência.",
   },
   sem_problema: {
-    activeClass: "border-accent-brand/60 bg-accent-brand/5 dark:bg-accent-brand/10",
+    activeClass: "border-pend-meta-fg/40 bg-pend-meta-bg/50",
+    valueClass: "text-pend-meta-fg",
     description: "Atividades concluídas sem vínculo com uma meta do plano.",
   },
   sem_categoria: {
     activeClass: "border-muted-foreground/60 bg-muted-foreground/5 dark:bg-muted-foreground/10",
+    valueClass: "text-muted-foreground",
     description: "Atividades sem categoria definida.",
   },
 };
@@ -40,9 +48,13 @@ const ISSUE_META: Record<
 export function PendenciasKpis({
   totalsByType,
   activeFilter,
+  onlyMine = false,
+  canToggleScope = false,
 }: {
   totalsByType: Record<PendencyType, number>;
   activeFilter: PendencyType | null;
+  onlyMine?: boolean;
+  canToggleScope?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,6 +65,17 @@ export function PendenciasKpis({
       params.set("tipo", type);
     } else {
       params.delete("tipo");
+    }
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+  }
+
+  function setScope(mine: boolean) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (mine) {
+      params.set("escopo", "minhas");
+    } else {
+      params.delete("escopo");
     }
     const qs = params.toString();
     router.replace(qs ? `?${qs}` : "?", { scroll: false });
@@ -100,7 +123,12 @@ export function PendenciasKpis({
                 )}
               >
                 <CardDescription>{PENDENCY_LABELS[type]}</CardDescription>
-                <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+                <p
+                  className={cn(
+                    "mt-2 text-3xl font-semibold tracking-tight tabular-nums",
+                    meta.valueClass
+                  )}
+                >
                   {count}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -112,11 +140,30 @@ export function PendenciasKpis({
         })}
       </div>
 
-      {activeFilter ? (
-        <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={() => setFilter(null)}>
-            Limpar filtro
-          </Button>
+      {/* Controles ABAIXO dos números: o card é o dado, o toggle é o
+          recorte. Acima, o toggle empurrava os KPIs para baixo e roubava
+          a primeira leitura da tela. */}
+      {canToggleScope || activeFilter ? (
+        <div className="flex items-center gap-3">
+          {canToggleScope ? (
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <Switch
+                checked={onlyMine}
+                onCheckedChange={(checked) => setScope(checked)}
+              />
+              Só minhas
+            </label>
+          ) : null}
+          {activeFilter ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
+              onClick={() => setFilter(null)}
+            >
+              Limpar filtro
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>

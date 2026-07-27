@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ListTodo,
-  Plus,
   Search,
   SearchX,
 } from "lucide-react";
@@ -34,7 +33,6 @@ import {
 } from "@/components/ui/card";
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -68,16 +66,6 @@ export type InitialStatus = KpiFilter | "todas";
  * clicáveis funcionam como filtros de status na tabela densa abaixo.
  * Filtros hierárquicos: Canal → Filial → Meta.
  */
-function WizardEmptyButton() {
-  const { openWizard } = useWizardProvider();
-  return (
-    <Button variant="brand" onClick={() => openWizard()}>
-      <Plus className="size-4" />
-      Nova atividade
-    </Button>
-  );
-}
-
 export function MyActivitiesList({
   activities,
   initialStatus = "abertas",
@@ -327,12 +315,10 @@ export function MyActivitiesList({
           </EmptyMedia>
           <EmptyTitle>Nenhuma atividade atribuída a você</EmptyTitle>
           <EmptyDescription>
-            Você pode registrar uma ação avulsa a qualquer momento.
+            Use “Nova atividade” no topo da tela para registrar uma ação
+            avulsa a qualquer momento.
           </EmptyDescription>
         </EmptyHeader>
-        <EmptyContent>
-          <WizardEmptyButton />
-        </EmptyContent>
       </Empty>
     );
   }
@@ -353,6 +339,7 @@ export function MyActivitiesList({
           title="Abertas"
           value={metrics.open - metrics.late}
           sublabel="em andamento"
+          tone="info"
           interactive
           active={kpiFilter === "abertas"}
           onClick={() => setKpiFilter("abertas")}
@@ -363,7 +350,7 @@ export function MyActivitiesList({
           sublabel={
             metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"
           }
-          tone={metrics.late > 0 ? "warning" : "neutral"}
+          tone="warning"
           interactive
           active={kpiFilter === "atrasadas"}
           onClick={() => setKpiFilter("atrasadas")}
@@ -372,6 +359,7 @@ export function MyActivitiesList({
           title="Concluídas"
           value={metrics.completed}
           sublabel={`${metrics.completedPercent}% do total`}
+          tone="success"
           interactive
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}

@@ -432,6 +432,7 @@ export function PanoramaBlock({
         title="Concluídas"
         value={`${stats.completedPercent}%`}
         sublabel={`no prazo: ${stats.onTime}`}
+        tone="success"
       />
       <StatCard
         title="Metas trabalhadas"

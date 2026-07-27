@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
-  Plus,
   Search,
   Target,
   X,
@@ -100,7 +99,11 @@ export function MeuCanalView({
   const [branchFilter, setBranchFilterRaw] = React.useState<string | null>(
     null
   );
-  const [kpiFilter, setKpiFilterRaw] = React.useState<KpiFilter>("todos");
+  // Abre SEM card aceso: o KPI é um filtro que o usuário liga, não um
+  // estado que a tela já assume. Antes "Total de atividades" nascia
+  // ativo enquanto a lista mostrava só as dele — o card dizia 14 e a
+  // lista mostrava 4, e a contradição ficava por conta do leitor.
+  const [kpiFilter, setKpiFilterRaw] = React.useState<KpiFilter | null>(null);
   const [search, setSearchRaw] = React.useState("");
   const [categoryFilter, setCategoryFilterRaw] = React.useState<string | null>(
     null
@@ -126,7 +129,7 @@ export function MeuCanalView({
     setBranchFilterRaw(value);
     setPage(1);
   };
-  const setKpiFilter = (value: KpiFilter) => {
+  const setKpiFilter = (value: KpiFilter | null) => {
     setKpiFilterRaw(value);
     setPage(1);
   };
@@ -182,7 +185,7 @@ export function MeuCanalView({
 
   // Aplica o filtro do KPI.
   const filteredByKpi = React.useMemo(() => {
-    if (kpiFilter === "todos") return filteredByBranch;
+    if (!kpiFilter || kpiFilter === "todos") return filteredByBranch;
     if (kpiFilter === "concluidas") {
       return filteredByBranch.filter(
         (activity) => activity.status === "concluida"
@@ -291,7 +294,7 @@ export function MeuCanalView({
   const showOnlyMine = mineCount > 0 && mineCount < activities.length;
 
   function clearFilters() {
-    setKpiFilter("todos");
+    setKpiFilter(null);
     setSearch("");
     setCategoryFilter(null);
     setOnlyMine(false);
@@ -340,12 +343,19 @@ export function MeuCanalView({
           sublabel="no plano"
           interactive
           active={kpiFilter === "todos"}
-          onClick={() => setKpiFilter("todos")}
+          // "Total de atividades" é o card do CANAL INTEIRO — clicar nele
+          // desliga "Só minhas", senão o número prometido (14) não bate
+          // com a lista que aparece (só as dele).
+          onClick={() => {
+            setKpiFilter("todos");
+            setOnlyMine(false);
+          }}
         />
         <StatCard
           title="Concluídas"
           value={metrics.completed}
           sublabel={`${metrics.completedPercent}% do total`}
+          tone="success"
           interactive
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}
@@ -354,7 +364,7 @@ export function MeuCanalView({
           title="Atrasadas"
           value={metrics.late}
           sublabel={metrics.late === 1 ? "precisa de atenção" : "precisam de atenção"}
-          tone={metrics.late > 0 ? "warning" : "neutral"}
+          tone="warning"
           interactive
           active={kpiFilter === "atrasadas"}
           onClick={() => setKpiFilter("atrasadas")}
@@ -644,15 +654,6 @@ export function MeuCanalView({
           "handle" via CustomEvent para permitir controle externo. */}
       <ProblemsSheetOpener onClick={() => setProblemsOpen(true)} />
 
-      {/* FAB mobile — Nova atividade */}
-      <Button
-        variant="brand"
-        onClick={() => openWizard({ channelId: channel.id })}
-        className="fixed right-6 bottom-6 z-50 h-auto rounded-full px-5 py-3.5 text-sm font-semibold shadow-elevated md:hidden"
-      >
-        <Plus className="size-5" />
-        Nova atividade
-      </Button>
     </>
   );
 }

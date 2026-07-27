@@ -43,6 +43,7 @@ export function CxMetricCards({
         title="Concluídas"
         value={`${metrics.completedPercent}%`}
         sublabel={`${metrics.completedCount} de ${metrics.totalActivities}`}
+        tone="success"
       />
       <StatCard
         title="Atrasadas"

@@ -27,12 +27,13 @@ export function categoryIcon(category: ActivityCategory | null): LucideIcon {
 }
 
 /**
- * Categoria é distinguida pelo ÍCONE + rótulo, não por cor. As quatro
- * cores de pilar eram idênticas (mesmo sky-blue) — não separavam nada e
- * ainda competiam com o azul Corteva. Todas neutras agora (camada 3 +
- * foreground suave); a cor semântica fica livre para os alarmes.
+ * Categoria é distinguida pelo ÍCONE + rótulo, não por cor: as quatro
+ * cores de pilar eram idênticas e não separavam nada. A lavada de marca
+ * é a MESMA para todas — por isso não codifica categoria nenhuma e não
+ * pede decodificação; ela só existe para o app não ficar cinza morto.
+ * A cor semântica segue livre para os alarmes.
  */
-const NEUTRAL_CATEGORY = { bg: "bg-muted", fg: "text-foreground/70" };
+const NEUTRAL_CATEGORY = { bg: "bg-brand-wash", fg: "text-brand-wash-fg" };
 
 export const CATEGORY_COLORS: Record<
   ActivityCategory,

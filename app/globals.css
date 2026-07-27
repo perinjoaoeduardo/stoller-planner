@@ -57,6 +57,20 @@
   --color-success-fg: var(--success-fg);
   --color-info-bg: var(--info-bg);
   --color-info-fg: var(--info-fg);
+  /* Lavada de marca — superfície DECORATIVA, não semântica: quadradinho
+     de ícone, avatar, chip de categoria. É a mesma para todos os casos,
+     então não codifica nada e não custa leitura; só tira o cinza morto
+     e devolve o azul Corteva ao ambiente. */
+  --color-brand-wash: var(--brand-wash);
+  --color-brand-wash-fg: var(--brand-wash-fg);
+  /* Família de PENDÊNCIA — deliberadamente fora do vocabulário de
+     status. Âmbar já é "atrasada", azul é "planejada", verde é
+     "concluída": reusar qualquer um deles aqui faria o usuário ler
+     alarme de prazo onde só falta um anexo. */
+  --color-pend-foto-bg: var(--pend-foto-bg);
+  --color-pend-foto-fg: var(--pend-foto-fg);
+  --color-pend-meta-bg: var(--pend-meta-bg);
+  --color-pend-meta-fg: var(--pend-meta-fg);
   /* Pilares (categorias de atividade) — identidade por tom pastel.
      bg suave + fg escuro; nunca competem com os alarmes semânticos. */
   --color-cat-reuniao-bg: var(--cat-reuniao-bg);
@@ -143,6 +157,14 @@
 
   --info-bg: #dbeafe; /* blue-100 — fundo do badge Planejada */
   --info-fg: #1e40af; /* blue-800 — texto sobre o badge */
+
+  --brand-wash: #eaf2fb; /* azul lavadíssimo — só ambiente, nunca sinal */
+  --brand-wash-fg: #3d5a7d; /* azul acinzentado, calmo sobre a lavada */
+
+  --pend-foto-bg: #ede9fe; /* violeta-100 — "Sem foto" */
+  --pend-foto-fg: #5b21b6; /* violeta-800 */
+  --pend-meta-bg: #ccfbf1; /* teal-100 — "Sem meta vinculada" */
+  --pend-meta-fg: #115e59; /* teal-800 */
 
   /* ── Pilares — cor de identidade dos 4 tipos de ação ────────────────
      Temporariamente TODOS iguais no mesmo azul-neutro clarinho (sky):
@@ -252,6 +274,14 @@
   --info-bg: rgba(59, 130, 246, 0.15);
   --info-fg: #93c5fd; /* blue-300 */
 
+  --brand-wash: rgba(90, 160, 240, 0.1);
+  --brand-wash-fg: #a9c4e4;
+
+  --pend-foto-bg: rgba(139, 92, 246, 0.15);
+  --pend-foto-fg: #c4b5fd; /* violeta-300 */
+  --pend-meta-bg: rgba(20, 184, 166, 0.15);
+  --pend-meta-fg: #5eead4; /* teal-300 */
+
   /* Pilares no dark — TODOS no mesmo sky-alpha (idem light). */
   --cat-reuniao-bg: rgba(14, 165, 233, 0.16);
   --cat-reuniao-fg: #7dd3fc; /* sky-300 */
@@ -337,6 +367,12 @@
     --success-fg: #14532d;
     --info-bg: #dbeafe;
     --info-fg: #1e3a8a;
+    --brand-wash: #e8f0fa;
+    --brand-wash-fg: #1f3a5f;
+    --pend-foto-bg: #ede9fe;
+    --pend-foto-fg: #4c1d95;
+    --pend-meta-bg: #ccfbf1;
+    --pend-meta-fg: #134e4a;
     --warning: #b45309;
     --warning-bg: #fef3c7;
     --warning-fg: #7c2d12;

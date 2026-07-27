@@ -1,5 +1,5 @@
 /**
- * Textos da saudação da home do RTV — funções puras, sem dependência de
+ * Textos da saudação das homes — funções puras, sem dependência de
  * dados do servidor, para serem testáveis e reutilizáveis.
  */
 
@@ -8,6 +8,21 @@ export function greetingByHour(hour: number): string {
   if (hour >= 5 && hour < 12) return "Bom dia";
   if (hour >= 12 && hour < 18) return "Boa tarde";
   return "Boa noite";
+}
+
+/**
+ * Hora atual em São Paulo (0–23). Fica aqui, junto de quem consome, para
+ * as três homes (RTV, DSM, CX) saudarem no mesmo fuso — o servidor pode
+ * estar em UTC e "Boa noite" às 15h seria um bug silencioso.
+ */
+export function currentHourInSaoPaulo(): number {
+  return Number(
+    new Intl.DateTimeFormat("pt-BR", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "America/Sao_Paulo",
+    }).format(new Date())
+  );
 }
 
 export type GreetingContextInput = {

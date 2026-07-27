@@ -11,8 +11,14 @@ import { cn } from "@/lib/utils";
 /**
  * Stat card ÚNICO do app (home, Minhas Atividades, Visão do Canal).
  * Anatomia: título sm/medium + valor 3xl/bold + sublabel xs/muted.
- * `tone="warning"` pinta o valor de âmbar. `interactive` liga os 3
- * estados (padrão/hover/ativo); a lógica de filtro fica na tela.
+ * `interactive` liga os 3 estados (padrão/hover/ativo); a lógica de
+ * filtro fica na tela.
+ *
+ * `tone` amarra o KPI à MESMA cor do status que ele conta — azul =
+ * planejada/aberta, âmbar = atrasada, verde = concluída. Um número que
+ * filtra a lista tem que usar a cor que a lista usa, senão o usuário
+ * aprende a cor duas vezes. Neutro é o padrão: contagem sem status
+ * (Total) não ganha cor.
  *
  * `icon` é OPCIONAL e por padrão nem aparece: num card com título e
  * número por extenso, o glifo não informa nada (carga cognitiva). Só
@@ -35,9 +41,9 @@ export function StatCard({
   value: number | string;
   sublabel?: string;
   icon?: LucideIcon;
-  /** warning = atenção (âmbar) — o único acento colorido do KPI; pinta o
-   *  valor. Sem vermelho: KPI nunca é alarme de "prazo vencido". */
-  tone?: "neutral" | "warning";
+  /** Cor do valor, espelhando o status contado (ver STATUS_ORDER /
+   *  StatusBadge). Sem vermelho: KPI nunca é alarme destrutivo. */
+  tone?: "neutral" | "info" | "warning" | "success";
   interactive?: boolean;
   active?: boolean;
   onClick?: () => void;
@@ -49,7 +55,17 @@ export function StatCard({
    *  desproporcionariam a fileira. Ex.: "text-xl leading-snug". */
   valueClassName?: string;
 }) {
-  const accentClass = tone === "warning" ? "text-warning" : null;
+  // Zero não ganha cor: "0 atrasadas" pintado de âmbar acende um alarme
+  // que não existe. Cor de status só quando há o que contar.
+  const isZero = value === 0;
+  const accentClass =
+    isZero || tone === "neutral"
+      ? null
+      : tone === "warning"
+        ? "text-warning"
+        : tone === "success"
+          ? "text-success"
+          : "text-accent-brand";
 
   const body = (
     <>

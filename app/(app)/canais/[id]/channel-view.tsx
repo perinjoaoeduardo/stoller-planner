@@ -9,7 +9,6 @@ import {
   ChevronRight,
   CircleCheckBig,
   ClipboardList,
-  Plus,
   StickyNote,
 } from "lucide-react";
 
@@ -24,6 +23,7 @@ import { ProblemsTab } from "@/components/app/problems-tab";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { SearchableSelect } from "@/components/app/searchable-select";
 import { ACTIVITY_STATUSES, OPEN_STATUSES, StatusBadge } from "@/components/shared/status-badge";
+import { StatCard } from "@/components/shared/stat-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,15 +61,9 @@ import type {
   ProblemRow,
   ResponsibleOption,
 } from "@/lib/db/channels";
-import { isLateActivity, todayISO } from "@/lib/db/status";
+import { isLateActivity } from "@/lib/db/status";
 
 const PENDING = new Set<string>(OPEN_STATUSES);
-
-function addDaysISO(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 /**
  * Hub do plano do canal: métricas, visão geral (gráficos + críticas),
@@ -117,22 +111,16 @@ export function ChannelView({
       (activity) => activity.status === "concluida"
     ).length;
     const late = filtered.filter(isLateActivity).length;
-    const today = todayISO();
-    const weekAhead = addDaysISO(7);
-    const dueSoon = filtered.filter(
-      (activity) =>
-        PENDING.has(activity.status) &&
-        activity.status !== "atrasada" &&
-        !!activity.dueDate &&
-        activity.dueDate >= today &&
-        activity.dueDate <= weekAhead
-    ).length;
+    // Atividade sem meta é trabalho que não conta para nenhum objetivo
+    // do plano — é o débito que o DSM tem de fechar, e ele não aparecia
+    // em lugar nenhum do cockpit.
+    const unlinked = filtered.filter((activity) => !activity.problemId).length;
     return {
       total,
       completed,
       completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
       late,
-      dueSoon,
+      unlinked,
     };
   }, [filtered]);
 
@@ -180,16 +168,45 @@ export function ChannelView({
     setActivityFormOpen(true);
   }
 
-  // Sem ícone: o rótulo + número já dizem tudo (mesmo padrão dos KPIs da
-  // home e do CX). O glifo só competia pela atenção.
+  /**
+   * Cockpit do canal no StatCard canônico (era um card à mão, com outro
+   * tamanho de número e sem cor — a mesma informação com duas caras).
+   * A cor de cada número é a do status que ele conta; "Sem meta"
+   * herda o teal da pendência de mesmo nome.
+   *
+   * "Vencem em 7 dias" saiu: prazo próximo não é problema (a atividade
+   * está no prazo) e o card gastava um quarto da fileira para dizer que
+   * o plano está funcionando. No lugar entra o débito real de vínculo.
+   */
   const metricCards = [
-    { label: "Total de atividades", value: metrics.total.toString() },
+    {
+      label: "Total de atividades",
+      value: metrics.total.toString(),
+      tone: "neutral" as const,
+      sublabel: "no plano",
+      valueClass: "",
+    },
     {
       label: "Concluídas",
-      value: `${metrics.completed} (${metrics.completedPercent}%)`,
+      value: `${metrics.completed}`,
+      tone: "success" as const,
+      sublabel: `${metrics.completedPercent}% do total`,
+      valueClass: "",
     },
-    { label: "Atrasadas", value: metrics.late.toString() },
-    { label: "Vencem em 7 dias", value: metrics.dueSoon.toString() },
+    {
+      label: "Atrasadas",
+      value: metrics.late.toString(),
+      tone: "warning" as const,
+      sublabel: metrics.late === 1 ? "vencida em aberto" : "vencidas em aberto",
+      valueClass: "",
+    },
+    {
+      label: "Sem meta vinculada",
+      value: metrics.unlinked.toString(),
+      tone: "neutral" as const,
+      sublabel: "não contam para nenhum objetivo",
+      valueClass: metrics.unlinked > 0 ? "text-pend-meta-fg" : "",
+    },
   ];
 
   return (
@@ -233,14 +250,9 @@ export function ChannelView({
             <StickyNote />
             {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
           </Button>
-          {/* "Nova meta" vive na aba Metas (onde as metas moram) — tê-la
-              também aqui era o mesmo botão duas vezes na mesma tela. */}
-          {canEdit && plan ? (
-            <Button variant="brand" size="sm" className="h-9" onClick={openCreateActivity}>
-              <Plus />
-              Nova atividade
-            </Button>
-          ) : null}
+          {/* "Nova meta" vive na aba Metas (onde as metas moram) e
+              "Nova atividade" só no topbar — a ação universal tem UM
+              lugar, senão o usuário procura em vários. */}
         </div>
       }
     >
@@ -286,16 +298,14 @@ export function ChannelView({
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {metricCards.map((metric) => (
-              <Card key={metric.label} className="gap-2 py-4">
-                <CardHeader>
-                  <CardDescription>{metric.label}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold tracking-tight tabular-nums">
-                    {metric.value}
-                  </p>
-                </CardContent>
-              </Card>
+              <StatCard
+                key={metric.label}
+                title={metric.label}
+                value={metric.value}
+                sublabel={metric.sublabel}
+                tone={metric.tone}
+                valueClassName={metric.valueClass}
+              />
             ))}
           </div>
 

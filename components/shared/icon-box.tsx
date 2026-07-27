@@ -39,12 +39,12 @@ export function IconBox({
   const box = (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-lg bg-muted",
+        "flex shrink-0 items-center justify-center rounded-lg bg-brand-wash",
         s.box,
         className
       )}
     >
-      <Icon className={cn("text-foreground/70", s.icon, iconClassName)} />
+      <Icon className={cn("text-brand-wash-fg", s.icon, iconClassName)} />
     </span>
   );
 

@@ -26,7 +26,6 @@ import {
   ChevronRight,
   ClipboardList,
   ListFilter,
-  Plus,
   Search,
   Settings2,
 } from "lucide-react";
@@ -1096,17 +1095,6 @@ export function ActivitiesTable({
                   ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            {canEdit && onCreate ? (
-              <Button
-                variant="brand"
-                size="sm"
-                className="h-9"
-                onClick={onCreate}
-              >
-                <Plus />
-                Nova atividade
-              </Button>
-            ) : null}
           </div>
         </div>
       )}
@@ -1140,18 +1128,13 @@ export function ActivitiesTable({
               <EmptyDescription>
                 {hasFilters
                   ? "Ajuste ou limpe os filtros para ver as atividades."
-                  : "Crie a primeira atividade para colocar o plano em movimento."}
+                  : "Use “Nova atividade” no topo da tela para começar."}
               </EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
               {hasFilters ? (
                 <Button variant="outline" onClick={clearFilters}>
                   Limpar filtros
-                </Button>
-              ) : canEdit && onCreate ? (
-                <Button variant="brand" onClick={onCreate}>
-                  <Plus />
-                  Nova atividade
                 </Button>
               ) : null}
             </EmptyContent>

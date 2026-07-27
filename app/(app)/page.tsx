@@ -67,7 +67,11 @@ import {
   type RecentExecution,
 } from "@/lib/db/execution";
 import { Progress } from "@/components/ui/progress";
-import { greetingByHour, greetingContextLine } from "@/lib/rtv/greeting";
+import {
+  currentHourInSaoPaulo,
+  greetingByHour,
+  greetingContextLine,
+} from "@/lib/rtv/greeting";
 
 export const dynamic = "force-dynamic";
 
@@ -98,27 +102,61 @@ function TitleCount({ value }: { value: number }) {
 }
 
 /**
- * Dois números acionáveis do gestor: quantos canais pedem olhar e o que
- * é dele para fechar. "Canais que acompanho" repetia o card "Meus
- * canais" ao lado; "RTVs na equipe" levava a uma tela "Em breve" (beco
- * sem saída) — ambos saíram para reduzir carga cognitiva.
+ * Os quatro números do gestor, em duas duplas: primeiro a CARTEIRA
+ * inteira (quantos canais pedem olhar, quanto do plano já saiu, quanto
+ * está vencido somando todos os canais), depois o que é DELE para
+ * fechar. Sem essa visão agregada o DSM só via risco e pendência
+ * própria — nunca "como vai a carteira".
+ *
+ * "Canais que acompanho" e "RTVs na equipe" continuam fora: o primeiro
+ * repetia o card "Meus canais" ao lado, o segundo levava a uma tela
+ * "Em breve".
  */
-function DsmStats({ stats }: { stats: DsmHome["stats"] }) {
+function DsmStats({
+  stats,
+  byStatus,
+}: {
+  stats: DsmHome["stats"];
+  byStatus: DsmHome["byStatus"];
+}) {
+  const totalOf = (status: string) =>
+    byStatus.find((row) => row.status === status)?.total ?? 0;
+  const total = byStatus.reduce((sum, row) => sum + row.total, 0);
+  const done = totalOf("concluida");
+  const late = totalOf("atrasada");
+  const donePercent = total > 0 ? Math.round((done / total) * 100) : 0;
+
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       <StatCard
         title="Canais em risco"
         value={stats.atRiskCount}
-        sublabel="exigem acompanhamento"
-        tone={stats.atRiskCount > 0 ? "warning" : "neutral"}
+        sublabel={`de ${stats.channelCount} que acompanho`}
+        tone="warning"
         href="/canais"
       />
+      <StatCard
+        title="Execução da carteira"
+        value={`${donePercent}%`}
+        sublabel={`${done} de ${total} atividades`}
+        tone="success"
+        href="/relatorios"
+      />
+      <StatCard
+        title="Atrasadas na carteira"
+        value={late}
+        sublabel="somando todos os canais"
+        tone="warning"
+        href="/atividades"
+      />
+      {/* Sem cor: "minhas pendências" não é um status — é um recorte de
+          dono. Pintar de âmbar/azul aqui reusaria o vocabulário de
+          atraso/planejada para dizer outra coisa. */}
       <StatCard
         title="Minhas pendências"
         value={stats.myOpenCount}
         sublabel="atribuídas a você"
-        tone={stats.myHasOverdue ? "warning" : "neutral"}
-        href="/pendencias"
+        href="/pendencias?escopo=minhas"
       />
     </div>
   );
@@ -191,7 +229,11 @@ function MeusCanaisCard({ channels }: { channels: DsmHomeChannel[] }) {
             Nenhum canal sob sua gestão nesta safra.
           </p>
         ) : (
-          <div className="flex flex-col divide-y divide-border/60 px-2 py-1">
+          // Sem divide-y: a linha cortava a largura toda enquanto a
+          // própria linha é um bloco com padding e hover arredondado — o
+          // traço ficava desalinhado e parecia solto. O respiro entre
+          // blocos já separa (Gestalt: proximidade).
+          <div className="flex flex-col gap-0.5 p-2">
             {ordered.map((channel) => (
               <Link
                 key={channel.id}
@@ -272,7 +314,9 @@ function ExceptionQueue({ exceptions }: { exceptions: DsmException[] }) {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-border/60 px-2 py-1">
+          // Mesma razão da lista de canais: sem divide-y, o respiro
+          // entre blocos separa e nenhum traço fica solto.
+          <div className="flex flex-col gap-0.5 p-2">
             {exceptions.map((exception) => {
               const Icon = EXCEPTION_ICONS[exception.kind];
               const tone = EXCEPTION_TONE[exception.kind];
@@ -384,13 +428,14 @@ async function DsmHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
   const home = await getDsmHome(profile, channelIds);
+  const firstName = profile.fullName.split(" ")[0];
 
   return (
     <PageShell
-      title="Início"
+      title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`Panorama dos seus canais na safra ${CURRENT_HARVEST}.`}
     >
-      <DsmStats stats={home.stats} />
+      <DsmStats stats={home.stats} byStatus={home.byStatus} />
 
       <div className="grid items-stretch gap-6 lg:grid-cols-2">
         <MeusCanaisCard channels={home.channels} />
@@ -402,17 +447,6 @@ async function DsmHome() {
         viewAllHref={`/atividades?responsavel=${profile.id}`}
       />
     </PageShell>
-  );
-}
-
-/** Hora atual em São Paulo (0–23) para a saudação. */
-function currentHourInSaoPaulo(): number {
-  return Number(
-    new Intl.DateTimeFormat("pt-BR", {
-      hour: "numeric",
-      hour12: false,
-      timeZone: "America/Sao_Paulo",
-    }).format(new Date())
   );
 }
 
@@ -435,13 +469,14 @@ function RtvMetrics({
         title="Abertas"
         value={abertasCount}
         sublabel="a fazer nesta safra"
+        tone="info"
         href="/minhas-atividades?status=abertas"
       />
       <StatCard
         title="Precisam de atenção"
         value={lateCount}
         sublabel={lateCount === 1 ? "atrasada" : "atrasadas"}
-        tone={lateCount > 0 ? "warning" : "neutral"}
+        tone="warning"
         href="/minhas-atividades?status=atrasadas"
       />
     </div>

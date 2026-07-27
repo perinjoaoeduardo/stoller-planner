@@ -37,12 +37,15 @@ import { cn } from "@/lib/utils";
  * URL, e o próprio page re-renderiza com o novo filtro.
  */
 
+/**
+ * Pendência tem família de cor PRÓPRIA — fora do vocabulário de status.
+ * Âmbar é "atrasada", azul é "planejada", verde é "concluída": usar
+ * qualquer um deles aqui faria o usuário ler alarme de prazo onde só
+ * falta um anexo. Violeta = falta foto, teal = falta meta.
+ */
 const ISSUE_BADGE_CLASS: Record<PendencyType, string> = {
-  // Âmbar, não vermelho: pendência é atenção — destructive é exclusivo
-  // do prazo vencido em aberto (Constituição, item 2).
-  sem_foto: "border-warning/40 bg-warning/10 text-warning-fg",
-  sem_problema:
-    "border-accent-brand/40 bg-accent-brand/10 text-accent-brand",
+  sem_foto: "border-transparent bg-pend-foto-bg text-pend-foto-fg",
+  sem_problema: "border-transparent bg-pend-meta-bg text-pend-meta-fg",
   sem_categoria:
     "border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground",
 };
@@ -76,11 +79,17 @@ export function PendenciasView({
   data,
   showDsm = false,
   activeFilter = null,
+  onlyMine = false,
+  canToggleScope = false,
 }: {
   data: PendenciesSummary;
   /** CX vê o DSM responsável por canal; para o DSM é redundante. */
   showDsm?: boolean;
   activeFilter?: PendencyType | null;
+  /** Lista já veio estreitada às atividades do usuário. */
+  onlyMine?: boolean;
+  /** RTV não alterna (só existe o escopo dele); DSM/CX sim. */
+  canToggleScope?: boolean;
 }) {
   if (data.total === 0) {
     return (
@@ -91,10 +100,15 @@ export function PendenciasView({
               <EmptyMedia variant="icon">
                 <PartyPopper />
               </EmptyMedia>
-              <EmptyTitle>Nenhuma pendência por aqui</EmptyTitle>
+              <EmptyTitle>
+                {onlyMine
+                  ? "Nenhuma pendência sua por aqui"
+                  : "Nenhuma pendência por aqui"}
+              </EmptyTitle>
               <EmptyDescription>
-                Todos os registros concluídos têm foto, meta vinculada e
-                categoria. Plano organizado!
+                {onlyMine
+                  ? "Seus registros concluídos estão completos. Desligue “Só minhas” para ver as do time."
+                  : "Todos os registros concluídos têm foto, meta vinculada e categoria. Plano organizado!"}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -126,6 +140,8 @@ export function PendenciasView({
       <PendenciasKpis
         totalsByType={data.totalsByType}
         activeFilter={activeFilter}
+        onlyMine={onlyMine}
+        canToggleScope={canToggleScope}
       />
 
       {activeFilter ? (

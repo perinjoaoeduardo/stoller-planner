@@ -19,7 +19,7 @@ export function CategoryBadge({
     <Badge
       variant="outline"
       className={cn(
-        "border-transparent bg-muted text-foreground/70",
+        "border-transparent bg-brand-wash text-brand-wash-fg",
         className
       )}
     >

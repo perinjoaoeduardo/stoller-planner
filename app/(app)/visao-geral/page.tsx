@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireCx } from "@/lib/auth/scope";
+import { currentHourInSaoPaulo, greetingByHour } from "@/lib/rtv/greeting";
 import {
   getChannelHealthRows,
   getCxMetrics,
@@ -35,7 +36,8 @@ export const metadata: Metadata = {
  * registros e a tabela de saúde por canal com os piores primeiro.
  */
 export default async function VisaoGeralPage() {
-  await requireCx();
+  const profile = await requireCx();
+  const firstName = profile.fullName.split(" ")[0];
 
   const [metrics, regionData, pulse, healthRows] = await Promise.all([
     getCxMetrics(),
@@ -63,7 +65,7 @@ export default async function VisaoGeralPage() {
 
   return (
     <PageShell
-      title="Visão geral"
+      title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`Radar nacional da execução comercial — ${harvestLabel()}, todas as regiões.`}
     >
       <CxMetricCards metrics={metrics} />
