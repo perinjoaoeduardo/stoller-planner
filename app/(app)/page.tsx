@@ -66,6 +66,7 @@ import {
   OPEN_STATUSES,
   type RecentExecution,
 } from "@/lib/db/execution";
+import { getPendencies } from "@/lib/db/pendencias";
 import { Progress } from "@/components/ui/progress";
 import {
   currentHourInSaoPaulo,
@@ -451,24 +452,43 @@ async function DsmHome() {
 }
 
 /**
- * Dois números que movem o dia do RTV: quanto tem a fazer e o que já
- * está atrasado. "Concluídas" (vaidade) e "Canais que atuo" (repetem os
- * cards de Meus canais ao lado) saíram — menos peça competindo pela
- * atenção. Cada card é atalho para a lista já filtrada.
+ * Os quatro números que movem o dia do RTV, do horizonte mais largo para
+ * o mais curto — carteira, semana, atraso — e, por último, o débito de
+ * registro que só ele fecha.
+ *
+ * "Esta semana" é subconjunto de "Abertas" de propósito: uma responde
+ * "quanto eu tenho", a outra "quanto é para já". É a segunda que define
+ * a rota da semana.
+ *
+ * "Concluídas" (vaidade) e "Canais que atuo" (repetem os cards de Meus
+ * canais ao lado) seguem fora. Cada card é atalho para a lista já
+ * filtrada.
  */
 function RtvMetrics({
   abertasCount,
+  dueThisWeekCount,
   lateCount,
+  pendencyCount,
 }: {
   abertasCount: number;
+  dueThisWeekCount: number;
   lateCount: number;
+  pendencyCount: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Total da carteira: neutro, como todo "total" do app. */}
       <StatCard
         title="Abertas"
         value={abertasCount}
         sublabel="a fazer nesta safra"
+        href="/minhas-atividades?status=abertas"
+      />
+      {/* Azul = planejada: é o que está de pé para os próximos 7 dias. */}
+      <StatCard
+        title="Esta semana"
+        value={dueThisWeekCount}
+        sublabel="vencem em até 7 dias"
         tone="info"
         href="/minhas-atividades?status=abertas"
       />
@@ -478,6 +498,15 @@ function RtvMetrics({
         sublabel={lateCount === 1 ? "atrasada" : "atrasadas"}
         tone="warning"
         href="/minhas-atividades?status=atrasadas"
+      />
+      {/* Sem cor: pendência agrega dois débitos diferentes (sem foto e
+          sem meta), cada um com a sua cor na própria tela. Um agregado
+          não tem UMA cor honesta. */}
+      <StatCard
+        title="Pendências"
+        value={pendencyCount}
+        sublabel="registros a completar"
+        href="/pendencias"
       />
     </div>
   );
@@ -625,11 +654,14 @@ function RecentExecutionsCard({
 async function FieldHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const [{ activities }, recentExecutions, channels] = await Promise.all([
-    getFieldActivities(profile),
-    getMyRecentExecutions(profile.id, 3),
-    getChannelCards(channelIds),
-  ]);
+  const [{ activities }, recentExecutions, channels, pendencies] =
+    await Promise.all([
+      getFieldActivities(profile),
+      getMyRecentExecutions(profile.id, 3),
+      getChannelCards(channelIds),
+      // Escopado ao próprio RTV: ele só resolve as dele.
+      getPendencies(channelIds, profile.id),
+    ]);
 
   const firstName = profile.fullName.split(" ")[0];
 
@@ -713,8 +745,10 @@ async function FieldHome() {
       descriptionClassName={contextClass}
     >
       <RtvMetrics
-        abertasCount={open.length - late.length}
+        abertasCount={open.length}
+        dueThisWeekCount={dueThisWeekCount}
         lateCount={late.length}
+        pendencyCount={pendencies.total}
       />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
