@@ -66,7 +66,6 @@ import {
   OPEN_STATUSES,
   type RecentExecution,
 } from "@/lib/db/execution";
-import { getPendencies } from "@/lib/db/pendencias";
 import { Progress } from "@/components/ui/progress";
 import {
   currentHourInSaoPaulo,
@@ -458,23 +457,26 @@ async function DsmHome() {
  *
  * "Esta semana" é subconjunto de "Abertas" de propósito: uma responde
  * "quanto eu tenho", a outra "quanto é para já". É a segunda que define
- * a rota da semana.
+ * a rota da semana. "Concluídas" fecha com o placar da safra.
  *
- * "Concluídas" (vaidade) e "Canais que atuo" (repetem os cards de Meus
- * canais ao lado) seguem fora. Cada card é atalho para a lista já
- * filtrada.
+ * "Canais que atuo" segue fora — repete os cards de Meus canais ao lado.
+ * Cada card é atalho para a lista já filtrada.
  */
 function RtvMetrics({
   abertasCount,
   dueThisWeekCount,
   lateCount,
-  pendencyCount,
+  completedCount,
+  totalCount,
 }: {
   abertasCount: number;
   dueThisWeekCount: number;
   lateCount: number;
-  pendencyCount: number;
+  completedCount: number;
+  totalCount: number;
 }) {
+  const donePercent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {/* Total da carteira: neutro, como todo "total" do app. */}
@@ -499,14 +501,15 @@ function RtvMetrics({
         tone="warning"
         href="/minhas-atividades?status=atrasadas"
       />
-      {/* Sem cor: pendência agrega dois débitos diferentes (sem foto e
-          sem meta), cada um com a sua cor na própria tela. Um agregado
-          não tem UMA cor honesta. */}
+      {/* Verde = conclusão, como em todo o app. O percentual é o que
+          dá sentido ao número: 12 concluídas pode ser ótimo ou pouco
+          dependendo do tamanho do plano. */}
       <StatCard
-        title="Pendências"
-        value={pendencyCount}
-        sublabel="registros a completar"
-        href="/pendencias"
+        title="Concluídas"
+        value={completedCount}
+        sublabel={`${donePercent}% da safra`}
+        tone="success"
+        href="/minhas-atividades?status=concluidas"
       />
     </div>
   );
@@ -654,14 +657,11 @@ function RecentExecutionsCard({
 async function FieldHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const [{ activities }, recentExecutions, channels, pendencies] =
-    await Promise.all([
-      getFieldActivities(profile),
-      getMyRecentExecutions(profile.id, 3),
-      getChannelCards(channelIds),
-      // Escopado ao próprio RTV: ele só resolve as dele.
-      getPendencies(channelIds, profile.id),
-    ]);
+  const [{ activities }, recentExecutions, channels] = await Promise.all([
+    getFieldActivities(profile),
+    getMyRecentExecutions(profile.id, 3),
+    getChannelCards(channelIds),
+  ]);
 
   const firstName = profile.fullName.split(" ")[0];
 
@@ -748,7 +748,8 @@ async function FieldHome() {
         abertasCount={open.length}
         dueThisWeekCount={dueThisWeekCount}
         lateCount={late.length}
-        pendencyCount={pendencies.total}
+        completedCount={completed.length}
+        totalCount={mine.length}
       />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
