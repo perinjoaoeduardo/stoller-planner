@@ -36,6 +36,7 @@ export type PendencyActivity = {
   category: ActivityCategory | null;
   dueDate: string | null;
   branchName: string | null;
+  responsibleId: string | null;
   responsibleName: string | null;
   issues: PendencyType[];
 };
@@ -162,6 +163,7 @@ export async function getPendencies(
         category: activity.category as ActivityCategory | null,
         dueDate: activity.due_date,
         branchName: activity.branch?.name ?? null,
+        responsibleId: activity.responsible_id ?? null,
         responsibleName: activity.responsible?.full_name ?? null,
         issues,
       });

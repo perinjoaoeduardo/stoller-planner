@@ -81,6 +81,8 @@ export function PendenciasView({
   activeFilter = null,
   onlyMine = false,
   canToggleScope = false,
+  channelFilter = null,
+  personFilter = null,
 }: {
   data: PendenciesSummary;
   /** CX vê o DSM responsável por canal; para o DSM é redundante. */
@@ -90,6 +92,9 @@ export function PendenciasView({
   onlyMine?: boolean;
   /** RTV não alterna (só existe o escopo dele); DSM/CX sim. */
   canToggleScope?: boolean;
+  /** Recortes de ?canal= e ?pessoa= (gestor cobra por canal e por gente). */
+  channelFilter?: string | null;
+  personFilter?: string | null;
 }) {
   if (data.total === 0) {
     return (
@@ -117,18 +122,40 @@ export function PendenciasView({
     );
   }
 
+  /**
+   * Opções dos filtros saem dos próprios dados (só aparece quem tem
+   * pendência) — um seletor com nomes sem débito nenhum é caminho para
+   * lista vazia.
+   */
+  const channelOptions = data.channels.map((channel) => ({
+    value: channel.channelId,
+    label: channel.channelName,
+  }));
+  const peopleSeen = new Map<string, string>();
+  for (const channel of data.channels) {
+    for (const activity of channel.activities) {
+      if (activity.responsibleId && activity.responsibleName) {
+        peopleSeen.set(activity.responsibleId, activity.responsibleName);
+      }
+    }
+  }
+  const personOptions = [...peopleSeen.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   // Contadores dos KPIs continuam refletindo os totais reais — filtrar
   // não muda o tamanho do débito, só o foco.
-  const filteredChannels = activeFilter
-    ? data.channels
-        .map((channel) => {
-          const activities = channel.activities.filter((activity) =>
-            activity.issues.includes(activeFilter)
-          );
-          return { ...channel, activities, total: activities.length };
-        })
-        .filter((channel) => channel.total > 0)
-    : data.channels;
+  const filteredChannels = data.channels
+    .filter((channel) => !channelFilter || channel.channelId === channelFilter)
+    .map((channel) => {
+      const activities = channel.activities.filter(
+        (activity) =>
+          (!activeFilter || activity.issues.includes(activeFilter)) &&
+          (!personFilter || activity.responsibleId === personFilter)
+      );
+      return { ...channel, activities, total: activities.length };
+    })
+    .filter((channel) => channel.total > 0);
 
   const filteredTotal = filteredChannels.reduce(
     (sum, channel) => sum + channel.total,
@@ -142,6 +169,10 @@ export function PendenciasView({
         activeFilter={activeFilter}
         onlyMine={onlyMine}
         canToggleScope={canToggleScope}
+        channelOptions={channelOptions}
+        channelFilter={channelFilter}
+        personOptions={personOptions}
+        personFilter={personFilter}
       />
 
       {activeFilter ? (

@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import {
+  SearchableSelect,
+  type SelectOption,
+} from "@/components/app/searchable-select";
+import {
   PENDENCY_LABELS,
   PENDENCY_TYPES,
   type PendencyType,
@@ -50,11 +54,19 @@ export function PendenciasKpis({
   activeFilter,
   onlyMine = false,
   canToggleScope = false,
+  channelOptions = [],
+  channelFilter = null,
+  personOptions = [],
+  personFilter = null,
 }: {
   totalsByType: Record<PendencyType, number>;
   activeFilter: PendencyType | null;
   onlyMine?: boolean;
   canToggleScope?: boolean;
+  channelOptions?: SelectOption[];
+  channelFilter?: string | null;
+  personOptions?: SelectOption[];
+  personFilter?: string | null;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,6 +77,18 @@ export function PendenciasKpis({
       params.set("tipo", type);
     } else {
       params.delete("tipo");
+    }
+    const qs = params.toString();
+    router.replace(qs ? `?${qs}` : "?", { scroll: false });
+  }
+
+  /** Escreve (ou limpa) um parâmetro de recorte na URL. */
+  function setParam(key: string, value: string | null) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
     }
     const qs = params.toString();
     router.replace(qs ? `?${qs}` : "?", { scroll: false });
@@ -140,11 +164,35 @@ export function PendenciasKpis({
         })}
       </div>
 
-      {/* Controles ABAIXO dos números: o card é o dado, o toggle é o
-          recorte. Acima, o toggle empurrava os KPIs para baixo e roubava
-          a primeira leitura da tela. */}
-      {canToggleScope || activeFilter ? (
-        <div className="flex items-center gap-3">
+      {/* Controles ABAIXO dos números: o card é o dado, os seletores são
+          o recorte. Acima, empurravam os KPIs para baixo e roubavam a
+          primeira leitura da tela. Canal e Pessoa são como o gestor
+          cobra — "quem está devendo" e "onde". */}
+      {canToggleScope ||
+      activeFilter ||
+      channelFilter ||
+      personFilter ||
+      channelOptions.length > 1 ||
+      personOptions.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {channelOptions.length > 1 ? (
+            <SearchableSelect
+              options={channelOptions}
+              value={channelFilter}
+              onValueChange={(value) => setParam("canal", value)}
+              placeholder="Todos os canais"
+              className="h-9 min-w-44 border-input bg-card"
+            />
+          ) : null}
+          {personOptions.length > 1 ? (
+            <SearchableSelect
+              options={personOptions}
+              value={personFilter}
+              onValueChange={(value) => setParam("pessoa", value)}
+              placeholder="Todas as pessoas"
+              className="h-9 min-w-44 border-input bg-card"
+            />
+          ) : null}
           {canToggleScope ? (
             <label className="flex items-center gap-2 text-sm text-foreground">
               <Switch
@@ -154,14 +202,14 @@ export function PendenciasKpis({
               Só minhas
             </label>
           ) : null}
-          {activeFilter ? (
+          {activeFilter || channelFilter || personFilter ? (
             <Button
               variant="ghost"
               size="sm"
               className="ml-auto"
-              onClick={() => setFilter(null)}
+              onClick={() => router.replace("?", { scroll: false })}
             >
-              Limpar filtro
+              Limpar filtros
             </Button>
           ) : null}
         </div>

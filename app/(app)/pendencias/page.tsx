@@ -26,7 +26,12 @@ export const metadata: Metadata = {
 export default async function PendenciasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tipo?: string; escopo?: string }>;
+  searchParams: Promise<{
+    tipo?: string;
+    escopo?: string;
+    canal?: string;
+    pessoa?: string;
+  }>;
 }) {
   const profile = await getCurrentProfile();
 
@@ -64,6 +69,8 @@ export default async function PendenciasPage({
         activeFilter={activeFilter}
         onlyMine={onlyMine}
         canToggleScope={!isField}
+        channelFilter={params.canal ?? null}
+        personFilter={params.pessoa ?? null}
       />
     </PageShell>
   );
