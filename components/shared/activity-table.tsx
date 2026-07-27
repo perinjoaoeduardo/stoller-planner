@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
@@ -199,15 +200,22 @@ export function ActivityTable({
                 <TooltipTrigger
                   render={<span className="flex w-fit -space-x-2" />}
                 >
+                  {/* Cada avatar leva ao perfil da pessoa — o nome (e a
+                      cara) de alguem e sempre um caminho para "como esta
+                      o trabalho dela". */}
                   {assignees.slice(0, 3).map((assignee) => (
-                    <Avatar
+                    <Link
                       key={assignee.id}
-                      className="size-7 border-2 border-card"
+                      href={`/pessoas/${assignee.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      aria-label={`Perfil de ${assignee.name}`}
                     >
-                      <AvatarFallback className="text-xs font-medium text-foreground">
-                        {getInitials(assignee.name)}
-                      </AvatarFallback>
-                    </Avatar>
+                      <Avatar className="size-7 border-2 border-card transition-transform hover:z-10 hover:scale-110">
+                        <AvatarFallback className="text-xs font-medium text-foreground">
+                          {getInitials(assignee.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Link>
                   ))}
                   {assignees.length > 3 ? (
                     <Avatar className="size-7 border-2 border-card">

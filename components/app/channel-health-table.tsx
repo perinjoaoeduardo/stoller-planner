@@ -43,6 +43,7 @@ import {
   HEALTH_CONFIG,
   type ChannelHealth,
 } from "@/lib/plan-utils";
+import { PersonLink } from "@/components/shared/person-link";
 import { cn, getInitials } from "@/lib/utils";
 
 /** "há 3 dias" / "há 26 dias" (vermelho > limite) / "Nunca". */
@@ -145,9 +146,11 @@ export function ChannelHealthTable({
                   {getInitials(row.original.dsmName)}
                 </AvatarFallback>
               </Avatar>
-              <span className="whitespace-nowrap text-sm">
-                {row.original.dsmName}
-              </span>
+              <PersonLink
+                profileId={row.original.dsmId}
+                name={row.original.dsmName}
+                className="whitespace-nowrap text-sm"
+              />
             </div>
           ) : (
             <span className="text-sm text-muted-foreground">—</span>

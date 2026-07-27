@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, PartyPopper } from "lucide-react";
 
 import { ActivityLink } from "@/components/app/activity-link";
+import { PersonLink } from "@/components/shared/person-link";
 import { PendenciasKpis } from "@/components/app/pendencias-kpis";
 import {
   StatusBadge,
@@ -241,9 +242,12 @@ export function PendenciasView({
                     </span>
                     <span className="truncate text-xs text-muted-foreground">
                       {activity.branchName ?? "Sem filial"}
-                      {activity.responsibleName
-                        ? ` · ${activity.responsibleName}`
-                        : ""}
+                      {activity.responsibleName ? " · " : ""}
+                      <PersonLink
+                        profileId={activity.responsibleId}
+                        name={activity.responsibleName}
+                        className="hover:text-foreground"
+                      />
                     </span>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-1.5">

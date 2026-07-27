@@ -116,11 +116,18 @@ export function ActivityCard({
             >
               <AvatarGroup>
                 {activity.assignees.slice(0, 3).map((assignee) => (
-                  <Avatar key={assignee.id} size="sm">
-                    <AvatarFallback className="text-[10px]">
-                      {getInitials(assignee.name)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Link
+                    key={assignee.id}
+                    href={`/pessoas/${assignee.id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={`Perfil de ${assignee.name}`}
+                  >
+                    <Avatar size="sm">
+                      <AvatarFallback className="text-[10px]">
+                        {getInitials(assignee.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
                 ))}
                 {activity.assignees.length > 3 ? (
                   <AvatarGroupCount className="size-6 text-[10px]">
