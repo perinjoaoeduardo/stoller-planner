@@ -50,6 +50,7 @@ import {
 import {
   ACTIVITY_STATUSES,
   STATUS_LABELS,
+  STATUS_ORDER,
   StatusBadge,
   type ActivityStatus,
 } from "@/components/shared/status-badge";
@@ -92,13 +93,6 @@ import {
 import { ACTIVITY_CATEGORIES, CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
 import { cn, getInitials } from "@/lib/utils";
-
-const STATUS_SORT_ORDER: Record<ActivityStatus, number> = {
-  atrasada: 0,
-  planejada: 1,
-  concluida: 2,
-  nao_feita: 3,
-};
 
 const COLUMN_LABELS: Record<string, string> = {
   title: "Atividade",
@@ -704,8 +698,8 @@ export function ActivitiesTable({
         accessorKey: "status",
         header: ({ column }) => <SortHeader label="Status" column={column} />,
         sortingFn: (a, b) =>
-          STATUS_SORT_ORDER[a.original.status] -
-          STATUS_SORT_ORDER[b.original.status],
+          STATUS_ORDER[a.original.status] -
+          STATUS_ORDER[b.original.status],
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       }
     );

@@ -24,6 +24,21 @@ export function isOpenStatus(status: ActivityStatus): boolean {
   return status === "planejada" || status === "atrasada";
 }
 
+/**
+ * ORDEM CANÔNICA de status em qualquer lista (existe em UM arquivo só).
+ * Atrasada → Planejada → Concluída → Cancelada: primeiro o que cobra
+ * ação, por último o que já está encerrado. A regra vence a data: uma
+ * concluída de ontem entra DEPOIS de uma planejada do mês que vem,
+ * porque o que a lista responde é "o que eu faço agora", não "o que
+ * aconteceu quando". A data só desempata dentro do mesmo status.
+ */
+export const STATUS_ORDER: Record<ActivityStatus, number> = {
+  atrasada: 0,
+  planejada: 1,
+  concluida: 2,
+  nao_feita: 3,
+};
+
 export const STATUS_LABELS: Record<ActivityStatus, string> = {
   planejada: "Planejada",
   concluida: "Concluída",
@@ -33,27 +48,31 @@ export const STATUS_LABELS: Record<ActivityStatus, string> = {
 
 /**
  * Cor canônica de cada status EM GRÁFICO — a mesma em todas as telas.
- * Segue a semântica dos badges: verde = conclusão, âmbar = atraso,
- * abertos/cancelados são neutros. Azul nunca codifica status — é a cor
- * de série única de dado (chart-1).
+ * Segue a semântica dos badges: azul = planejada, verde = concluída,
+ * âmbar = atrasada, cancelada é neutra.
  */
 export const STATUS_CHART_COLORS: Record<ActivityStatus, string> = {
-  planejada: "var(--border-active)",
+  planejada: "var(--accent-brand)",
   concluida: "var(--success)",
   atrasada: "var(--warning)",
   nao_feita: "var(--border-hover)",
 };
 
 /**
- * Badge de status ÚNICO do app (Constituição, item 2): âmbar é o alerta
- * de atraso, verde é conclusão, o resto é neutro. NUNCA vermelho em
- * badge — o vermelho pertence ao texto de prazo vencido (lib/deadline).
+ * Badge de status ÚNICO do app (Constituição, item 2). Os três estados
+ * vivos têm cor própria — azul = planejada (vai acontecer), verde =
+ * concluída (aconteceu), âmbar = atrasada (devia ter acontecido) — e
+ * cancelada fica neutra, porque saiu do jogo. NUNCA vermelho em badge:
+ * vermelho é só ação destrutiva e erro de formulário.
  */
 const STATUS_STYLES: Record<
   ActivityStatus,
   { variant: React.ComponentProps<typeof Badge>["variant"]; className?: string }
 > = {
-  planejada: { variant: "outline", className: "text-foreground" },
+  planejada: {
+    variant: "outline",
+    className: "border-transparent bg-info-bg text-info-fg",
+  },
   concluida: {
     variant: "outline",
     className: "border-transparent bg-success-bg text-success-fg",

@@ -21,7 +21,11 @@ import {
   SearchableSelect,
   type SelectOption,
 } from "@/components/app/searchable-select";
-import { type ActivityStatus, OPEN_STATUSES } from "@/components/shared/status-badge";
+import {
+  type ActivityStatus,
+  OPEN_STATUSES,
+  STATUS_ORDER,
+} from "@/components/shared/status-badge";
 import { useWizardProvider } from "@/components/app/wizard-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -262,26 +266,21 @@ export function MyActivitiesList({
 
   const sorted = React.useMemo(() => {
     const rows = [...filtered];
-    if (sortKey === "prazo") {
-      rows.sort((a, b) => {
-        // Atrasadas primeiro; canceladas sempre no fim da fila.
-        const rank = (s: string) =>
-          s === "atrasada" ? 0 : s === "nao_feita" ? 2 : 1;
-        const lateA = rank(a.status);
-        const lateB = rank(b.status);
-        if (lateA !== lateB) return lateA - lateB;
-        const dueA = a.dueDate ?? "9999-12-31";
-        const dueB = b.dueDate ?? "9999-12-31";
-        return sortDir === "asc"
-          ? dueA.localeCompare(dueB)
-          : dueB.localeCompare(dueA);
-      });
-    } else {
-      rows.sort((a, b) => {
-        const cmp = a.status.localeCompare(b.status);
-        return sortDir === "asc" ? cmp : -cmp;
-      });
-    }
+    // O status manda em qualquer ordenação (STATUS_ORDER é canônico):
+    // atrasada → planejada → concluída → cancelada. Sem isso, planejada
+    // e concluída se intercalavam por data e a lista virava um vaivém
+    // entre "tenho que fazer" e "já foi". A data só desempata DENTRO
+    // do mesmo status — inclusive quando o usuário inverte a direção.
+    rows.sort((a, b) => {
+      const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
+      if (byStatus !== 0) return byStatus;
+      if (sortKey === "status") return 0;
+      const dueA = a.dueDate ?? "9999-12-31";
+      const dueB = b.dueDate ?? "9999-12-31";
+      return sortDir === "asc"
+        ? dueA.localeCompare(dueB)
+        : dueB.localeCompare(dueA);
+    });
     return rows;
   }, [filtered, sortKey, sortDir]);
 

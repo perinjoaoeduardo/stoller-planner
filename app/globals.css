@@ -55,6 +55,8 @@
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
   --color-success-fg: var(--success-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
   /* Pilares (categorias de atividade) — identidade por tom pastel.
      bg suave + fg escuro; nunca competem com os alarmes semânticos. */
   --color-cat-reuniao-bg: var(--cat-reuniao-bg);
@@ -138,6 +140,9 @@
   --success: #16a34a; /* green-600 — texto de sucesso */
   --success-bg: #dcfce7; /* green-100 — fundo do badge Concluída */
   --success-fg: #166534; /* green-800 — texto sobre o badge */
+
+  --info-bg: #dbeafe; /* blue-100 — fundo do badge Planejada */
+  --info-fg: #1e40af; /* blue-800 — texto sobre o badge */
 
   /* ── Pilares — cor de identidade dos 4 tipos de ação ────────────────
      Temporariamente TODOS iguais no mesmo azul-neutro clarinho (sky):
@@ -244,6 +249,9 @@
   --success-bg: rgba(34, 197, 94, 0.15);
   --success-fg: #86efac; /* green-300 */
 
+  --info-bg: rgba(59, 130, 246, 0.15);
+  --info-fg: #93c5fd; /* blue-300 */
+
   /* Pilares no dark — TODOS no mesmo sky-alpha (idem light). */
   --cat-reuniao-bg: rgba(14, 165, 233, 0.16);
   --cat-reuniao-fg: #7dd3fc; /* sky-300 */
@@ -327,6 +335,8 @@
     --success: #15803d;
     --success-bg: #dcfce7;
     --success-fg: #14532d;
+    --info-bg: #dbeafe;
+    --info-fg: #1e3a8a;
     --warning: #b45309;
     --warning-bg: #fef3c7;
     --warning-fg: #7c2d12;

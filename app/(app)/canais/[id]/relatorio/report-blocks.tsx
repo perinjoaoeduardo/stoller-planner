@@ -176,12 +176,20 @@ export function GalleryThumb({
   onClick,
   originLabel,
   originCategory,
+  compact = false,
 }: {
   photo: ReportPhoto;
   onClick: () => void;
   /** Badge de origem — só quando as fotos vêm de várias atividades. */
   originLabel?: string;
   originCategory?: ReportActivity["category"];
+  /**
+   * Miniatura pequena de tamanho fixo, usada abaixo da linha da
+   * atividade. Peso visual baixo de propósito: a foto ali é anexo da
+   * ação, não um bloco próprio — grande demais ela se lê como seção
+   * separada e o leitor perde de quem ela é.
+   */
+  compact?: boolean;
 }) {
   const [broken, setBroken] = React.useState(false);
   // Lookup direto no mapa (referência estável) — chamar categoryIcon()
@@ -192,7 +200,13 @@ export function GalleryThumb({
     <button
       type="button"
       onClick={onClick}
-      className="group relative aspect-square overflow-hidden rounded-xl border bg-muted break-inside-avoid"
+      title={compact ? (photo.caption ?? undefined) : undefined}
+      className={cn(
+        "group relative overflow-hidden border bg-muted break-inside-avoid",
+        compact
+          ? "size-16 shrink-0 rounded-lg"
+          : "aspect-square rounded-xl"
+      )}
       style={{ breakInside: "avoid" }}
     >
       {broken ? (
@@ -207,7 +221,7 @@ export function GalleryThumb({
           src={publicPhotoUrl(photo.storagePath)}
           alt={photo.caption ?? photo.activityTitle}
           fill
-          sizes="(max-width: 640px) 33vw, 160px"
+          sizes={compact ? "64px" : "(max-width: 640px) 33vw, 160px"}
           className="object-cover transition-transform group-hover:scale-105"
           onError={() => setBroken(true)}
         />
@@ -224,7 +238,7 @@ export function GalleryThumb({
           <TooltipContent>{originLabel}</TooltipContent>
         </Tooltip>
       ) : null}
-      {photo.caption ? (
+      {photo.caption && !compact ? (
         <span className="absolute inset-x-0 bottom-0 truncate bg-foreground/55 px-2 py-1 text-left text-[11px] text-background">
           {photo.caption}
         </span>
@@ -301,15 +315,21 @@ function ActivityLine({
       </button>
 
       {activity.photos.length > 0 ? (
-        // Alinhado ao título (pl compensa o ícone de categoria + gap).
-        <div className="grid grid-cols-3 gap-2 pb-3 pl-12 sm:grid-cols-4 lg:grid-cols-6">
-          {activity.photos.map((photo) => (
-            <GalleryThumb
-              key={photo.id}
-              photo={photo}
-              onClick={() => onOpenPhoto(photo)}
-            />
-          ))}
+        // Trilho vertical saindo do ícone da atividade (ml-4 = centro do
+        // box size-8) e miniaturas alinhadas ao título. A linha é o que
+        // amarra a foto à ação: sem ela, proximidade sozinha ficava
+        // ambígua — a foto parecia flutuar entre duas atividades.
+        <div className="-mt-1 ml-4 border-l border-border pb-3 pl-7">
+          <div className="flex flex-wrap gap-1.5">
+            {activity.photos.map((photo) => (
+              <GalleryThumb
+                key={photo.id}
+                photo={photo}
+                onClick={() => onOpenPhoto(photo)}
+                compact
+              />
+            ))}
+          </div>
         </div>
       ) : null}
     </div>
