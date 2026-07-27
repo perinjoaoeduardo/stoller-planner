@@ -84,11 +84,12 @@ export function MyActivitiesList({
   const { openActivity } = useActivityDrawer();
   const { openWizard } = useWizardProvider();
 
-  // Mapeia initialStatus legado (P10) para o novo KpiFilter.
-  const mapInitial = (s: InitialStatus): KpiFilter =>
-    s === "todas" ? "todos" : s;
+  // "todas" = sem recorte, então nenhum card nasce aceso — o KPI é um
+  // filtro que o usuário liga, não um estado que a tela já assume.
+  const mapInitial = (s: InitialStatus): KpiFilter | null =>
+    s === "todas" ? null : s;
 
-  const [kpiFilter, setKpiFilterRaw] = React.useState<KpiFilter>(
+  const [kpiFilter, setKpiFilterRaw] = React.useState<KpiFilter | null>(
     mapInitial(initialStatus)
   );
   const [search, setSearchRaw] = React.useState("");
@@ -108,7 +109,7 @@ export function MyActivitiesList({
 
   // Todo filtro reseta a paginação NO PRÓPRIO evento (nada de effect —
   // setState em effect dispara render em cascata e o lint barra).
-  const setKpiFilter = (value: KpiFilter) => {
+  const setKpiFilter = (value: KpiFilter | null) => {
     setKpiFilterRaw(value);
     setPage(1);
   };
@@ -236,28 +237,46 @@ export function MyActivitiesList({
     }));
   }, [activities]);
 
-  // KPIs sempre absolutos (não afetados pelo filtro do próprio KPI).
+  /**
+   * ESCOPO (de quem são as atividades) — aplicado ANTES dos KPIs. Os
+   * cards contam o mesmo universo que a lista mostra: com "Só minhas"
+   * ligado, "Total 30" ao lado de uma lista de 11 fazia o usuário
+   * resolver a contradição de cabeça. Escopo é eixo diferente de status,
+   * então os KPIs seguem absolutos em relação ao filtro deles próprios.
+   */
+  const scoped = React.useMemo(() => {
+    if (onlyMine) return activities.filter(isMine);
+    if (responsibleFilter) {
+      return activities.filter(
+        (a) =>
+          a.responsibleId === responsibleFilter ||
+          a.assignees.some((assignee) => assignee.id === responsibleFilter)
+      );
+    }
+    return activities;
+  }, [activities, onlyMine, responsibleFilter, isMine]);
+
   const metrics = React.useMemo(() => {
-    const total = activities.length;
-    const open = activities.filter((a) => OPEN.has(a.status)).length;
-    const late = activities.filter((a) => a.status === "atrasada").length;
-    const completed = activities.filter((a) => a.status === "concluida").length;
+    const total = scoped.length;
+    const open = scoped.filter((a) => OPEN.has(a.status)).length;
+    const late = scoped.filter((a) => a.status === "atrasada").length;
+    const completed = scoped.filter((a) => a.status === "concluida").length;
     const completedPercent =
       total > 0 ? Math.round((completed / total) * 100) : 0;
     return { total, open, late, completed, completedPercent };
-  }, [activities]);
+  }, [scoped]);
 
   // Aplica o filtro do KPI.
   const filteredByKpi = React.useMemo(() => {
-    if (kpiFilter === "todos") return activities;
+    if (!kpiFilter || kpiFilter === "todos") return scoped;
     if (kpiFilter === "abertas") {
-      return activities.filter((a) => a.status === "planejada");
+      return scoped.filter((a) => a.status === "planejada");
     }
     if (kpiFilter === "atrasadas") {
-      return activities.filter((a) => a.status === "atrasada");
+      return scoped.filter((a) => a.status === "atrasada");
     }
-    return activities.filter((a) => a.status === "concluida");
-  }, [activities, kpiFilter]);
+    return scoped.filter((a) => a.status === "concluida");
+  }, [scoped, kpiFilter]);
 
   const filtered = React.useMemo(() => {
     let rows = filteredByKpi;
@@ -281,27 +300,8 @@ export function MyActivitiesList({
         rows = rows.filter((a) => a.problemId === metaFilter);
       }
     }
-    if (onlyMine) {
-      rows = rows.filter(isMine);
-    } else if (responsibleFilter) {
-      rows = rows.filter(
-        (a) =>
-          a.responsibleId === responsibleFilter ||
-          a.assignees.some((assignee) => assignee.id === responsibleFilter)
-      );
-    }
     return rows;
-  }, [
-    filteredByKpi,
-    search,
-    channelId,
-    branchId,
-    categoryFilter,
-    metaFilter,
-    onlyMine,
-    responsibleFilter,
-    isMine,
-  ]);
+  }, [filteredByKpi, search, channelId, branchId, categoryFilter, metaFilter]);
 
   const sorted = React.useMemo(() => {
     const rows = [...filtered];
@@ -331,7 +331,7 @@ export function MyActivitiesList({
   );
 
   const filtersActive =
-    kpiFilter !== "todos" ||
+    (kpiFilter !== null && kpiFilter !== "todos") ||
     search.trim().length > 0 ||
     channelId !== null ||
     branchId !== null ||
@@ -341,7 +341,7 @@ export function MyActivitiesList({
     onlyMine;
 
   function clearFilters() {
-    setKpiFilter("todos");
+    setKpiFilter(null);
     setSearch("");
     setChannelId(null);
     setBranchId(null);
@@ -514,8 +514,9 @@ export function MyActivitiesList({
         ) : null}
 
         <div className="flex items-center gap-3">
+          {/* Denominador = universo do escopo atual, o mesmo dos KPIs. */}
           <p className="text-sm text-muted-foreground tabular-nums">
-            {sorted.length} de {activities.length} atividades
+            {sorted.length} de {scoped.length} atividades
           </p>
           {filtersActive ? (
             <Button

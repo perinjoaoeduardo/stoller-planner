@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { format, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ChartColumn,
@@ -10,6 +10,8 @@ import {
   CircleCheckBig,
   ClipboardList,
   StickyNote,
+  Target,
+  X,
 } from "lucide-react";
 
 import { ActivitiesByProblemChart } from "@/components/app/activities-by-problem-chart";
@@ -54,6 +56,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   ActivityRow,
@@ -92,6 +100,10 @@ export function ChannelView({
   const [branchFilter, setBranchFilter] = React.useState<string | null>(null);
   const [activityFormOpen, setActivityFormOpen] = React.useState(false);
   const [metaWizardOpen, setMetaWizardOpen] = React.useState(false);
+  // Metas saem da aba e viram drawer, igual ao RTV: a aba obrigava a
+  // trocar de contexto (perdia a tabela de atividades de vista) para
+  // consultar um plano que é referência, não destino de trabalho.
+  const [problemsOpen, setProblemsOpen] = React.useState(false);
   const [editingActivity, setEditingActivity] =
     React.useState<ActivityRow | null>(null);
 
@@ -111,25 +123,28 @@ export function ChannelView({
       (activity) => activity.status === "concluida"
     ).length;
     const late = filtered.filter(isLateActivity).length;
-    // Meta mapeada sem NENHUMA atividade é o buraco que só o gestor
-    // fecha: o problema foi reconhecido e ninguém planejou ação. Vale
-    // mais no cockpit do que contar atividade sem vínculo — isso é
-    // faxina de registro e já mora em Pendências.
-    const planned = new Set(
-      filtered.map((activity) => activity.problemId).filter(Boolean)
-    );
-    const problemsWithoutPlan = problems.filter(
-      (problem) => !planned.has(problem.id)
-    ).length;
+    // Há quanto tempo esse canal dá sinal de vida. É o único dado do
+    // cockpit que NÃO dá para deduzir do resto da tela (contagem de
+    // metas e de atividades já está logo abaixo) e é o que decide se o
+    // gestor precisa cobrar alguém hoje.
+    const lastDone = filtered.reduce<string | null>((latest, activity) => {
+      if (!activity.completedAt) return latest;
+      return !latest || activity.completedAt > latest
+        ? activity.completedAt
+        : latest;
+    }, null);
+    const daysSinceLast = lastDone
+      ? Math.max(0, differenceInCalendarDays(new Date(), parseISO(lastDone)))
+      : null;
     return {
       total,
       completed,
       completedPercent: total > 0 ? Math.round((completed / total) * 100) : 0,
       late,
-      problemsWithoutPlan,
-      problemCount: problems.length,
+      daysSinceLast,
+      lastDone,
     };
-  }, [filtered, problems]);
+  }, [filtered]);
 
   const byStatus = React.useMemo(
     () =>
@@ -208,10 +223,21 @@ export function ChannelView({
       valueClass: "",
     },
     {
-      label: "Metas sem plano",
-      value: metrics.problemsWithoutPlan.toString(),
-      tone: "warning" as const,
-      sublabel: `de ${metrics.problemCount} metas mapeadas`,
+      label: "Último registro",
+      value:
+        metrics.daysSinceLast === null
+          ? "—"
+          : metrics.daysSinceLast === 0
+            ? "hoje"
+            : `${metrics.daysSinceLast}d`,
+      // Âmbar só quando o canal está no escuro (30+ dias sem execução).
+      tone:
+        metrics.daysSinceLast !== null && metrics.daysSinceLast >= 30
+          ? ("warning" as const)
+          : ("neutral" as const),
+      sublabel: metrics.lastDone
+        ? format(parseISO(metrics.lastDone), "dd MMM yyyy", { locale: ptBR })
+        : "nenhuma execução registrada",
       valueClass: "",
     },
   ];
@@ -257,8 +283,21 @@ export function ChannelView({
             <StickyNote />
             {noteCount > 0 ? `Notas (${noteCount})` : "Notas"}
           </Button>
-          {/* "Nova meta" vive na aba Metas (onde as metas moram) e
-              "Nova atividade" só no topbar — a ação universal tem UM
+          {plan ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setProblemsOpen(true)}
+            >
+              <Target />
+              Metas
+              <span className="tabular-nums text-muted-foreground">
+                {problems.length}
+              </span>
+            </Button>
+          ) : null}
+          {/* "Nova atividade" só no topbar — a ação universal tem UM
               lugar, senão o usuário procura em vários. */}
         </div>
       }
@@ -327,12 +366,6 @@ export function ChannelView({
           >
             <TabsList>
               <TabsTrigger value="visao-geral">Visão geral</TabsTrigger>
-              <TabsTrigger value="problemas">
-                Metas
-                <span className="ml-1 tabular-nums text-muted-foreground">
-                  {problems.length}
-                </span>
-              </TabsTrigger>
               <TabsTrigger value="atividades">
                 Atividades
                 <span className="ml-1 tabular-nums text-muted-foreground">
@@ -440,16 +473,6 @@ export function ChannelView({
               </div>
             </TabsContent>
 
-            <TabsContent value="problemas" className="mt-2">
-              <ProblemsTab
-                planId={plan.id}
-                problems={problems}
-                activities={filtered}
-                canEdit={canEdit}
-                channelName={channel.name}
-              />
-            </TabsContent>
-
             <TabsContent value="atividades" className="mt-2">
               <ActivitiesTable
                 data={filtered}
@@ -471,6 +494,43 @@ export function ChannelView({
               />
             </TabsContent>
           </Tabs>
+
+          {/* Metas em drawer — mesma experiência do RTV. A diferença do
+              gestor é poder criar meta aqui dentro (ProblemsTab já traz
+              o CTA quando canEdit). */}
+          <Drawer open={problemsOpen} onOpenChange={setProblemsOpen} modal>
+            <DrawerContent className="data-[swipe-axis=x]:sm:[--drawer-content-width:44rem]">
+              <DrawerTitle className="sr-only">Metas do plano</DrawerTitle>
+              <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-6 py-4">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-foreground">
+                    Metas do plano
+                  </p>
+                  <DrawerDescription className="mt-0.5">
+                    As metas desta safra em {channel.name}.
+                  </DrawerDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setProblemsOpen(false)}
+                  className="shrink-0"
+                >
+                  <X className="size-4" />
+                  <span className="sr-only">Fechar</span>
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6">
+                <ProblemsTab
+                  planId={plan.id}
+                  problems={problems}
+                  activities={filtered}
+                  canEdit={canEdit}
+                  channelName={channel.name}
+                />
+              </div>
+            </DrawerContent>
+          </Drawer>
 
           <MetaWizard
             open={metaWizardOpen}
