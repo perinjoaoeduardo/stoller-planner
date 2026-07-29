@@ -195,7 +195,10 @@ export function InboxView({
                   </span>
                 ) : null}
               </div>
-              <div className="flex flex-col gap-2">
+              {/* Grade: a fila e de FOTOS, e lado a lado o olho compara
+                  de uma vez — que e a pergunta da triagem no lote ("isso
+                  tudo e a mesma coisa?"). */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {grupo.registros.map((registro) => (
                   <InboxCard
                     key={registro.id}
