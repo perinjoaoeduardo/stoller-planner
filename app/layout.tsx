@@ -25,7 +25,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Corteva Planner",
+  title: "Corteva PED",
   description: "Planejamento e execução comercial Corteva",
 };
 

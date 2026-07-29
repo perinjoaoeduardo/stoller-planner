@@ -9,7 +9,7 @@ import { isPendencyType } from "@/lib/pendencias-shared";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Pendências — Corteva Planner",
+  title: "Pendências — Corteva PED",
 };
 
 /**

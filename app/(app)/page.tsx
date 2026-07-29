@@ -793,7 +793,7 @@ async function FieldHome() {
 }
 
 export const metadata: Metadata = {
-  title: "Início — Corteva Planner",
+  title: "Início — Corteva PED",
 };
 
 export default async function DashboardPage() {

@@ -13,7 +13,7 @@ import { MyActivitiesList } from "../minhas-atividades/my-activities-list";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Atividades — Corteva Planner",
+  title: "Atividades — Corteva PED",
 };
 
 /**

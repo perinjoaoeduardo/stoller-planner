@@ -102,7 +102,7 @@ export function ReportPrintDocument({
       <div className="report-print-cover hidden min-h-[220mm] flex-col justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Corteva Planner
+            Corteva PED
           </p>
           <div className="mt-[60mm]">
             <p className="text-sm uppercase tracking-wider text-muted-foreground">
@@ -148,7 +148,7 @@ export function ReportPrintDocument({
       {/* Rodapé corrido — repete no fim de cada página */}
       <div className="report-print-running-footer hidden">
         <span>
-          Corteva Planner · {channelName}
+          Corteva PED · {channelName}
           {harvest ? ` · ${harvest}` : ""}
         </span>
         <span>
@@ -851,7 +851,7 @@ export function ReportFooter({
     <footer className="mt-8 border-t border-border py-6 text-center">
       <p className="text-xs text-muted-foreground">
         <span className="font-semibold text-foreground/70">
-          Corteva Planner
+          Corteva PED
         </span>{" "}
         · {channelName}
         {harvest ? ` · ${harvest}` : ""} · gerado em{" "}

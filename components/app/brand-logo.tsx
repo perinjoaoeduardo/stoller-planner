@@ -38,7 +38,7 @@ export function BrandLogo({
       <span className="h-4 w-px shrink-0 bg-current opacity-25" aria-hidden="true" />
       <span className="text-sm leading-none font-semibold tracking-tight whitespace-nowrap">
         Corteva{" "}
-        <span className="font-normal opacity-80">Planner</span>
+        <span className="font-normal opacity-80">PED</span>
       </span>
     </span>
   );

@@ -14,7 +14,7 @@ import { TeamManager } from "./team-manager";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Time do canal — Corteva Planner",
+  title: "Time do canal — Corteva PED",
 };
 
 /**

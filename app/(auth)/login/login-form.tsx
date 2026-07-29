@@ -89,7 +89,7 @@ export function LoginForm() {
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">Entrar</CardTitle>
-          <CardDescription>Acesse o Corteva Planner.</CardDescription>
+          <CardDescription>Acesse o Corteva PED.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={form.handleSubmit(onSubmit)} noValidate>

@@ -12,7 +12,7 @@ import { RegisterFlow } from "./register-flow";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Registrar execução — Corteva Planner",
+  title: "Registrar execução — Corteva PED",
 };
 
 /**

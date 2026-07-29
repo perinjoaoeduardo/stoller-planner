@@ -587,7 +587,7 @@ export function ReportView({
            filtros;
         2) controles, com o Interno/Externo PRIMEIRO (é a decisão que
            muda o documento) e o recorte depois do divisor.
-        No papel some: quem abre o documento é a capa. "Corteva Planner"
+        No papel some: quem abre o documento é a capa. "Corteva PED"
         saiu daqui — a marca já está no chrome do app e na capa/rodapé do
         PDF; solta no canto, era só um rótulo órfão.
       */}

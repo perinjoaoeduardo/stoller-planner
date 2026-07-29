@@ -118,7 +118,7 @@ function ActivityNotFound() {
 }
 
 export const metadata: Metadata = {
-  title: "Atividade — Corteva Planner",
+  title: "Atividade — Corteva PED",
 };
 
 export default async function AtividadePage({

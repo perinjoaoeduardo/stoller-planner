@@ -8,7 +8,7 @@ import { MeusCanaisView } from "./meus-canais-view";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Meus Canais — Corteva Planner",
+  title: "Meus Canais — Corteva PED",
 };
 
 /**

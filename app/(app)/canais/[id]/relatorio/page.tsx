@@ -25,7 +25,7 @@ import { ReportView } from "./report-view";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Relatório de safra — Corteva Planner",
+  title: "Relatório de safra — Corteva PED",
 };
 
 function ReportNotFound() {

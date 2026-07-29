@@ -15,7 +15,7 @@ import { getInitials } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Perfil — Corteva Planner",
+  title: "Perfil — Corteva PED",
 };
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {

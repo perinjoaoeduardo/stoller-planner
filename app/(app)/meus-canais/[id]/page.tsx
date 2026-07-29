@@ -32,7 +32,7 @@ import { ProblemsSheetButton } from "./problems-sheet-button";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Canal — Corteva Planner",
+  title: "Canal — Corteva PED",
 };
 
 /** 404 amigável: canal inexistente ou fora do escopo do usuário. */

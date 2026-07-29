@@ -422,7 +422,7 @@ function buildSummaryText(input: {
     input.lateCount === 1
       ? "1 atividade atrasada"
       : `${input.lateCount} atividades atrasadas`;
-  return `${greeting}Vi aqui no Corteva Planner que ${silence} e tem ${late}. Consegue dar uma atualizada?`;
+  return `${greeting}Vi aqui no Corteva PED que ${silence} e tem ${late}. Consegue dar uma atualizada?`;
 }
 
 /** Canais sem registro de execução há mais de DARK_CHANNEL_DAYS dias. */

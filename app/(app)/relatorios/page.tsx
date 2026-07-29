@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Relatórios — Corteva Planner",
+  title: "Relatórios — Corteva PED",
 };
 
 /**
