@@ -9,6 +9,7 @@ import {
   ChevronRight,
   CircleCheckBig,
   Clock,
+  Inbox,
   Store,
   Target,
   User,
@@ -52,6 +53,7 @@ import {
 } from "@/components/ui/empty";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelCards, type ChannelCard } from "@/lib/db/channels";
+import { getInboxPendentesCount } from "@/lib/db/inbox";
 import {
   getDsmHome,
   type DsmException,
@@ -427,7 +429,10 @@ function MyActivitiesSection({
 async function DsmHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const home = await getDsmHome(profile, channelIds);
+  const [home, inboxCount] = await Promise.all([
+    getDsmHome(profile, channelIds),
+    getInboxPendentesCount(profile.id),
+  ]);
   const firstName = profile.fullName.split(" ")[0];
 
   return (
@@ -435,6 +440,8 @@ async function DsmHome() {
       title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`Panorama dos seus canais na safra ${CURRENT_HARVEST}.`}
     >
+      <InboxLine count={inboxCount} />
+
       <DsmStats stats={home.stats} byStatus={home.byStatus} />
 
       <div className="grid items-stretch gap-6 lg:grid-cols-2">
@@ -447,6 +454,27 @@ async function DsmHome() {
         viewAllHref={`/atividades?responsavel=${profile.id}`}
       />
     </PageShell>
+  );
+}
+
+/**
+ * Ponte para a Caixa de entrada. UMA linha, sem card e sem cor de
+ * alarme: é um lembrete de que existe fila, não um indicador que o
+ * usuário precise acompanhar. Zero não renderiza — a home não deve
+ * anunciar ausência de trabalho.
+ */
+function InboxLine({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <Link
+      href="/caixa-de-entrada"
+      className="flex w-fit items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+    >
+      <Inbox className="size-4 shrink-0" />
+      {count === 1
+        ? "1 registro esperando na Caixa de entrada"
+        : `${count} registros esperando na Caixa de entrada`}
+    </Link>
   );
 }
 
@@ -657,11 +685,13 @@ function RecentExecutionsCard({
 async function FieldHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const [{ activities }, recentExecutions, channels] = await Promise.all([
-    getFieldActivities(profile),
-    getMyRecentExecutions(profile.id, 3),
-    getChannelCards(channelIds),
-  ]);
+  const [{ activities }, recentExecutions, channels, inboxCount] =
+    await Promise.all([
+      getFieldActivities(profile),
+      getMyRecentExecutions(profile.id, 3),
+      getChannelCards(channelIds),
+      getInboxPendentesCount(profile.id),
+    ]);
 
   const firstName = profile.fullName.split(" ")[0];
 
@@ -744,6 +774,8 @@ async function FieldHome() {
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
     >
+      <InboxLine count={inboxCount} />
+
       <RtvMetrics
         abertasCount={open.length}
         dueThisWeekCount={dueThisWeekCount}

@@ -1,5 +1,6 @@
 import {
   BrushCleaning,
+  Inbox,
   ChartColumn,
   ClipboardList,
   Home,
@@ -28,6 +29,7 @@ export type NavItem = {
 export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   CX: [
     { title: "Início", href: "/visao-geral", icon: Home },
+    { title: "Caixa de entrada", href: "/caixa-de-entrada", icon: Inbox },
     { title: "Canais", href: "/canais", icon: Store },
     // O CX ve TUDO de todos os canais; a filtragem (Regional -> Canal ->
     // Filial -> Meta, mais responsavel e categoria) e o que torna a lista
@@ -38,6 +40,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   ],
   DSM: [
     { title: "Início", href: "/", icon: Home },
+    { title: "Caixa de entrada", href: "/caixa-de-entrada", icon: Inbox },
     { title: "Meus Canais", href: "/canais", icon: Store },
     // "Todas as atividades": o DSM tem as dele E as do time na mesma
     // tela — o rótulo tem de deixar claro que a lista não é pessoal.
@@ -51,6 +54,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
   // um destino de gestor, não de consultor.
   RTV: [
     { title: "Início", href: "/", icon: Home },
+    { title: "Caixa de entrada", href: "/caixa-de-entrada", icon: Inbox },
     { title: "Meus Canais", href: "/meus-canais", icon: Store },
     {
       title: "Minhas Atividades",

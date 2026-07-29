@@ -79,6 +79,7 @@ import {
   publicPhotoUrl,
 } from "@/lib/photos";
 import { CATEGORY_LABELS } from "@/lib/config";
+import { relativeFromNow } from "@/lib/relative-time";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { cn, getInitials } from "@/lib/utils";
 
@@ -917,10 +918,7 @@ function TimelineItem({
   const isConclusion =
     event.type === "status_alterado" &&
     event.description?.includes('para "Concluída"');
-  const when = formatDistanceToNow(parseISO(event.createdAt), {
-    locale: ptBR,
-    addSuffix: true,
-  });
+  const when = relativeFromNow(event.createdAt);
 
   return (
     <li className="relative flex gap-3">

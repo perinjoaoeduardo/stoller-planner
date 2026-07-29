@@ -365,6 +365,103 @@ export type Database = {
           },
         ]
       }
+      inbox_registros: {
+        Row: {
+          atividade_id: string | null
+          autor_id: string
+          canal_id: string
+          descricao: string | null
+          filial_id: string | null
+          fotos: string[]
+          id: string
+          meta_id: string | null
+          origem: string
+          recebido_em: string
+          resolvido_em: string | null
+          resolvido_por: string | null
+          status: string
+          tipo_acao: string | null
+          titulo: string | null
+        }
+        Insert: {
+          atividade_id?: string | null
+          autor_id: string
+          canal_id: string
+          descricao?: string | null
+          filial_id?: string | null
+          fotos: string[]
+          id?: string
+          meta_id?: string | null
+          origem?: string
+          recebido_em?: string
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          status?: string
+          tipo_acao?: string | null
+          titulo?: string | null
+        }
+        Update: {
+          atividade_id?: string | null
+          autor_id?: string
+          canal_id?: string
+          descricao?: string | null
+          filial_id?: string | null
+          fotos?: string[]
+          id?: string
+          meta_id?: string | null
+          origem?: string
+          recebido_em?: string
+          resolvido_em?: string | null
+          resolvido_por?: string | null
+          status?: string
+          tipo_acao?: string | null
+          titulo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_registros_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_registros_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_registros_canal_id_fkey"
+            columns: ["canal_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_registros_filial_id_fkey"
+            columns: ["filial_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_registros_meta_id_fkey"
+            columns: ["meta_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_registros_resolvido_por_fkey"
+            columns: ["resolvido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           channel_id: string

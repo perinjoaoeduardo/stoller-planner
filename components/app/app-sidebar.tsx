@@ -16,6 +16,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
@@ -32,12 +33,24 @@ import type { NavItem } from "@/lib/auth/nav";
 export function AppSidebar({
   role,
   user,
+  inboxCount = 0,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { role: Role; user: SettingsUser }) {
+}: React.ComponentProps<typeof Sidebar> & {
+  role: Role;
+  user: SettingsUser;
+  /** Envios do próprio usuário esperando triagem. Zero não renderiza. */
+  inboxCount?: number;
+}) {
   const pathname = usePathname();
   const navItems = NAV_BY_ROLE[role];
 
   function renderMenuItem(item: NavItem) {
+    // Badge neutro, sem cor de alarme: a fila da caixa de entrada é
+    // trabalho normal, não incidente. Zero some por completo — "0" na
+    // navegação é ruído que o usuário aprende a ignorar.
+    const badge =
+      item.href === "/caixa-de-entrada" && inboxCount > 0 ? inboxCount : null;
+
     return (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton
@@ -50,6 +63,9 @@ export function AppSidebar({
             </Link>
           }
         />
+        {badge ? (
+          <SidebarMenuBadge className="tabular-nums">{badge}</SidebarMenuBadge>
+        ) : null}
       </SidebarMenuItem>
     );
   }

@@ -9,6 +9,16 @@
 
 export const PHOTO_BUCKET = "activity-photos";
 
+/**
+ * Bucket da caixa de entrada — PRIVADO, porque a foto chega de fora do
+ * app e fica numa fila de triagem antes de alguém revisar. Leitura só
+ * por URL assinada (ver `signedInboxPhotoUrls`, no servidor).
+ */
+export const INBOX_PHOTO_BUCKET = "inbox-fotos";
+
+/** Validade da URL assinada: uma hora cobre a sessão de triagem. */
+export const INBOX_SIGNED_URL_TTL = 60 * 60;
+
 /** Limite de upload ANTES da compressão (unificado; era 5MB em 2 telas). */
 export const MAX_PHOTO_SIZE = 10 * 1024 * 1024;
 

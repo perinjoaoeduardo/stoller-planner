@@ -6,6 +6,7 @@ import { WizardProvider } from "@/components/app/wizard-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelCards } from "@/lib/db/channels";
+import { getInboxPendentesCount } from "@/lib/db/inbox";
 
 /**
  * Canais do RTV para o command palette — nome + atrasadas por canal,
@@ -40,7 +41,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const profile = await getCurrentProfile();
-  const fieldChannels = await getFieldChannels(profile);
+  const [fieldChannels, inboxCount] = await Promise.all([
+    getFieldChannels(profile),
+    getInboxPendentesCount(profile.id),
+  ]);
 
   const user = {
     id: profile.id,
@@ -61,6 +65,7 @@ export default async function AppLayout({
         <AppSidebar
           role={profile.role}
           user={user}
+          inboxCount={inboxCount}
           className="p-4 md:p-6"
         />
         {/*
