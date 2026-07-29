@@ -145,9 +145,7 @@ export function InboxView({
         ) : (
           controles
         )}
-        <div className="ml-auto">
-          <SimularEnvio canais={canais} />
-        </div>
+        <SimularEnvio canais={canais} />
       </div>
 
       {grupos.length === 0 ? (
@@ -193,9 +191,11 @@ export function InboxView({
                 <h2 className="text-sm font-semibold text-foreground">
                   {grupo.canalNome}
                 </h2>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {grupo.registros.length}
-                </span>
+                {grupo.registros.length > 1 ? (
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {grupo.registros.length}
+                  </span>
+                ) : null}
               </div>
               <div className="flex flex-col gap-2">
                 {grupo.registros.map((registro) => (
