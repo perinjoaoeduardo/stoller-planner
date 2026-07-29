@@ -2,10 +2,15 @@
 
 import * as React from "react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import { ImageOff, Images } from "lucide-react";
+import { ImageOff, Images, Link2, Plus, Trash2 } from "lucide-react";
 
 import { CategoryIconBox } from "@/components/shared/icon-box";
-import { ClickableCard } from "@/components/shared/clickable-card";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CATEGORY_LABELS } from "@/lib/config";
 import type { InboxRegistro } from "@/lib/db/inbox";
@@ -34,11 +39,19 @@ export function InboxCard({
   registro,
   mostrarAutor,
   onOpenFotos,
+  onVincular,
+  onCriar,
+  onDescartar,
+  ocupado = false,
 }: {
   registro: InboxRegistro;
   /** Ligado com "Ver de todos": de quem é o envio passa a importar. */
   mostrarAutor: boolean;
   onOpenFotos: () => void;
+  onVincular: () => void;
+  onCriar: () => void;
+  onDescartar: () => void;
+  ocupado?: boolean;
 }) {
   const diasParado = differenceInCalendarDays(
     new Date(),
@@ -61,8 +74,21 @@ export function InboxCard({
     (registro.filialNome ?? "Foto do campo");
 
   return (
-    <ClickableCard onClick={onOpenFotos} className="overflow-hidden p-0">
-      <div className="relative">
+    <div
+      className={cn(
+        "group/registro flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card transition-[opacity,border-color] duration-base ease-standard hover:border-border-hover",
+        ocupado && "pointer-events-none opacity-50"
+      )}
+    >
+      {/* A FOTO é o gatilho do lightbox. O ladrilho inteiro não pode ser
+          botão: ele tem botões dentro, e botão dentro de botão é HTML
+          inválido. */}
+      <button
+        type="button"
+        onClick={onOpenFotos}
+        aria-label="Ver fotos do registro"
+        className="relative cursor-pointer"
+      >
         <Foto src={registro.fotos[0]} />
 
         {registro.fotos.length > 1 ? (
@@ -85,9 +111,9 @@ export function InboxCard({
             </AvatarFallback>
           </Avatar>
         ) : null}
-      </div>
+      </button>
 
-      <div className="flex flex-col gap-1 p-3">
+      <div className="flex flex-1 flex-col gap-1 p-3">
         <div className="flex min-w-0 items-center gap-2">
           {registro.tipoAcao ? (
             <CategoryIconBox
@@ -129,7 +155,49 @@ export function InboxCard({
           </p>
         ) : null}
       </div>
-    </ClickableCard>
+
+      {/* Ações: no hover no desktop, SEMPRE visíveis no toque — a
+          triagem acontece em campo e lá não existe hover.
+
+          "Criar atividade" é a primária e leva o ÚNICO accent-brand do
+          ladrilho. Descartar é ícone: é a saída, não o destino. */}
+      <div className="flex items-center gap-1.5 border-t border-border p-2 opacity-100 transition-opacity duration-base md:opacity-0 md:group-hover/registro:opacity-100 md:focus-within:opacity-100">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 flex-1"
+          onClick={onVincular}
+        >
+          <Link2 />
+          Vincular
+        </Button>
+        <Button
+          variant="brand"
+          size="sm"
+          className="h-9 flex-1"
+          onClick={onCriar}
+        >
+          <Plus />
+          Criar
+        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onDescartar}
+                aria-label="Descartar registro"
+                className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                <Trash2 />
+              </Button>
+            }
+          />
+          <TooltipContent>Descartar</TooltipContent>
+        </Tooltip>
+      </div>
+    </div>
   );
 }
 

@@ -25,7 +25,12 @@ import { Switch } from "@/components/ui/switch";
 import type { InboxGrupo, InboxRegistro } from "@/lib/db/inbox";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+import { toast } from "sonner";
+
+import { descartarRegistros, restaurarRegistros } from "@/lib/actions/inbox";
+
 import { InboxCard } from "./inbox-card";
+import { CriarAtividadeDrawer, VincularDrawer } from "./triagem-dialogs";
 import { PhotoLightbox } from "./photo-lightbox";
 
 /** Teto antes de cortar a lista. Sem paginação na v1. */
@@ -62,7 +67,45 @@ export function InboxView({
   const searchParams = useSearchParams();
   const isMobile = useIsMobile();
   const [lightbox, setLightbox] = React.useState<InboxRegistro | null>(null);
+  const [vincular, setVincular] = React.useState<InboxRegistro | null>(null);
+  const [criar, setCriar] = React.useState<InboxRegistro | null>(null);
+  // Registros que saíram da fila mas ainda não voltaram do servidor:
+  // some na hora, sem esperar o revalidate. O undo devolve.
+  const [saindo, setSaindo] = React.useState<string[]>([]);
   const [verMais, setVerMais] = React.useState(false);
+
+  /**
+   * Descarta sem perguntar. Confirmação antes de ação reversível é
+   * ruído; o Desfazer cobre o erro melhor e mais rápido — e o registro
+   * continua recuperável depois.
+   */
+  function descartar(registro: InboxRegistro) {
+    setSaindo((atual) => [...atual, registro.id]);
+    void descartarRegistros({ registroIds: [registro.id] }).then((r) => {
+      if (!r.ok) {
+        setSaindo((atual) => atual.filter((id) => id !== registro.id));
+        toast.error(r.error);
+        return;
+      }
+      toast("Registro descartado.", {
+        duration: 8000,
+        action: {
+          label: "Desfazer",
+          onClick: () => {
+            void restaurarRegistros({ registroIds: [registro.id] }).then(() =>
+              setSaindo((atual) => atual.filter((id) => id !== registro.id))
+            );
+          },
+        },
+      });
+    });
+  }
+
+  function resolvido(registro: InboxRegistro) {
+    setSaindo((atual) => [...atual, registro.id]);
+    setVincular(null);
+    setCriar(null);
+  }
 
   function setParam(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
@@ -183,7 +226,11 @@ export function InboxView({
         )
       ) : (
         <div className="flex flex-col gap-6">
-          {grupoVisivel.map((grupo) => (
+          {grupoVisivel
+            .filter((grupo) =>
+              grupo.registros.some((registro) => !saindo.includes(registro.id))
+            )
+            .map((grupo) => (
             <section key={grupo.canalId} className="flex flex-col gap-2">
               <div className="flex items-baseline gap-2">
                 <h2 className="text-sm font-semibold text-foreground">
@@ -199,14 +246,19 @@ export function InboxView({
                   de uma vez — que e a pergunta da triagem no lote ("isso
                   tudo e a mesma coisa?"). */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                {grupo.registros.map((registro) => (
-                  <InboxCard
-                    key={registro.id}
-                    registro={registro}
-                    mostrarAutor={verDeTodos}
-                    onOpenFotos={() => setLightbox(registro)}
-                  />
-                ))}
+                {grupo.registros
+                  .filter((registro) => !saindo.includes(registro.id))
+                  .map((registro) => (
+                    <InboxCard
+                      key={registro.id}
+                      registro={registro}
+                      mostrarAutor={verDeTodos}
+                      onOpenFotos={() => setLightbox(registro)}
+                      onVincular={() => setVincular(registro)}
+                      onCriar={() => setCriar(registro)}
+                      onDescartar={() => descartar(registro)}
+                    />
+                  ))}
               </div>
             </section>
           ))}
@@ -222,6 +274,22 @@ export function InboxView({
           ) : null}
         </div>
       )}
+
+      {vincular ? (
+        <VincularDrawer
+          registros={[vincular]}
+          onClose={() => setVincular(null)}
+          onResolvido={() => resolvido(vincular)}
+        />
+      ) : null}
+
+      {criar ? (
+        <CriarAtividadeDrawer
+          registros={[criar]}
+          onClose={() => setCriar(null)}
+          onResolvido={() => resolvido(criar)}
+        />
+      ) : null}
 
       <PhotoLightbox
         open={lightbox !== null}

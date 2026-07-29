@@ -1,5 +1,7 @@
 import type { CurrentProfile } from "@/lib/auth/scope";
+import type { ActivityStatus } from "@/components/shared/status-badge";
 import type { ActivityCategory } from "@/lib/config";
+import { getDisplayStatus } from "@/lib/db/status";
 import { INBOX_PHOTO_BUCKET, INBOX_SIGNED_URL_TTL } from "@/lib/photos";
 import { createClient } from "@/lib/supabase/server";
 
@@ -199,4 +201,80 @@ export async function getInboxCanais(
 
   if (error) throw error;
   return data ?? [];
+}
+
+export type AtividadeParaVincular = {
+  id: string;
+  title: string;
+  status: ActivityStatus;
+  dueDate: string | null;
+  branchName: string | null;
+};
+
+/**
+ * Atividades abertas do canal, para o drawer de vincular.
+ *
+ * Concluídas ficam de fora: anexar evidência a algo já fechado não é o
+ * caso de uso — se já foi concluída, a foto entra por dentro da própria
+ * atividade. Ordem: atrasadas primeiro (é o que a evidência costuma
+ * resolver), depois por prazo.
+ */
+export async function getAtividadesDoCanal(
+  channelId: string
+): Promise<AtividadeParaVincular[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("activities")
+    .select(
+      `id, title, status, due_date,
+       branch:branches(name),
+       plan:plans!inner(channel_id, status)`
+    )
+    .eq("plan.status", "ativo")
+    .eq("plan.channel_id", channelId)
+    .in("status", ["planejada", "em_andamento", "atrasada"])
+    .order("due_date", { ascending: true, nullsFirst: false });
+
+  if (error) throw error;
+
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    title: string;
+    status: string;
+    due_date: string | null;
+    branch: { name: string } | null;
+  }[];
+
+  return rows
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      status: getDisplayStatus({ status: row.status, dueDate: row.due_date }),
+      dueDate: row.due_date,
+      branchName: row.branch?.name ?? null,
+    }))
+    .sort((a, b) => {
+      const rank = (s: ActivityStatus) => (s === "atrasada" ? 0 : 1);
+      if (rank(a.status) !== rank(b.status)) return rank(a.status) - rank(b.status);
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+}
+
+/** Metas do plano ativo do canal — para o diálogo de criar atividade. */
+export async function getMetasDoCanal(
+  channelId: string
+): Promise<{ id: string; title: string }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("problems")
+    .select("id, title, plan:plans!inner(channel_id, status)")
+    .eq("plan.status", "ativo")
+    .eq("plan.channel_id", channelId)
+    .order("order_index");
+
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ id: row.id, title: row.title }));
 }

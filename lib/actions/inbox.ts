@@ -13,6 +13,7 @@ import {
   PHOTO_BUCKET,
   photoStoragePath,
 } from "@/lib/photos";
+import { getAtividadesDoCanal, getMetasDoCanal } from "@/lib/db/inbox";
 import { createClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/lib/types";
 
@@ -330,4 +331,19 @@ export async function restaurarRegistros(input: {
 
   revalidateInbox();
   return { ok: true };
+}
+
+/**
+ * Leituras que a triagem faz do lado do cliente (drawer de vincular e
+ * diálogo de criar). Vivem como action porque o componente é client e
+ * as consultas são server-only — a regra de escopo continua no servidor.
+ */
+export async function listarAtividadesDoCanal(channelId: string) {
+  if (!(await requireChannelAccess(channelId))) return [];
+  return getAtividadesDoCanal(channelId);
+}
+
+export async function listarMetasDoCanal(channelId: string) {
+  if (!(await requireChannelAccess(channelId))) return [];
+  return getMetasDoCanal(channelId);
 }
