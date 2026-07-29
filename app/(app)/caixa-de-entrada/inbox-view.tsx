@@ -27,7 +27,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 import { InboxCard } from "./inbox-card";
 import { PhotoLightbox } from "./photo-lightbox";
-import { SimularEnvio } from "./simular-envio";
 
 /** Teto antes de cortar a lista. Sem paginação na v1. */
 const MAX_VISIVEL = 40;
@@ -145,7 +144,6 @@ export function InboxView({
         ) : (
           controles
         )}
-        <SimularEnvio canais={canais} />
       </div>
 
       {grupos.length === 0 ? (
