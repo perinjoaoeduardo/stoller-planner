@@ -166,12 +166,13 @@ export async function registerExecution(
       .from("activities")
       .insert({
         plan_id: plan.id,
-        title: titleFromDescription(description),
+        title: input.title?.trim() || titleFromDescription(description),
         category: input.category,
         description,
         problem_id: input.problemId ?? null,
         branch_id: resolvedBranchId,
-        responsible_id: profile.id,
+        // Executor pode não ser quem chama (triagem da caixa de entrada).
+        responsible_id: input.executorProfileId ?? profile.id,
         due_date: null,
         status: "concluida",
         completed_at: new Date().toISOString(),

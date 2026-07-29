@@ -75,6 +75,19 @@ export type RegisterExecutionInput = {
   markCompleted: boolean;
   /** Caminhos no bucket activity-photos, já enviados pelo client. */
   photoPaths: string[];
+  /**
+   * Quem EXECUTOU a ação, quando não é quem está chamando. Existe para a
+   * triagem da caixa de entrada: quem esteve em campo foi o autor do
+   * registro, mesmo quando o DSM foi quem triou. Sem isso, o gestor
+   * apareceria como responsável por uma visita que não fez.
+   */
+  executorProfileId?: string;
+  /**
+   * Título explícito do registro avulso. Sem ele o título é derivado da
+   * descrição (primeiras palavras) — bom para o registro rápido do
+   * campo, ruim quando o usuário já escreveu um título de verdade.
+   */
+  title?: string;
 };
 
 export type RegisterExecutionResult =
