@@ -88,10 +88,10 @@ export function MeusCanaisView({ channels }: { channels: ChannelCard[] }) {
       title="Meus Canais"
       description="Os canais em que você atua nesta safra."
       actions={
-        <div className="flex items-center gap-3">
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:gap-3">
           <Badge
             variant="outline"
-            className="text-muted-foreground font-normal"
+            className="shrink-0 text-muted-foreground font-normal"
           >
             {safraLabel}
           </Badge>
@@ -101,7 +101,7 @@ export function MeusCanaisView({ channels }: { channels: ChannelCard[] }) {
               value={regionId}
               onValueChange={setRegionId}
               placeholder="Todas as regiões"
-              className="h-10 min-w-52 border-border bg-card"
+              className="h-10 min-w-0 flex-1 border-border bg-card sm:min-w-52 sm:flex-none"
             />
           ) : null}
         </div>

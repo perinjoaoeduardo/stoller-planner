@@ -87,6 +87,24 @@ const INBOX_PHOTOS: Photo[] = [
   { path: "inbox/resolvido-d.jpg", label: "Registro já resolvido", sub: "Enviado pelo WhatsApp", hue: ["#2b2b2b", "#565656"] },
   { path: "inbox/descartado-a.jpg", label: "Registro descartado", sub: "Enviado pelo WhatsApp", hue: ["#3a3a3a", "#6e6e6e"] },
   { path: "inbox/descartado-b.jpg", label: "Registro descartado", sub: "Enviado pelo WhatsApp", hue: ["#333333", "#636363"] },
+  // Fotos exclusivas dos registros do RTV da demo (migração 26): cada
+  // registro precisa do SEU arquivo, porque a triagem MOVE a foto.
+  { path: "inbox/rtv-treinamento-a.jpg", label: "Treinamento em Sorriso", sub: "Enviado pelo WhatsApp", hue: ["#1d5c3f", "#3f8f5f"] },
+  { path: "inbox/rtv-treinamento-b.jpg", label: "Turma no treinamento", sub: "Enviado pelo WhatsApp", hue: ["#215c46", "#45906a"] },
+  { path: "inbox/rtv-treinamento-c.jpg", label: "Material de apoio", sub: "Enviado pelo WhatsApp", hue: ["#1a5240", "#3a8663"] },
+  { path: "inbox/rtv-passo-fundo-a.jpg", label: "Dia de campo — Passo Fundo", sub: "Enviado pelo WhatsApp", hue: ["#33421f", "#6f8a4a"] },
+  { path: "inbox/rtv-passo-fundo-b.jpg", label: "Talhão demonstrativo", sub: "Enviado pelo WhatsApp", hue: ["#38471f", "#77914a"] },
+  { path: "inbox/rtv-passo-fundo-c.jpg", label: "Produtores no campo", sub: "Enviado pelo WhatsApp", hue: ["#2f3d1c", "#688245"] },
+  { path: "inbox/rtv-passo-fundo-d.jpg", label: "Encerramento do dia", sub: "Enviado pelo WhatsApp", hue: ["#2a371a", "#5e7740"] },
+  { path: "inbox/rtv-terra-boa-a.jpg", label: "Campo — Terra Boa", sub: "Enviado pelo WhatsApp", hue: ["#42361f", "#8a764a"] },
+  { path: "inbox/rtv-sementes-a.jpg", label: "Sementes & Cia", sub: "Enviado pelo WhatsApp", hue: ["#1f5c55", "#4aa298"] },
+  { path: "inbox/rtv-bio-dourados-a.jpg", label: "Dia de campo em Dourados", sub: "Enviado pelo WhatsApp", hue: ["#4a5d23", "#8aa64a"] },
+  { path: "inbox/rtv-bio-dourados-b.jpg", label: "Talhão demonstrativo", sub: "Enviado pelo WhatsApp", hue: ["#42541f", "#7d9945"] },
+  { path: "inbox/rtv-barreiras-a.jpg", label: "Visita em Barreiras", sub: "Enviado pelo WhatsApp", hue: ["#1f4d5c", "#4a8fa2"] },
+  { path: "inbox/rtv-primavera-a.jpg", label: "Treino de balcão em Primavera", sub: "Enviado pelo WhatsApp", hue: ["#5c3a1f", "#a2764a"] },
+  { path: "inbox/rtv-primavera-b.jpg", label: "Exposição de produtos", sub: "Enviado pelo WhatsApp", hue: ["#54371f", "#96703f"] },
+  { path: "inbox/rtv-primavera-c.jpg", label: "Equipe do balcão", sub: "Enviado pelo WhatsApp", hue: ["#4d331f", "#8a6739"] },
+  { path: "inbox/rtv-lem-a.jpg", label: "Rodada de lojas em LEM", sub: "Enviado pelo WhatsApp", hue: ["#2e1f5c", "#6b4aa2"] },
 ];
 
 function escapeXml(text: string) {

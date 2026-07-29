@@ -101,17 +101,25 @@ export function WizardFooter({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-      <div>
-        {onBack && (
-          <Button variant="outline" onClick={onBack} disabled={backDisabled}>
-            Voltar
-          </Button>
-        )}
-      </div>
-      <div className="flex min-w-0 items-center gap-3">
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-        {children}
+    /* A dica sobe para a própria linha no celular: espremida entre os
+       dois botões ela quebrava em três linhas e empurrava o primário
+       para fora do alcance do polegar. Área segura porque este rodapé
+       encosta na barra de gestos. */
+    <div className="flex shrink-0 flex-col gap-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6 sm:py-4">
+      {hint && (
+        <p className="text-xs text-muted-foreground sm:order-2">{hint}</p>
+      )}
+      <div className="flex items-center justify-between gap-3 sm:contents">
+        <div className="sm:order-1">
+          {onBack && (
+            <Button variant="outline" onClick={onBack} disabled={backDisabled}>
+              Voltar
+            </Button>
+          )}
+        </div>
+        <div className="flex min-w-0 items-center gap-3 sm:order-3">
+          {children}
+        </div>
       </div>
     </div>
   );

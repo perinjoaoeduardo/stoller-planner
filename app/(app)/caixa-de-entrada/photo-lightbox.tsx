@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
+import { Camera, ChevronLeft, ChevronRight, ImageOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +24,18 @@ export function PhotoLightbox({
   titulo,
   open,
   onOpenChange,
+  onRegistrar,
 }: {
   fotos: string[];
   titulo: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * A ação também aqui: o usuário abre as fotos JUSTAMENTE para decidir
+   * o que aquilo é. Obrigá-lo a fechar para agir seria perder a decisão
+   * no caminho de volta.
+   */
+  onRegistrar?: () => void;
 }) {
   const [index, setIndex] = React.useState(0);
   const total = fotos.length;
@@ -87,6 +94,21 @@ export function PhotoLightbox({
             </>
           ) : null}
         </div>
+
+        {/* Registrado não tem ação: a decisão já foi tomada, e o
+            ladrilho leva para a atividade. */}
+        {onRegistrar ? (
+          <div className="border-t border-border pt-4">
+            <Button
+              variant="brand"
+              className="h-10 w-full sm:w-auto"
+              onClick={onRegistrar}
+            >
+              <Camera />
+              Registrar
+            </Button>
+          </div>
+        ) : null}
 
         {total > 1 ? (
           <div className="flex flex-wrap justify-center gap-2">

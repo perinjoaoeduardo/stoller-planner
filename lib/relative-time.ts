@@ -9,7 +9,7 @@ import { ptBR } from "date-fns/locale";
  * Estava inline na Timeline do Activity Panel usando
  * `formatDistanceToNow`, que produz "há cerca de 3 horas" — verborrágico
  * numa linha de metadado, onde o leitor quer a ordem de grandeza e não a
- * precisão. Virou função quando a Caixa de entrada passou a precisar do
+ * precisão. Virou função quando os Envios do campo passaram a precisar do
  * mesmo texto: duas formatações de data no app são dois jeitos de ler a
  * mesma informação.
  *

@@ -9,7 +9,6 @@ import {
   ChevronRight,
   CircleCheckBig,
   Clock,
-  Inbox,
   Store,
   Target,
   User,
@@ -53,7 +52,6 @@ import {
 } from "@/components/ui/empty";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
 import { getChannelCards, type ChannelCard } from "@/lib/db/channels";
-import { getInboxPendentesCount } from "@/lib/db/inbox";
 import {
   getDsmHome,
   type DsmException,
@@ -69,6 +67,8 @@ import {
   type RecentExecution,
 } from "@/lib/db/execution";
 import { Progress } from "@/components/ui/progress";
+import { FLAT_ON_MOBILE } from "@/components/shared/section-card";
+import { cn } from "@/lib/utils";
 import {
   currentHourInSaoPaulo,
   greetingByHour,
@@ -88,7 +88,10 @@ const EXCEPTION_ICONS: Record<DsmExceptionKind, LucideIcon> = {
 
 /** Altura visível dos cards pareados (Meus canais / Precisa de atenção)
  *  — ~6 linhas; o excedente entra no scroll interno. */
-const PAIRED_CARD = "flex h-full max-h-[26rem] flex-col gap-0 overflow-hidden py-0";
+const PAIRED_CARD = cn(
+  "flex h-full max-h-[26rem] flex-col gap-0 overflow-hidden py-0",
+  FLAT_ON_MOBILE
+);
 /** Header canônico dos cards pareados: título + contagem + descrição +
  *  ação, colado no corpo por um border-b. */
 const PAIRED_HEADER =
@@ -104,11 +107,12 @@ function TitleCount({ value }: { value: number }) {
 }
 
 /**
- * Os quatro números do gestor, em duas duplas: primeiro a CARTEIRA
- * inteira (quantos canais pedem olhar, quanto do plano já saiu, quanto
- * está vencido somando todos os canais), depois o que é DELE para
- * fechar. Sem essa visão agregada o DSM só via risco e pendência
- * própria — nunca "como vai a carteira".
+ * Os números do gestor: quanto da carteira já saiu, quanto está
+ * vencido somando todos os canais, e o que é DELE para fechar.
+ *
+ * "Canais em risco" saiu: era um segundo âmbar ao lado de "Atrasadas na
+ * carteira" contando o MESMO atraso em outra unidade — o card "Meus
+ * canais" logo abaixo já mostra quais canais são, com nome.
  *
  * "Canais que acompanho" e "RTVs na equipe" continuam fora: o primeiro
  * repetia o card "Meus canais" ao lado, o segundo levava a uma tela
@@ -129,14 +133,7 @@ function DsmStats({
   const donePercent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <StatCard
-        title="Canais em risco"
-        value={stats.atRiskCount}
-        sublabel={`de ${stats.channelCount} que acompanho`}
-        tone="warning"
-        href="/canais"
-      />
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
       <StatCard
         title="Execução da carteira"
         value={`${donePercent}%`}
@@ -395,7 +392,7 @@ function MyActivitiesSection({
     <section className="flex flex-col gap-3">
       <DsmSectionHeader
         title="Minhas atividades"
-        subtitle="Suas reuniões e ações na safra."
+        subtitle="Suas atividades na safra."
         action={
           activities.length > 0 ? (
             <Button
@@ -429,10 +426,7 @@ function MyActivitiesSection({
 async function DsmHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const [home, inboxCount] = await Promise.all([
-    getDsmHome(profile, channelIds),
-    getInboxPendentesCount(profile.id),
-  ]);
+  const home = await getDsmHome(profile, channelIds);
   const firstName = profile.fullName.split(" ")[0];
 
   return (
@@ -440,8 +434,6 @@ async function DsmHome() {
       title={`${greetingByHour(currentHourInSaoPaulo())}, ${firstName}`}
       description={`Panorama dos seus canais na safra ${CURRENT_HARVEST}.`}
     >
-      <InboxLine count={inboxCount} />
-
       <DsmStats stats={home.stats} byStatus={home.byStatus} />
 
       <div className="grid items-stretch gap-6 lg:grid-cols-2">
@@ -458,47 +450,23 @@ async function DsmHome() {
 }
 
 /**
- * Ponte para a Caixa de entrada. UMA linha, sem card e sem cor de
- * alarme: é um lembrete de que existe fila, não um indicador que o
- * usuário precise acompanhar. Zero não renderiza — a home não deve
- * anunciar ausência de trabalho.
- */
-function InboxLine({ count }: { count: number }) {
-  if (count === 0) return null;
-  return (
-    <Link
-      href="/caixa-de-entrada"
-      className="flex w-fit items-center gap-2 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-    >
-      <Inbox className="size-4 shrink-0" />
-      {count === 1
-        ? "1 registro esperando na Caixa de entrada"
-        : `${count} registros esperando na Caixa de entrada`}
-    </Link>
-  );
-}
-
-/**
- * Os quatro números que movem o dia do RTV, do horizonte mais largo para
- * o mais curto — carteira, semana, atraso — e, por último, o débito de
- * registro que só ele fecha.
+ * Os três números que movem o dia do RTV: quanto tenho, o que está
+ * queimando, quanto já fechei.
  *
- * "Esta semana" é subconjunto de "Abertas" de propósito: uma responde
- * "quanto eu tenho", a outra "quanto é para já". É a segunda que define
- * a rota da semana. "Concluídas" fecha com o placar da safra.
+ * "Esta semana" saiu: era um recorte de "Abertas" que obrigava a
+ * comparar dois números para tirar uma conclusão, e o prazo de cada
+ * linha logo abaixo já responde "isso é para já?" sem intermediário.
  *
  * "Canais que atuo" segue fora — repete os cards de Meus canais ao lado.
  * Cada card é atalho para a lista já filtrada.
  */
 function RtvMetrics({
   abertasCount,
-  dueThisWeekCount,
   lateCount,
   completedCount,
   totalCount,
 }: {
   abertasCount: number;
-  dueThisWeekCount: number;
   lateCount: number;
   completedCount: number;
   totalCount: number;
@@ -506,38 +474,37 @@ function RtvMetrics({
   const donePercent =
     totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {/* Total da carteira: neutro, como todo "total" do app. */}
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+      {/* Neutro, como toda contagem sem status no app. "Abertas" aqui
+          é o MESMO recorte do KPI de Minhas Atividades (em dia, sem as
+          atrasadas): a mesma palavra com dois números era Nielsen #4. */}
       <StatCard
         title="Abertas"
-        value={abertasCount}
-        sublabel="a fazer nesta safra"
-        href="/minhas-atividades?status=abertas"
-      />
-      {/* Azul = planejada: é o que está de pé para os próximos 7 dias. */}
-      <StatCard
-        title="Esta semana"
-        value={dueThisWeekCount}
-        sublabel="vencem em até 7 dias"
-        tone="info"
+        value={abertasCount - lateCount}
+        sublabel="em andamento"
         href="/minhas-atividades?status=abertas"
       />
       <StatCard
-        title="Precisam de atenção"
+        title="Atrasadas"
         value={lateCount}
-        sublabel={lateCount === 1 ? "atrasada" : "atrasadas"}
+        sublabel={
+          lateCount === 1 ? "precisa de atenção" : "precisam de atenção"
+        }
         tone="warning"
         href="/minhas-atividades?status=atrasadas"
       />
       {/* Verde = conclusão, como em todo o app. O percentual é o que
           dá sentido ao número: 12 concluídas pode ser ótimo ou pouco
           dependendo do tamanho do plano. */}
+      {/* Abaixo de lg são 2 colunas e 3 cards: o último estica para
+          fechar a linha — meia célula vazia lê como layout quebrado. */}
       <StatCard
         title="Concluídas"
         value={completedCount}
         sublabel={`${donePercent}% da safra`}
         tone="success"
         href="/minhas-atividades?status=concluidas"
+        className="col-span-2 lg:col-span-1"
       />
     </div>
   );
@@ -554,7 +521,7 @@ function ChannelsSummaryCard({ channels }: { channels: ChannelCard[] }) {
   const items = sorted.slice(0, 4);
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className={cn("flex h-full flex-col", FLAT_ON_MOBILE)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Meus canais
@@ -612,7 +579,7 @@ function RecentExecutionsCard({
   executions: RecentExecution[];
 }) {
   return (
-    <Card>
+    <Card className={FLAT_ON_MOBILE}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           Registros recentes
@@ -685,13 +652,11 @@ function RecentExecutionsCard({
 async function FieldHome() {
   const profile = await getCurrentProfile();
   const channelIds = await getScopedChannelIds(profile);
-  const [{ activities }, recentExecutions, channels, inboxCount] =
-    await Promise.all([
-      getFieldActivities(profile),
-      getMyRecentExecutions(profile.id, 3),
-      getChannelCards(channelIds),
-      getInboxPendentesCount(profile.id),
-    ]);
+  const [{ activities }, recentExecutions, channels] = await Promise.all([
+    getFieldActivities(profile),
+    getMyRecentExecutions(profile.id, 3),
+    getChannelCards(channelIds),
+  ]);
 
   const firstName = profile.fullName.split(" ")[0];
 
@@ -774,17 +739,14 @@ async function FieldHome() {
       description={`${contextLine}.`}
       descriptionClassName={contextClass}
     >
-      <InboxLine count={inboxCount} />
-
       <RtvMetrics
         abertasCount={open.length}
-        dueThisWeekCount={dueThisWeekCount}
         lateCount={late.length}
         completedCount={completed.length}
         totalCount={mine.length}
       />
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className={cn("lg:col-span-2", FLAT_ON_MOBILE)}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Minhas atividades

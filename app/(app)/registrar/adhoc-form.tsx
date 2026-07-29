@@ -135,7 +135,7 @@ export function AdhocForm({
     description.trim().length === 0
       ? "Descreva o que foi feito para registrar."
       : !category
-        ? "Escolha o tipo de ação."
+        ? "Escolha o tipo de atividade."
         : !problemOk
           ? 'Escolha uma meta do plano ou "Vincular depois".'
           : null;
@@ -204,8 +204,8 @@ export function AdhocForm({
 
   return (
     <PageShell
-      title="Registrar ação fora do plano"
-      description="A ação vira uma atividade já concluída no plano do canal."
+      title="Registrar atividade fora do plano"
+      description="Nasce como atividade já concluída no plano do canal."
       onBack={onBack}
       actions={
         <div className="flex items-center gap-2">
@@ -252,10 +252,10 @@ export function AdhocForm({
             </CardContent>
           </Card>
 
-          {/* Tipo de ação */}
+          {/* Tipo de atividade */}
           <Card>
             <CardHeader>
-              <CardTitle>Tipo de ação</CardTitle>
+              <CardTitle>Tipo de atividade</CardTitle>
               <CardDescription>
                 Escolha a categoria que melhor representa.
               </CardDescription>
@@ -350,7 +350,7 @@ export function AdhocForm({
           {planProblems.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Qual meta do plano essa ação apoia?</CardTitle>
+                <CardTitle>Qual meta do plano essa atividade apoia?</CardTitle>
                 <CardDescription>
                   Vincular a uma meta fortalece o relatório de safra.
                 </CardDescription>
@@ -416,7 +416,7 @@ export function AdhocForm({
             <CardHeader>
               <CardTitle>Fotos</CardTitle>
               <CardDescription>
-                Anexe evidências da ação (opcional).
+                Anexe evidências da atividade (opcional).
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -506,7 +506,7 @@ export function AdhocForm({
         <div className="flex flex-col gap-4">
           <Card className="lg:sticky lg:top-6">
             <CardHeader>
-              <CardTitle>Registrar ação concluída</CardTitle>
+              <CardTitle>Registrar atividade concluída</CardTitle>
               <CardDescription>
                 Data e hora capturadas automaticamente.
               </CardDescription>
@@ -532,7 +532,7 @@ export function AdhocForm({
                 ) : (
                   <>
                     <CheckCircle2 className="size-5" />
-                    Registrar ação concluída
+                    Registrar atividade concluída
                   </>
                 )}
               </Button>
@@ -584,7 +584,7 @@ export function AdhocForm({
           ) : (
             <>
               <CheckCircle2 className="size-5" />
-              Registrar ação concluída
+              Registrar atividade concluída
             </>
           )}
         </Button>

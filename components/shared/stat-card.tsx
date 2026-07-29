@@ -83,7 +83,7 @@ export function StatCard({
       </div>
       <p
         className={cn(
-          "mt-2 text-3xl font-bold tracking-tight tabular-nums",
+          "mt-1.5 text-2xl font-bold tracking-tight tabular-nums sm:mt-2 sm:text-3xl",
           accentClass ?? "text-foreground",
           valueClassName
         )}
@@ -124,7 +124,7 @@ export function StatCard({
           className
         )}
       >
-        <Link href={href} className="block p-5">
+        <Link href={href} className="block p-4 sm:p-5">
           {body}
         </Link>
       </Card>
@@ -138,7 +138,7 @@ export function StatCard({
           type="button"
           onClick={onClick}
           aria-pressed={active}
-          className="block w-full cursor-pointer p-5 text-left"
+          className="block w-full cursor-pointer p-4 text-left sm:p-5"
         >
           {body}
         </button>
@@ -148,7 +148,7 @@ export function StatCard({
 
   return (
     <Card className={cn(cardClass, className)}>
-      <div className="p-5">{body}</div>
+      <div className="p-4 sm:p-5">{body}</div>
     </Card>
   );
 }

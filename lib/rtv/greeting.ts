@@ -57,5 +57,5 @@ export function greetingContextLine(input: GreetingContextInput): string {
   if (input.totalCount > 0) {
     return `Tudo em dia — ${input.completedCount} de ${input.totalCount} atividades concluídas nesta safra`;
   }
-  return "Nenhuma atividade atribuída ainda — você pode registrar ações pelo botão abaixo";
+  return "Nenhuma atividade atribuída ainda — você pode registrar atividades pelo botão abaixo";
 }

@@ -1,293 +1,103 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Inbox, SearchX, SlidersHorizontal } from "lucide-react";
+import { Inbox } from "lucide-react";
 
-import { SearchableSelect } from "@/components/app/searchable-select";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
-import type { InboxGrupo, InboxRegistro } from "@/lib/db/inbox";
-import { useIsMobile } from "@/hooks/use-mobile";
+import type { InboxRegistro } from "@/lib/db/inbox";
 
-import { toast } from "sonner";
-
-import { descartarRegistros, restaurarRegistros } from "@/lib/actions/inbox";
-
+import { RegistrarDrawer } from "./registrar-drawer";
 import { InboxCard } from "./inbox-card";
-import { CriarAtividadeDrawer, VincularDrawer } from "./triagem-dialogs";
 import { PhotoLightbox } from "./photo-lightbox";
 
-/** Teto antes de cortar a lista. Sem paginação na v1. */
+/** Teto do que o feed mostra de uma vez. */
 const MAX_VISIVEL = 40;
 
 /**
- * Caixa de entrada — a fila de triagem.
+ * Envios do campo — o feed do que o RTV mandou pelo WhatsApp.
  *
- * O modelo mental é caixa de entrada, não pasta: o objetivo é chegar a
- * zero. Por isso não há StatCard aqui. Painel serve para acompanhar um
- * número ao longo do tempo; esta tela existe para esvaziar.
+ * O que ainda PEDE DECISÃO vem primeiro; dentro de cada grupo, ordem de
+ * chegada. NADA sai daqui: o resolvido assenta no lugar, com o tique
+ * verde e o nome da atividade que virou, e o ladrilho inteiro passa a
+ * levar até ela. Sumir com o que chegou do campo apagava a prova do
+ * trabalho de alguém — e dava a impressão de que algo se perdeu.
  *
- * Os recortes vivem na URL (?canal=, ?origem=, ?todos=) para o servidor
- * refazer a consulta — a lista pode ser grande e filtrar no cliente
- * significaria trazer tudo sempre.
+ * "Registrar" é o ÚNICO botão, e resolve o envio inteiro em uma página
+ * só: a pergunta é a qual atividade aquilo pertence, e o resto da tela se
+ * ajusta à resposta. Duas opções lado a lado ("vincular" ou "criar")
+ * obrigavam a escolher o caminho antes de olhar a lista.
+ *
+ * Sem filtro e sem StatCard: são os envios da própria pessoa, e a
+ * pergunta ao abrir é "o que chegou desde a última vez que olhei".
  */
-export function InboxView({
-  grupos,
-  canais,
-  totalRegistros,
-  podeVerDeTodos,
-  verDeTodos,
-  canalFiltro,
-}: {
-  grupos: InboxGrupo[];
-  canais: { id: string; name: string }[];
-  totalRegistros: number;
-  /** RTV só tem os próprios envios; DSM e CX alternam. */
-  podeVerDeTodos: boolean;
-  verDeTodos: boolean;
-  canalFiltro: string | null;
-}) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const isMobile = useIsMobile();
+export function InboxView({ registros }: { registros: InboxRegistro[] }) {
   const [lightbox, setLightbox] = React.useState<InboxRegistro | null>(null);
-  const [vincular, setVincular] = React.useState<InboxRegistro | null>(null);
-  const [criar, setCriar] = React.useState<InboxRegistro | null>(null);
-  // Registros que saíram da fila mas ainda não voltaram do servidor:
-  // some na hora, sem esperar o revalidate. O undo devolve.
-  const [saindo, setSaindo] = React.useState<string[]>([]);
+  const [registrando, setRegistrando] = React.useState<InboxRegistro | null>(
+    null
+  );
   const [verMais, setVerMais] = React.useState(false);
 
-  /**
-   * Descarta sem perguntar. Confirmação antes de ação reversível é
-   * ruído; o Desfazer cobre o erro melhor e mais rápido — e o registro
-   * continua recuperável depois.
-   */
-  function descartar(registro: InboxRegistro) {
-    setSaindo((atual) => [...atual, registro.id]);
-    void descartarRegistros({ registroIds: [registro.id] }).then((r) => {
-      if (!r.ok) {
-        setSaindo((atual) => atual.filter((id) => id !== registro.id));
-        toast.error(r.error);
-        return;
-      }
-      toast("Registro descartado.", {
-        duration: 8000,
-        action: {
-          label: "Desfazer",
-          onClick: () => {
-            void restaurarRegistros({ registroIds: [registro.id] }).then(() =>
-              setSaindo((atual) => atual.filter((id) => id !== registro.id))
-            );
-          },
-        },
-      });
-    });
+  function registrar(registro: InboxRegistro) {
+    setLightbox(null);
+    setRegistrando(registro);
   }
 
-  function resolvido(registro: InboxRegistro) {
-    setSaindo((atual) => [...atual, registro.id]);
-    setVincular(null);
-    setCriar(null);
+  const naTela = verMais ? registros : registros.slice(0, MAX_VISIVEL);
+  const restantes = registros.length - naTela.length;
+
+  if (registros.length === 0) {
+    return (
+      <Empty className="rounded-2xl border border-dashed py-10">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Inbox />
+          </EmptyMedia>
+          <EmptyTitle>Nada chegou do campo ainda</EmptyTitle>
+          <EmptyDescription>
+            Toda foto que você mandar pelo WhatsApp aparece aqui, na ordem em
+            que chegar.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
   }
-
-  function setParam(key: string, value: string | null) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) params.set(key, value);
-    else params.delete(key);
-    const qs = params.toString();
-    router.replace(qs ? `?${qs}` : "?", { scroll: false });
-  }
-
-  const temFiltro = !!canalFiltro;
-  const mostrarFiltroCanal = canais.length > 1;
-
-  // Corte simples: a fila raramente passa de 40, e paginar uma tela que
-  // existe para esvaziar seria dar conforto ao acúmulo.
-  const grupoVisivel: InboxGrupo[] = [];
-  let acumulado = 0;
-  for (const grupo of grupos) {
-    if (!verMais && acumulado >= MAX_VISIVEL) break;
-    const restante = verMais ? grupo.registros.length : MAX_VISIVEL - acumulado;
-    grupoVisivel.push({
-      ...grupo,
-      registros: grupo.registros.slice(0, restante),
-    });
-    acumulado += Math.min(grupo.registros.length, restante);
-  }
-  const cortou = !verMais && totalRegistros > MAX_VISIVEL;
-
-  const controles = (
-    <>
-      {mostrarFiltroCanal ? (
-        <SearchableSelect
-          options={canais.map((canal) => ({
-            value: canal.id,
-            label: canal.name,
-          }))}
-          value={canalFiltro}
-          onValueChange={(value) => setParam("canal", value)}
-          placeholder="Todos os canais"
-          className="h-9 min-w-44 border-input bg-card"
-        />
-      ) : null}
-      {podeVerDeTodos ? (
-        <label className="flex items-center gap-2 text-sm text-foreground">
-          <Switch
-            checked={verDeTodos}
-            onCheckedChange={(checked) =>
-              setParam("todos", checked ? "1" : null)
-            }
-          />
-          Ver de todos
-        </label>
-      ) : null}
-    </>
-  );
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        {/* No celular os filtros vão para Sheet, como no resto do app. */}
-        {isMobile ? (
-          mostrarFiltroCanal || podeVerDeTodos ? (
-            <Sheet>
-              <SheetTrigger
-                render={
-                  <Button variant="outline" size="sm" className="h-9">
-                    <SlidersHorizontal />
-                    Filtros
-                  </Button>
-                }
-              />
-              <SheetContent side="bottom">
-                <SheetHeader>
-                  <SheetTitle>Filtros</SheetTitle>
-                </SheetHeader>
-                <div className="flex flex-col gap-4 p-4">{controles}</div>
-              </SheetContent>
-            </Sheet>
-          ) : null
-        ) : (
-          controles
-        )}
+      {/* Grade: o feed é de FOTOS, e lado a lado o olho compara de uma
+          vez — que é a pergunta do lote ("isso tudo é a mesma coisa?"). */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        {naTela.map((registro) => (
+          <InboxCard
+            key={registro.id}
+            registro={registro}
+            onOpenFotos={() => setLightbox(registro)}
+            onRegistrar={() => registrar(registro)}
+          />
+        ))}
       </div>
 
-      {grupos.length === 0 ? (
-        temFiltro ? (
-          <Empty className="rounded-2xl border border-dashed py-10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <SearchX />
-              </EmptyMedia>
-              <EmptyTitle>Nada com esse filtro</EmptyTitle>
-              <EmptyDescription>
-                Não há registro esperando no canal selecionado.
-              </EmptyDescription>
-            </EmptyHeader>
-            <EmptyContent>
-              <Button variant="outline" onClick={() => setParam("canal", null)}>
-                Limpar filtro
-              </Button>
-            </EmptyContent>
-          </Empty>
-        ) : (
-          /* Vazio é o estado de SUCESSO desta tela, não de falta. A copy
-             não pode soar como erro nem comemorar demais — chegar a zero
-             é o trabalho normal. */
-          <Empty className="rounded-2xl border border-dashed py-10">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Inbox />
-              </EmptyMedia>
-              <EmptyTitle>Caixa limpa</EmptyTitle>
-              <EmptyDescription>
-                Tudo que chegou do campo já virou atividade. Novos envios
-                aparecem aqui.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        )
-      ) : (
-        <div className="flex flex-col gap-6">
-          {grupoVisivel
-            .filter((grupo) =>
-              grupo.registros.some((registro) => !saindo.includes(registro.id))
-            )
-            .map((grupo) => (
-            <section key={grupo.canalId} className="flex flex-col gap-2">
-              <div className="flex items-baseline gap-2">
-                <h2 className="text-sm font-semibold text-foreground">
-                  {grupo.canalNome}
-                </h2>
-                {grupo.registros.length > 1 ? (
-                  <span className="text-xs tabular-nums text-muted-foreground">
-                    {grupo.registros.length}
-                  </span>
-                ) : null}
-              </div>
-              {/* Grade: a fila e de FOTOS, e lado a lado o olho compara
-                  de uma vez — que e a pergunta da triagem no lote ("isso
-                  tudo e a mesma coisa?"). */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                {grupo.registros
-                  .filter((registro) => !saindo.includes(registro.id))
-                  .map((registro) => (
-                    <InboxCard
-                      key={registro.id}
-                      registro={registro}
-                      mostrarAutor={verDeTodos}
-                      onOpenFotos={() => setLightbox(registro)}
-                      onVincular={() => setVincular(registro)}
-                      onCriar={() => setCriar(registro)}
-                      onDescartar={() => descartar(registro)}
-                    />
-                  ))}
-              </div>
-            </section>
-          ))}
-
-          {cortou ? (
-            <Button
-              variant="outline"
-              onClick={() => setVerMais(true)}
-              className="self-center"
-            >
-              Ver mais ({totalRegistros - MAX_VISIVEL} restantes)
-            </Button>
-          ) : null}
-        </div>
-      )}
-
-      {vincular ? (
-        <VincularDrawer
-          registros={[vincular]}
-          onClose={() => setVincular(null)}
-          onResolvido={() => resolvido(vincular)}
-        />
+      {restantes > 0 ? (
+        <Button
+          variant="outline"
+          onClick={() => setVerMais(true)}
+          className="self-center"
+        >
+          Ver mais ({restantes} restantes)
+        </Button>
       ) : null}
 
-      {criar ? (
-        <CriarAtividadeDrawer
-          registros={[criar]}
-          onClose={() => setCriar(null)}
-          onResolvido={() => resolvido(criar)}
+      {registrando ? (
+        <RegistrarDrawer
+          registro={registrando}
+          onClose={() => setRegistrando(null)}
         />
       ) : null}
 
@@ -295,7 +105,8 @@ export function InboxView({
         open={lightbox !== null}
         onOpenChange={(next) => (next ? undefined : setLightbox(null))}
         fotos={lightbox?.fotos ?? []}
-        titulo={lightbox?.titulo ?? lightbox?.canalNome ?? "Registro"}
+        titulo={lightbox?.titulo ?? lightbox?.canalNome ?? "Envio do campo"}
+        onRegistrar={lightbox ? () => registrar(lightbox) : undefined}
       />
     </div>
   );

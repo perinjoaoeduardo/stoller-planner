@@ -110,14 +110,14 @@ export function PendenciasKpis({
   const visible = PENDENCY_TYPES.filter((type) => totalsByType[type] > 0);
   const cols =
     visible.length >= 3
-      ? "sm:grid-cols-3"
+      ? "grid-cols-2 sm:grid-cols-3"
       : visible.length === 2
-        ? "sm:grid-cols-2"
-        : "sm:grid-cols-1";
+        ? "grid-cols-2"
+        : "grid-cols-1";
 
   return (
     <div className="flex flex-col gap-3">
-      <div className={cn("grid gap-4", cols)}>
+      <div className={cn("grid gap-3 sm:gap-4", cols)}>
         {visible.map((type) => {
           const meta = ISSUE_META[type];
           const isActive = activeFilter === type;
@@ -142,14 +142,14 @@ export function PendenciasKpis({
                 aria-pressed={isActive}
                 disabled={disabled}
                 className={cn(
-                  "block w-full rounded-xl p-6 text-left",
+                  "block w-full rounded-xl p-4 text-left sm:p-6",
                   disabled ? "cursor-default opacity-60" : "cursor-pointer"
                 )}
               >
                 <CardDescription>{PENDENCY_LABELS[type]}</CardDescription>
                 <p
                   className={cn(
-                    "mt-2 text-3xl font-semibold tracking-tight tabular-nums",
+                    "mt-1.5 text-2xl font-semibold tracking-tight tabular-nums sm:mt-2 sm:text-3xl",
                     meta.valueClass
                   )}
                 >
@@ -181,7 +181,7 @@ export function PendenciasKpis({
               value={channelFilter}
               onValueChange={(value) => setParam("canal", value)}
               placeholder="Todos os canais"
-              className="h-9 min-w-44 border-input bg-card"
+              className="h-10 w-full border-input bg-card sm:h-9 sm:w-auto sm:min-w-44"
             />
           ) : null}
           {personOptions.length > 1 ? (
@@ -190,7 +190,7 @@ export function PendenciasKpis({
               value={personFilter}
               onValueChange={(value) => setParam("pessoa", value)}
               placeholder="Todas as pessoas"
-              className="h-9 min-w-44 border-input bg-card"
+              className="h-10 w-full border-input bg-card sm:h-9 sm:w-auto sm:min-w-44"
             />
           ) : null}
           {canToggleScope ? (

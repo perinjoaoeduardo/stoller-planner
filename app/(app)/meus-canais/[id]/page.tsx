@@ -110,13 +110,17 @@ export default async function MeuCanalPage({
         </Breadcrumb>
       }
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="default"
             nativeButton={false}
             render={<Link href={`/canais/${id}/relatorio`} />}
           >
             <FileText className="size-4" />
+            {/* Rótulo curto no celular: três botões só de ícone não
+                dizem o que fazem, e "Relatório de safra" por extenso
+                não cabe ao lado dos outros dois. */}
+            <span className="md:hidden">Relatório</span>
             <span className="hidden md:inline">Relatório de safra</span>
           </Button>
           <NotesSheetButton count={notes.length} />

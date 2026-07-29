@@ -98,7 +98,7 @@ export function ProblemEditor({
         <PopoverHeader>
           <PopoverTitle>Vincular a uma meta</PopoverTitle>
           <PopoverDescription>
-            Escolha a meta do plano que esta ação apoia.
+            Escolha a meta do plano que esta atividade apoia.
           </PopoverDescription>
         </PopoverHeader>
         <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto">

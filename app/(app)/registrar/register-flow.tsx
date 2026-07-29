@@ -152,7 +152,7 @@ export function RegisterFlow({
   if (!channelId && channels.length > 1) {
     return (
       <PageShell
-        title="De qual canal é essa ação?"
+        title="De qual canal é essa atividade?"
         description="Selecione o canal para ver as atividades disponíveis."
         backHref="/"
       >
@@ -254,7 +254,7 @@ export function RegisterFlow({
   return (
     <PageShell
       title="Registrar execução"
-      description="Toque na atividade planejada para concluí-la — ou registre uma ação fora do plano."
+      description="Toque na atividade planejada para concluí-la — ou registre uma atividade fora do plano."
       onBack={canGoBackToPicker ? () => clearChannel() : undefined}
       backHref={canGoBackToPicker ? undefined : "/"}
       actions={
@@ -285,10 +285,10 @@ export function RegisterFlow({
         <PenLine className="size-6 shrink-0 text-accent-brand" />
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="font-medium text-accent-brand">
-            Registrar ação fora do plano
+            Registrar atividade fora do plano
           </p>
           <p className="text-sm text-muted-foreground">
-            Realizou uma ação que não estava no plano? Registre aqui.
+            Realizou uma atividade que não estava no plano? Registre aqui.
           </p>
         </div>
         <ChevronRight className="size-5 shrink-0 text-muted-foreground" />
@@ -341,7 +341,7 @@ export function RegisterFlow({
               </EmptyTitle>
               <EmptyDescription>
                 {search.trim().length > 0
-                  ? "Ajuste a busca ou registre uma ação fora do plano no topo."
+                  ? "Ajuste a busca ou registre uma atividade fora do plano no topo."
                   : "Você ainda pode registrar uma ação fora do plano acima."}
               </EmptyDescription>
             </EmptyHeader>

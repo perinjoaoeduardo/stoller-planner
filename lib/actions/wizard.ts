@@ -189,7 +189,7 @@ export async function scheduleActivity(
     return { ok: false, error: "Informe o título da atividade." };
   }
   if (!ACTIVITY_CATEGORIES.includes(input.category)) {
-    return { ok: false, error: "Selecione o tipo de ação." };
+    return { ok: false, error: "Selecione o tipo de atividade." };
   }
   if (!input.dueDate) {
     return { ok: false, error: "Informe o prazo da atividade." };

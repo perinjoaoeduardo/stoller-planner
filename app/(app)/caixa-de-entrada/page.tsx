@@ -1,65 +1,47 @@
 import type { Metadata } from "next";
-import { harvestLabel } from "@/lib/config";
+import { notFound } from "next/navigation";
 
+import { harvestLabel } from "@/lib/config";
 import { PageShell } from "@/components/app/page-shell";
 import { getCurrentProfile, getScopedChannelIds } from "@/lib/auth/scope";
-import { getInboxCanais, getInboxPendentes } from "@/lib/db/inbox";
+import { getInboxRegistros } from "@/lib/db/inbox";
 
 import { InboxView } from "./inbox-view";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Caixa de entrada — Corteva PED",
+  title: "Envios do campo — Corteva PED",
 };
 
 /**
- * /caixa-de-entrada — a fila do que chegou do campo e ainda não virou
- * atividade.
+ * /caixa-de-entrada — tudo que o RTV mandou do campo.
  *
- * Modelo mental de caixa de entrada, não de pasta: nada aqui é para
- * guardar, tudo é para resolver, e o estado bom é vazio. Esta entrega
- * cobre só a leitura — as ações de triagem vêm depois.
+ * "Caixa de entrada" prometia novidade, como notificação; o que existe
+ * aqui é um repositório dos ENVIOS da pessoa, esperando virar atividade.
+ * A rota fica como está: renomear URL quebraria link salvo e não muda
+ * nada para quem lê a tela.
+ *
+ * Não é uma fila que se esvazia: o que já virou atividade continua ali,
+ * mostrando o que foi feito. O que ainda pede decisão vem primeiro e é
+ * o que traz botão.
+ *
+ * Só RTV: a fila é do trabalho que a própria pessoa enviou. Gestor não
+ * tem envio para triar.
  */
-export default async function CaixaDeEntradaPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ canal?: string; origem?: string; todos?: string }>;
-}) {
-  const [profile, params] = await Promise.all([
-    getCurrentProfile(),
-    searchParams,
-  ]);
+export default async function CaixaDeEntradaPage() {
+  const profile = await getCurrentProfile();
+  if (profile.role !== "RTV") notFound();
+
   const channelIds = await getScopedChannelIds(profile);
-
-  // Só quem enxerga o trabalho de outras pessoas pode alternar o escopo.
-  const podeVerDeTodos = profile.role === "DSM" || profile.role === "CX";
-  const verDeTodos = podeVerDeTodos && params.todos === "1";
-
-  const [grupos, canais] = await Promise.all([
-    getInboxPendentes(profile, channelIds, {
-      verDeTodos,
-      canalId: params.canal ?? null,
-      origem: params.origem ?? null,
-    }),
-    getInboxCanais(channelIds),
-  ]);
-
-  const total = grupos.reduce((soma, grupo) => soma + grupo.registros.length, 0);
+  const registros = await getInboxRegistros(profile, channelIds);
 
   return (
     <PageShell
-      title="Caixa de entrada"
-      description={`Registros que chegaram do campo na ${harvestLabel()} e ainda não viraram atividade.`}
+      title="Envios do campo"
+      description={`O que você mandou do campo na ${harvestLabel()}.`}
     >
-      <InboxView
-        grupos={grupos}
-        canais={canais}
-        totalRegistros={total}
-        podeVerDeTodos={podeVerDeTodos}
-        verDeTodos={verDeTodos}
-        canalFiltro={params.canal ?? null}
-      />
+      <InboxView registros={registros} />
     </PageShell>
   );
 }

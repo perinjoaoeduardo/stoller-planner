@@ -381,7 +381,7 @@ export function PanoramaBlock({
         )}
       >
         <StatCard
-          title="Ações realizadas"
+          title="Atividades realizadas"
           value={stats.done}
           sublabel="na safra"
         />
@@ -402,7 +402,7 @@ export function PanoramaBlock({
             3xl quebrava em duas linhas e esticava a fileira inteira. Os
             meses viraram sublabel — é detalhe, não o dado. */}
         <StatCard
-          title="Meses com ação"
+          title="Meses com atividade"
           value={stats.activeMonths}
           sublabel={monthsSublabel}
         />
@@ -413,7 +413,7 @@ export function PanoramaBlock({
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
       <StatCard
-        title="Ações realizadas"
+        title="Atividades realizadas"
         value={stats.done}
         sublabel={`de ${stats.planned} planejadas`}
       />
@@ -477,8 +477,8 @@ export function MetasSemPlanoBlock({
           <p className="text-sm font-medium text-foreground">
             {problems.length}{" "}
             {problems.length === 1
-              ? "meta ainda sem plano de ação"
-              : "metas ainda sem plano de ação"}
+              ? "meta ainda sem atividade"
+              : "metas ainda sem atividade"}
           </p>
           <ul className="mt-1 flex flex-col gap-0.5">
             {problems.map((problem) => (
@@ -749,7 +749,7 @@ export function RitmoBlock({
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Ritmo da safra</CardTitle>
         <CardDescription>
-          Distribuição das ações ao longo dos meses.
+          Distribuição das atividades ao longo dos meses.
         </CardDescription>
       </CardHeader>
       <CardContent>

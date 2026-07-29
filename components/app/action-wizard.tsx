@@ -9,7 +9,6 @@ import {
   format,
   parseISO,
 } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -20,7 +19,6 @@ import {
   CheckCircle2,
   ChevronRight,
   CircleAlert,
-  Link2,
   MapPin,
   Pencil,
   PenLine,
@@ -33,6 +31,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DatePicker } from "@/components/app/date-picker";
+import { MetaPicker } from "@/components/app/meta-picker";
 import { CategoryIconBox, IconBox } from "@/components/shared/icon-box";
 import { PhotoAttach } from "@/components/shared/photo-attach";
 import {
@@ -98,34 +97,27 @@ type WizardView =
   | "agendar-1"
   | "agendar-2"
   | "agendar-3"
-  | "agendar-confirm"
   | "registrar-pick"
   | "registrar-complete"
-  | "adhoc-1"
-  | "adhoc-2"
-  | "adhoc-3";
+  | "adhoc";
 
-/** Passos do fluxo de agendar, na ordem do stepper. */
+/**
+ * Passos do fluxo de agendar — TRÊS, não quatro.
+ *
+ * "Revisão" era uma tela inteira só para reler. Ela virou um resumo no
+ * pé do último passo, e revisa apenas o que NÃO está na tela: canal,
+ * tipo, meta, local e responsáveis. Repetir ali o prazo que está no
+ * campo logo acima seria pedir para conferir o que a pessoa acabou de
+ * digitar.
+ */
 const AGENDAR_STEPS: { view: WizardView; label: string }[] = [
   { view: "agendar-1", label: "O quê" },
   { view: "agendar-2", label: "Contexto" },
   { view: "agendar-3", label: "Quando" },
-  { view: "agendar-confirm", label: "Revisão" },
-];
-
-/** Passos do registro fora do plano. */
-const ADHOC_STEPS: { view: WizardView; label: string }[] = [
-  { view: "adhoc-1", label: "O quê" },
-  { view: "adhoc-2", label: "Contexto" },
-  { view: "adhoc-3", label: "Evidências" },
 ];
 
 function agendarStepIndex(view: WizardView): number {
   return AGENDAR_STEPS.findIndex((s) => s.view === view);
-}
-
-function adhocStepIndex(view: WizardView): number {
-  return ADHOC_STEPS.findIndex((s) => s.view === view);
 }
 
 /** Rascunho do registro fora do plano — persiste entre os 3 passos. */
@@ -257,15 +249,12 @@ function viewTitle(view: WizardView): string {
     case "agendar-1":
     case "agendar-2":
     case "agendar-3":
-    case "agendar-confirm":
       return "Agendar atividade";
     case "registrar-pick":
       return "Selecione a atividade";
     case "registrar-complete":
       return "Concluir atividade";
-    case "adhoc-1":
-    case "adhoc-2":
-    case "adhoc-3":
+    case "adhoc":
       return "Registrar execução";
   }
 }
@@ -374,9 +363,9 @@ function ChannelPickerStep({ channels }: { channels: ChannelOption[] }) {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
       <p className="text-sm text-muted-foreground">
-        Escolha o canal onde a ação será registrada.
+        Escolha o canal onde a atividade será registrada.
       </p>
       {channels.length > 6 && (
         <div className="relative">
@@ -453,7 +442,7 @@ function AgendarStep1() {
 
       <fieldset className="flex flex-col gap-1.5">
         <label className="text-sm font-medium">
-          Tipo de ação <span className="text-destructive">*</span>
+          Tipo de atividade <span className="text-destructive">*</span>
         </label>
         <CategoryGrid
           value={draft.category}
@@ -623,10 +612,20 @@ const DUE_SHORTCUTS: { label: string; resolve: () => Date }[] = [
 ];
 
 function AgendarStep3() {
-  const { draft, updateDraft } = useWizard();
+  const { channelName, channelCtx, draft, updateDraft, submitError } =
+    useWizard();
+
+  const TypeIcon = draft.category ? CATEGORY_ICONS[draft.category] : null;
+  const branchName =
+    channelCtx?.branches.find((b) => b.id === draft.branchId)?.name ?? null;
+  const problemName =
+    channelCtx?.problems.find((p) => p.id === draft.problemId)?.title ?? null;
+  const assigneeNames = draft.assigneeIds
+    .map((id) => channelCtx?.responsibles.find((r) => r.id === id)?.name)
+    .filter(Boolean);
 
   return (
-    <div className="flex flex-col gap-5 p-6">
+    <div className="flex flex-col gap-5 p-4 sm:p-6">
       <StepIntro
         question="Para quando?"
         hint="Defina o prazo e detalhe se precisar."
@@ -676,6 +675,57 @@ function AgendarStep3() {
           {draft.description.length}/{MAX_DESCRIPTION}
         </span>
       </fieldset>
+
+      {/* Resumo do que ficou para trás. Só o que NÃO está nesta tela —
+          conferir o prazo que está no campo acima seria pedir para a
+          pessoa reler o que ela acabou de digitar. O lápis volta ao
+          passo dono do campo. */}
+      <div className="rounded-xl border border-border">
+        <div className="border-b border-border p-4">
+          <p className="text-base font-semibold leading-snug">
+            {draft.title || (
+              <span className="italic text-muted-foreground">Sem título</span>
+            )}
+          </p>
+        </div>
+        <div className="flex flex-col gap-3 p-4">
+          <ReviewRow label="Canal">{channelName}</ReviewRow>
+          <ReviewRow label="Tipo" editView="agendar-1">
+            {draft.category && TypeIcon ? (
+              <Badge
+                variant="secondary"
+                className="gap-1.5 rounded-md px-2 py-1 font-normal text-foreground"
+              >
+                <TypeIcon className="size-3.5 text-foreground/70" />
+                {CATEGORY_LABELS[draft.category]}
+              </Badge>
+            ) : (
+              <span className="italic text-muted-foreground">Sem tipo</span>
+            )}
+          </ReviewRow>
+          <ReviewRow label="Meta" editView="agendar-2">
+            {problemName ?? (
+              <span className="italic text-muted-foreground">Sem vínculo</span>
+            )}
+          </ReviewRow>
+          <ReviewRow label="Local" editView="agendar-2">
+            {branchName ?? "Canal geral"}
+          </ReviewRow>
+          <ReviewRow label="Responsáveis" editView="agendar-2">
+            {assigneeNames.length > 0 ? assigneeNames.join(", ") : "Você"}
+          </ReviewRow>
+        </div>
+      </div>
+
+      {submitError && (
+        <div
+          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+          role="alert"
+        >
+          <CircleAlert className="mt-0.5 size-4 shrink-0" />
+          <span>{submitError}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -714,95 +764,6 @@ function ReviewRow({
   );
 }
 
-// ── Agendar · Revisão (FIX 6) ──────────────────────────────────────────
-
-function AgendarReviewStep() {
-  const { channelName, channelCtx, draft, submitError } = useWizard();
-
-  const category = draft.category;
-  const dueDate = draft.dueDate;
-  if (!draft.title.trim() || category === null || dueDate === null) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <p className="text-muted-foreground">Preencha os passos anteriores.</p>
-      </div>
-    );
-  }
-
-  const TypeIcon = CATEGORY_ICONS[category];
-  const branchName =
-    channelCtx?.branches.find((b) => b.id === draft.branchId)?.name ?? null;
-  const problemName =
-    channelCtx?.problems.find((p) => p.id === draft.problemId)?.title ?? null;
-  const assigneeNames = draft.assigneeIds
-    .map((id) => channelCtx?.responsibles.find((r) => r.id === id)?.name)
-    .filter(Boolean);
-
-  return (
-    <div className="flex flex-col gap-5 p-6">
-      <StepIntro
-        question="Confirme o agendamento"
-        hint="Revise antes de criar. Dá pra editar qualquer item."
-      />
-
-      <div className="rounded-xl border border-border">
-        <div className="border-b border-border p-4">
-          <p className="text-base font-semibold leading-snug">{draft.title}</p>
-        </div>
-        <div className="flex flex-col gap-3 p-4">
-          <ReviewRow label="Canal">{channelName}</ReviewRow>
-          <ReviewRow label="Tipo" editView="agendar-1">
-            <Badge
-              variant="secondary"
-              className="gap-1.5 rounded-md px-2 py-1 font-normal text-foreground"
-            >
-              <TypeIcon className="size-3.5 text-foreground/70" />
-              {CATEGORY_LABELS[category]}
-            </Badge>
-          </ReviewRow>
-          <ReviewRow label="Meta" editView="agendar-2">
-            {problemName ?? (
-              <span className="italic text-muted-foreground">Sem vínculo</span>
-            )}
-          </ReviewRow>
-          <ReviewRow label="Local" editView="agendar-2">
-            {branchName ?? "Canal geral"}
-          </ReviewRow>
-          <ReviewRow label="Responsáveis" editView="agendar-2">
-            {assigneeNames.length > 0 ? assigneeNames.join(", ") : "Você"}
-          </ReviewRow>
-          <ReviewRow label="Prazo" editView="agendar-3">
-            {format(
-              new Date(dueDate + "T12:00:00"),
-              "dd 'de' MMMM 'de' yyyy",
-              { locale: ptBR }
-            )}
-          </ReviewRow>
-          <ReviewRow label="Descrição" editView="agendar-3">
-            {draft.description ? (
-              <span className="leading-relaxed">{draft.description}</span>
-            ) : (
-              <span className="italic text-muted-foreground">
-                Sem descrição
-              </span>
-            )}
-          </ReviewRow>
-        </div>
-      </div>
-
-      {submitError && (
-        <div
-          className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-          role="alert"
-        >
-          <CircleAlert className="mt-0.5 size-4 shrink-0" />
-          <span>{submitError}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Rodapé fixo do fluxo de agendar (FIX 2) ────────────────────────────
 
 function agendarStepValidation(
@@ -826,11 +787,11 @@ function agendarStepValidation(
 function AgendarFooter() {
   const { view, setView, draft, submitting, submitAgendar } = useWizard();
   const idx = agendarStepIndex(view);
-  const isReview = view === "agendar-confirm";
+  const isUltimo = view === "agendar-3";
   const { canContinue, hint } = agendarStepValidation(view, draft);
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-4 py-3 sm:px-6 sm:py-4">
       <div>
         {idx > 0 && (
           <Button
@@ -844,7 +805,7 @@ function AgendarFooter() {
       </div>
       <div className="flex min-w-0 items-center gap-3">
         {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-        {isReview ? (
+        {isUltimo ? (
           <Button
             variant="brand"
             onClick={() => void submitAgendar()}
@@ -928,13 +889,13 @@ function RegistrarPickStep() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
         {/* CTA adhoc — tracejado comunica "criar algo novo" */}
         <button
           type="button"
           onClick={() => {
             photoDrafts.reset();
-            setView("adhoc-1");
+            setView("adhoc");
           }}
           className="flex min-h-16 w-full cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed border-accent-brand/40 bg-accent-brand/5 p-4 text-left transition-all hover:border-accent-brand/60 hover:bg-accent-brand/10"
         >
@@ -946,7 +907,7 @@ function RegistrarPickStep() {
           />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-accent-brand">
-              Registrar ação fora do plano
+              Registrar atividade fora do plano
             </p>
             <p className="text-sm text-muted-foreground">
               Realizou algo que não estava planejado? Registre aqui.
@@ -1129,7 +1090,7 @@ function RegistrarCompleteStep() {
 
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
         {/* Resumo da atividade — contexto de leitura, cinza sutil (FIX 4) */}
         <div className="flex flex-col gap-3 rounded-xl border border-border bg-subtle p-4">
           <p className="font-medium leading-snug">{activity.title}</p>
@@ -1254,186 +1215,17 @@ function RegistrarCompleteStep() {
 
 // ── Registrar fora do plano · 3 passos (FIX 3) ─────────────────────────
 
-function AdhocStep1() {
-  const { adhoc, updateAdhoc, setView } = useWizard();
-  const canContinue =
-    adhoc.description.trim().length > 0 && adhoc.category !== null;
-
-  return (
-    <>
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
-        <StepIntro
-          question="O que foi feito?"
-          hint="Descreva a ação e escolha o tipo."
-        />
-
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium" htmlFor="wz-adhoc-desc">
-            O que foi feito? <span className="text-destructive">*</span>
-          </label>
-          <Textarea
-            id="wz-adhoc-desc"
-            autoFocus
-            value={adhoc.description}
-            maxLength={MAX_DESCRIPTION}
-            onChange={(e) => updateAdhoc({ description: e.target.value })}
-            placeholder="Ex: Dia de campo sobre biológicos com 18 produtores"
-            className="min-h-20 text-base"
-          />
-          <span className="self-end text-xs text-muted-foreground tabular-nums">
-            {adhoc.description.length}/{MAX_DESCRIPTION}
-          </span>
-        </fieldset>
-
-        <fieldset className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium">
-            Tipo de ação <span className="text-destructive">*</span>
-          </label>
-          <CategoryGrid
-            value={adhoc.category}
-            onChange={(category) => updateAdhoc({ category })}
-          />
-        </fieldset>
-      </div>
-
-      <WizardFooter
-        onBack={() => setView("registrar-pick")}
-        hint={canContinue ? null : "Descreva a ação e escolha o tipo"}
-      >
-        <Button
-          variant="brand"
-          disabled={!canContinue}
-          onClick={() => setView("adhoc-2")}
-        >
-          Continuar
-        </Button>
-      </WizardFooter>
-    </>
-  );
-}
-
-function AdhocStep2() {
-  const { channelCtx, loadingCtx, adhoc, updateAdhoc, setView } = useWizard();
-
-  if (loadingCtx || !channelCtx) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-6">
-        <Spinner className="size-6" />
-      </div>
-    );
-  }
-
-  const { branches, problems } = channelCtx;
-  const hasProblems = problems.length > 0;
-  const problemOk = !hasProblems || adhoc.problemChoice !== null;
-
-  return (
-    <>
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
-        <StepIntro
-          question="Onde isso aconteceu?"
-          hint="Defina o local e vincule a uma meta do plano."
-        />
-
-        {branches.length > 0 && (
-          <fieldset className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium">Local</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: null as string | null, name: "Canal geral" },
-                ...branches,
-              ].map((b) => {
-                const active = adhoc.branchId === b.id;
-                return (
-                  <Button
-                    key={b.id ?? "geral"}
-                    type="button"
-                    variant={active ? "default" : "outline"}
-                    onClick={() =>
-                      updateAdhoc({ branchId: b.id, problemChoice: null })
-                    }
-                    aria-pressed={active}
-                    className="rounded-full font-medium"
-                  >
-                    {b.name}
-                  </Button>
-                );
-              })}
-            </div>
-          </fieldset>
-        )}
-
-        {hasProblems && (
-          <fieldset className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <label className="text-sm font-semibold text-foreground">
-                Meta do plano <span className="text-destructive">*</span>
-              </label>
-            </div>
-            <RadioGroup
-              value={adhoc.problemChoice ?? ""}
-              onValueChange={(value) =>
-                updateAdhoc({ problemChoice: String(value) })
-              }
-              className="flex flex-col gap-1.5 rounded-xl border border-border bg-subtle p-1.5"
-            >
-              {problems.map((p) => {
-                const active = adhoc.problemChoice === p.id;
-                return (
-                  <label
-                    key={p.id}
-                    className={cn(
-                      "flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                      active
-                        ? "bg-card shadow-card! ring-1 ring-primary/20"
-                        : "hover:bg-card/60"
-                    )}
-                  >
-                    <RadioGroupItem value={p.id} className="mt-0.5" />
-                    <span className="leading-snug">{p.title}</span>
-                  </label>
-                );
-              })}
-              <label
-                className={cn(
-                  "mt-1 flex cursor-pointer items-start gap-3 rounded-lg border border-dashed p-3 text-sm transition-colors",
-                  adhoc.problemChoice === "later"
-                    ? "border-primary/40 bg-card text-foreground ring-1 ring-primary/20"
-                    : "border-border-hover text-muted-foreground hover:bg-card/60"
-                )}
-              >
-                <RadioGroupItem value="later" className="mt-0.5" />
-                <Link2 className="mt-0.5 size-4 shrink-0" />
-                <div>
-                  <p className="font-medium leading-snug">Vincular depois</p>
-                  <p className="text-xs italic text-muted-foreground">
-                    Fica como pendência.
-                  </p>
-                </div>
-              </label>
-            </RadioGroup>
-          </fieldset>
-        )}
-      </div>
-
-      <WizardFooter
-        onBack={() => setView("adhoc-1")}
-        hint={problemOk ? null : 'Escolha uma meta ou "Vincular depois"'}
-      >
-        <Button
-          variant="brand"
-          disabled={!problemOk}
-          onClick={() => setView("adhoc-3")}
-        >
-          Continuar
-        </Button>
-      </WizardFooter>
-    </>
-  );
-}
-
-function AdhocStep3() {
-  const { channelId, adhoc, photoDrafts, setView, close } =
+/**
+ * Registro fora do plano — UMA página.
+ *
+ * Eram dois passos, e nenhum deles era uma decisão grande o bastante
+ * para merecer tela própria: relato + tipo, depois local + meta + foto.
+ * Tudo junto cabe numa rolagem, e o formulário inteiro à vista permite
+ * conferir antes de enviar em vez de ir e voltar entre passos. É a mesma
+ * anatomia de "Concluir atividade", que já era uma página só.
+ */
+function AdhocStep() {
+  const { channelId, channelCtx, loadingCtx, adhoc, updateAdhoc, photoDrafts, setView, close } =
     useWizard();
   const router = useRouter();
   const fileRef = React.useRef<HTMLInputElement>(null);
@@ -1441,6 +1233,12 @@ function AdhocStep3() {
   const [nudgeOpen, setNudgeOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const branches = channelCtx?.branches ?? [];
+  const problems = channelCtx?.problems ?? [];
+
+  const podeRegistrar =
+    adhoc.description.trim().length > 0 && adhoc.category !== null;
 
   async function submit() {
     if (!channelId || !adhoc.category || !adhoc.description.trim()) return;
@@ -1495,25 +1293,104 @@ function AdhocStep3() {
     void submit();
   }
 
+  if (loadingCtx || !channelCtx) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <Spinner className="size-6" />
+      </div>
+    );
+  }
+
   return (
     <>
-      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-6">
-        <StepIntro
-          question="Alguma foto?"
-          hint="Opcional, mas ajuda a documentar."
-        />
+      <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium" htmlFor="wz-adhoc-desc">
+            O que foi feito? <span className="text-destructive">*</span>
+          </label>
+          <Textarea
+            id="wz-adhoc-desc"
+            autoFocus
+            value={adhoc.description}
+            maxLength={MAX_DESCRIPTION}
+            onChange={(e) => updateAdhoc({ description: e.target.value })}
+            placeholder="Ex: Dia de campo sobre biológicos com 18 produtores"
+            className="min-h-20 text-base"
+          />
+          <span className="self-end text-xs text-muted-foreground tabular-nums">
+            {adhoc.description.length}/{MAX_DESCRIPTION}
+          </span>
+        </fieldset>
 
-        <PhotoAttach
-          photos={photos.map((photo) => ({ id: photo.id, url: photo.url }))}
-          onAdd={addFiles}
-          onRemove={removePhoto}
-          inputRef={fileRef}
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">
+            Tipo de atividade <span className="text-destructive">*</span>
+          </label>
+          <CategoryGrid
+            value={adhoc.category}
+            onChange={(category) => updateAdhoc({ category })}
+          />
+        </fieldset>
+
+        {branches.length > 0 && (
+          <fieldset className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Local</label>
+            <div className="flex flex-wrap gap-2">
+              {[{ id: null as string | null, name: "Canal geral" }, ...branches].map(
+                (b) => {
+                  const active = adhoc.branchId === b.id;
+                  return (
+                    <Button
+                      key={b.id ?? "geral"}
+                      type="button"
+                      variant={active ? "default" : "outline"}
+                      onClick={() => updateAdhoc({ branchId: b.id })}
+                      aria-pressed={active}
+                      className="rounded-full font-medium"
+                    >
+                      {b.name}
+                    </Button>
+                  );
+                }
+              )}
+            </div>
+          </fieldset>
+        )}
+
+        {problems.length > 0 && (
+          <fieldset className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium">Meta do plano</label>
+            <MetaPicker
+              metas={problems.map((p) => ({ id: p.id, title: p.title }))}
+              value={
+                adhoc.problemChoice && adhoc.problemChoice !== "later"
+                  ? adhoc.problemChoice
+                  : null
+              }
+              onChange={(value) =>
+                updateAdhoc({ problemChoice: value ?? "later" })
+              }
+            />
+          </fieldset>
+        )}
+
+        <fieldset className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">
+            Fotos{" "}
+            <span className="font-normal text-muted-foreground">(opcional)</span>
+          </label>
+          <PhotoAttach
+            photos={photos.map((photo) => ({ id: photo.id, url: photo.url }))}
+            onAdd={addFiles}
+            onRemove={removePhoto}
+            inputRef={fileRef}
           />
           {rejected ? (
             <p className="text-xs text-destructive" role="alert">
               Alguma foto foi ignorada: use JPG, PNG ou WEBP até 10MB.
             </p>
           ) : null}
+        </fieldset>
 
         {error && (
           <div
@@ -1526,11 +1403,15 @@ function AdhocStep3() {
         )}
       </div>
 
-      <WizardFooter onBack={() => setView("adhoc-2")} backDisabled={submitting}>
+      <WizardFooter
+        onBack={() => setView("registrar-pick")}
+        backDisabled={submitting}
+        hint={podeRegistrar ? null : "Descreva a atividade e escolha o tipo"}
+      >
         <Button
           variant="brand"
+          disabled={!podeRegistrar || submitting}
           onClick={handleRegister}
-          disabled={submitting}
         >
           {submitting ? (
             <>
@@ -1625,7 +1506,6 @@ export function ActionWizard({
   }, []);
 
   const isAgendarStepView = agendarStepIndex(view) >= 0;
-  const isAdhocStepView = adhocStepIndex(view) >= 0;
 
   // Só pergunta antes de fechar se há algo digitado de fato.
   const draftDirty =
@@ -1644,7 +1524,7 @@ export function ActionWizard({
     photoDrafts.photos.length > 0;
   const hasDirtyData = isAgendarStepView
     ? draftDirty
-    : isAdhocStepView
+    : view === "adhoc"
       ? adhocDirty
       : view === "registrar-complete";
 
@@ -1875,12 +1755,6 @@ export function ActionWizard({
                     current={agendarStepIndex(view)}
                   />
                 )}
-                {isAdhocStepView && (
-                  <WizardStepper
-                    steps={ADHOC_STEPS.map((s) => s.label)}
-                    current={adhocStepIndex(view)}
-                  />
-                )}
               </div>
             )}
 
@@ -1891,7 +1765,7 @@ export function ActionWizard({
                 view === "channel" ||
                   view === "registrar-pick" ||
                   view === "registrar-complete" ||
-                  isAdhocStepView
+                  view === "adhoc"
                   ? "overflow-hidden"
                   : "overflow-y-auto"
               )}
@@ -1901,12 +1775,9 @@ export function ActionWizard({
               {view === "agendar-1" && <AgendarStep1 />}
               {view === "agendar-2" && <AgendarStep2 />}
               {view === "agendar-3" && <AgendarStep3 />}
-              {view === "agendar-confirm" && <AgendarReviewStep />}
               {view === "registrar-pick" && <RegistrarPickStep />}
               {view === "registrar-complete" && <RegistrarCompleteStep />}
-              {view === "adhoc-1" && <AdhocStep1 />}
-              {view === "adhoc-2" && <AdhocStep2 />}
-              {view === "adhoc-3" && <AdhocStep3 />}
+              {view === "adhoc" && <AdhocStep />}
             </div>
 
             {isAgendarStepView && <AgendarFooter />}

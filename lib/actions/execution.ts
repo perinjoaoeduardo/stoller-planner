@@ -139,7 +139,7 @@ export async function registerExecution(
       isCategoryRequired() &&
       (!input.category || !ACTIVITY_CATEGORIES.includes(input.category))
     ) {
-      return { ok: false, error: "Selecione a categoria da ação." };
+      return { ok: false, error: "Selecione o tipo de atividade." };
     }
 
     const { data: plan } = await supabase

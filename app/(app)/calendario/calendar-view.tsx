@@ -327,7 +327,7 @@ export function CalendarView({
             value={channelFilter}
             onValueChange={setChannelFilter}
             placeholder="Todos os canais"
-            className="ml-auto h-9 min-w-48 border-input bg-card"
+            className="h-10 w-full border-input bg-card sm:ml-auto sm:h-9 sm:w-auto sm:min-w-48"
           />
         )}
       </div>

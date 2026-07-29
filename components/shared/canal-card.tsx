@@ -1,4 +1,4 @@
-import { ClickableCard, NeutralChip } from "@/components/shared/clickable-card";
+import { ClickableCard } from "@/components/shared/clickable-card";
 import { HealthMark } from "@/components/shared/health-mark";
 import { Progress } from "@/components/ui/progress";
 import type { ChannelHealth } from "@/lib/plan-utils";
@@ -72,20 +72,16 @@ export function CanalCard({
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5 pr-8">
-        <NeutralChip>
-          {canal.problemCount ?? 0}{" "}
-          {canal.problemCount === 1 ? "meta" : "metas"}
-        </NeutralChip>
-        <NeutralChip>
-          {canal.activityCount ?? 0}{" "}
-          {canal.activityCount === 1 ? "atividade" : "atividades"}
-        </NeutralChip>
-        <NeutralChip>
-          {canal.branchCount ?? 0}{" "}
-          {canal.branchCount === 1 ? "filial" : "filiais"}
-        </NeutralChip>
-      </div>
+      {/* Texto corrido, não chips: três pílulas com borda dentro de um
+          card clicável liam como três botões (falsa affordance) e
+          enchiam o card de caixinhas — o dado é só um inventário. */}
+      <p className="pr-8 text-sm text-muted-foreground tabular-nums">
+        {[
+          `${canal.problemCount ?? 0} ${canal.problemCount === 1 ? "meta" : "metas"}`,
+          `${canal.activityCount ?? 0} ${canal.activityCount === 1 ? "atividade" : "atividades"}`,
+          `${canal.branchCount ?? 0} ${canal.branchCount === 1 ? "filial" : "filiais"}`,
+        ].join(" · ")}
+      </p>
 
       <div className="flex items-center gap-3 pr-8">
         <Progress value={canal.completedPercent} className={PROGRESS_CLASS} />

@@ -41,9 +41,11 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   const profile = await getCurrentProfile();
+  // O badge da caixa de entrada só existe para o RTV — para os outros
+  // perfis o item nem está no menu, e a consulta seria por nada.
   const [fieldChannels, inboxCount] = await Promise.all([
     getFieldChannels(profile),
-    getInboxPendentesCount(profile.id),
+    profile.role === "RTV" ? getInboxPendentesCount(profile.id) : 0,
   ]);
 
   const user = {

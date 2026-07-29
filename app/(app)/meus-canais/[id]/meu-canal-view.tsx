@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ClipboardList,
   Search,
+  SlidersHorizontal,
   Target,
   X,
 } from "lucide-react";
@@ -43,6 +44,13 @@ import {
   DrawerDescription,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type {
@@ -54,6 +62,7 @@ import type { ChannelNote } from "@/lib/db/notes";
 import { isLateActivity, todayISO } from "@/lib/db/status";
 import { NotesView } from "../../canais/[id]/notas/notes-view";
 import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
+import { FLAT_ON_MOBILE } from "@/components/shared/section-card";
 import { cn } from "@/lib/utils";
 
 const PENDING = new Set<ActivityStatus>(OPEN_STATUSES);
@@ -317,6 +326,41 @@ export function MeuCanalView({
     }
   }
 
+  const recortesAtivos = [
+    categoryFilter,
+    onlyMine ? "minhas" : null,
+  ].filter(Boolean).length;
+
+  /**
+   * Campos definidos UMA vez e posicionados por contexto: soltos na barra
+   * no desktop, empilhados na folha no celular. Duplicar o markup poria
+   * dois <Switch> "Só minhas" no DOM, e o leitor de tela anunciaria o
+   * mesmo filtro duas vezes.
+   */
+  const recortes = (
+    <>
+      {categoryOptions.length > 0 ? (
+        <SearchableSelect
+          options={categoryOptions}
+          value={categoryFilter}
+          onValueChange={setCategoryFilter}
+          placeholder="Categoria"
+          className="h-10 w-full border-input bg-card md:w-auto md:min-w-40"
+        />
+      ) : null}
+      {showOnlyMine ? (
+        <label className="flex items-center justify-between gap-2 text-sm text-foreground md:ml-auto md:justify-start">
+          <span className="md:order-2">Só minhas</span>
+          <Switch
+            checked={onlyMine}
+            onCheckedChange={(checked) => setOnlyMine(checked)}
+            className="md:order-1"
+          />
+        </label>
+      ) : null}
+    </>
+  );
+
   return (
     <>
       {/* Filtro global de filial */}
@@ -328,7 +372,7 @@ export function MeuCanalView({
             value={branchFilter}
             onValueChange={setBranchFilter}
             placeholder="Todas as filiais"
-            className="w-56 border-input bg-card"
+            className="h-10 w-full border-input bg-card sm:w-56"
           />
           {branchFilter ? (
             <Button
@@ -342,8 +386,11 @@ export function MeuCanalView({
         </div>
       ) : null}
 
-      {/* KPIs clicáveis — mesmo componente de filtro da Minhas Atividades */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* KPIs clicáveis — mesmo componente de filtro da Minhas Atividades.
+          "Vencem em 7 dias" saiu junto com o equivalente da home: era um
+          recorte de "abertas" que obrigava a comparar dois números, e o
+          prazo de cada linha da lista já responde "isso é para já?". */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <StatCard
           title="Total de atividades"
           value={metrics.total}
@@ -367,6 +414,8 @@ export function MeuCanalView({
           active={kpiFilter === "concluidas"}
           onClick={() => setKpiFilter("concluidas")}
         />
+        {/* Abaixo de lg são 2 colunas e 3 cards: o último estica para
+            fechar a linha em vez de deixar meia célula vazia. */}
         <StatCard
           title="Atrasadas"
           value={metrics.late}
@@ -375,14 +424,7 @@ export function MeuCanalView({
           interactive
           active={kpiFilter === "atrasadas"}
           onClick={() => setKpiFilter("atrasadas")}
-        />
-        <StatCard
-          title="Vencem em 7 dias"
-          value={metrics.dueSoon}
-          sublabel="prazo próximo"
-          interactive
-          active={kpiFilter === "vencendo"}
-          onClick={() => setKpiFilter("vencendo")}
+          className="col-span-2 lg:col-span-1"
         />
       </div>
 
@@ -404,10 +446,13 @@ export function MeuCanalView({
         </div>
       ) : null}
 
-      {/* Filtros da tabela */}
+      {/* Filtros da tabela. No celular categoria e recorte de pessoa vão
+          para uma folha: empilhados em largura cheia empurravam a lista
+          para fora da tela. A busca fica de fora — é a mais usada e a
+          única que se digita. */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-64 flex-1 max-w-md">
+          <div className="relative min-w-0 flex-1 sm:min-w-64 sm:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -416,24 +461,35 @@ export function MeuCanalView({
               className="h-10 border-input bg-card pl-9"
             />
           </div>
-          {categoryOptions.length > 0 ? (
-            <SearchableSelect
-              options={categoryOptions}
-              value={categoryFilter}
-              onValueChange={setCategoryFilter}
-              placeholder="Categoria"
-              className="h-10 min-w-40 border-input bg-card"
+
+          <Sheet>
+            <SheetTrigger
+              render={
+                <Button
+                  variant="outline"
+                  className="h-10 shrink-0 border-input bg-card md:hidden"
+                >
+                  <SlidersHorizontal />
+                  Filtros
+                  {recortesAtivos > 0 ? (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-accent-brand text-xs font-medium tabular-nums text-accent-brand-foreground">
+                      {recortesAtivos}
+                    </span>
+                  ) : null}
+                </Button>
+              }
             />
-          ) : null}
-          {showOnlyMine ? (
-            <label className="ml-auto flex items-center gap-2 text-sm text-foreground">
-              <Switch
-                checked={onlyMine}
-                onCheckedChange={(checked) => setOnlyMine(checked)}
-              />
-              Só minhas
-            </label>
-          ) : null}
+            <SheetContent side="bottom">
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {recortes}
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {isMobile ? null : recortes}
         </div>
         <p className="text-sm text-muted-foreground tabular-nums">
           {sorted.length} de {filteredByBranch.length} atividades
@@ -443,7 +499,7 @@ export function MeuCanalView({
 
       {/* Tabela ou empty */}
       {activities.length === 0 ? (
-        <Card>
+        <Card className={FLAT_ON_MOBILE}>
           <CardContent>
             <Empty className="py-8">
               <EmptyHeader>

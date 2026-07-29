@@ -62,11 +62,19 @@ function dueLine(activity: ActivityCardData): string {
 export function ActivityCard({
   activity,
   showCanal = false,
+  showAssignees = true,
   className,
 }: {
   activity: ActivityCardData;
   /** Mostra o nome do canal na linha 2 (listas que misturam canais). */
   showCanal?: boolean;
+  /**
+   * Off nas listas PESSOAIS (home e Minhas Atividades do RTV): ali todo
+   * card teria o avatar do próprio dono — repetir a identidade da
+   * pessoa em cada linha é ruído, não informação. Fica on nas visões de
+   * time, onde "de quem é" muda a leitura.
+   */
+  showAssignees?: boolean;
   className?: string;
 }) {
   const { openActivity } = useActivityDrawer();
@@ -107,7 +115,7 @@ export function ActivityCard({
 
       {/* Linha 3 — responsáveis + prazo */}
       <div className="flex min-h-6 items-center justify-between gap-2">
-        {activity.assignees.length > 0 ? (
+        {showAssignees && activity.assignees.length > 0 ? (
           <Tooltip>
             <TooltipTrigger
               render={
@@ -140,14 +148,14 @@ export function ActivityCard({
               {activity.assignees.map((assignee) => assignee.name).join(", ")}
             </TooltipContent>
           </Tooltip>
-        ) : (
+        ) : showAssignees ? (
           <span className="text-xs text-muted-foreground">
             Sem responsável
           </span>
-        )}
+        ) : null}
         <span
           className={cn(
-            "shrink-0 text-xs tabular-nums",
+            "ml-auto shrink-0 text-xs tabular-nums",
             late
               ? "font-medium text-foreground"
               : "text-muted-foreground"

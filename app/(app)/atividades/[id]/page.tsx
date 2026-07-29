@@ -177,7 +177,7 @@ export default async function AtividadePage({
       ),
     },
     {
-      label: "Tipo de ação",
+      label: "Tipo de atividade",
       value: activity.category ? (
         <CategoryBadge category={activity.category} />
       ) : (

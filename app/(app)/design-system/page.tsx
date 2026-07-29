@@ -224,7 +224,7 @@ function SemanticsSection() {
 function PillarsSection() {
   return (
     <Section
-      title="Pilares — ícone por tipo de ação"
+      title="Pilares — ícone por tipo de atividade"
       hint="Categoria é distinguida pelo ÍCONE + rótulo, nunca por cor: as 4 cores pastel eram idênticas (não separavam nada) e competiam com o azul. Agora neutras. Propaga via CategoryIconBox e CategoryBadge — não pintar categoria manualmente."
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

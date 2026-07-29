@@ -19,8 +19,9 @@ export function ProblemsSheetButton({ count }: { count: number }) {
       className="gap-2"
     >
       <Target className="size-4" />
-      Ver metas
-      <span className="tabular-nums text-muted-foreground">({count})</span>
+      <span className="md:hidden">Metas</span>
+      <span className="hidden md:inline">Ver metas</span>
+      <span className="tabular-nums text-muted-foreground">{count}</span>
     </Button>
   );
 }

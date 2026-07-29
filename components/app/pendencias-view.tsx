@@ -27,6 +27,7 @@ import {
   type PendenciesSummary,
   type PendencyType,
 } from "@/lib/db/pendencias";
+import { FLAT_ON_MOBILE } from "@/components/shared/section-card";
 import { cn } from "@/lib/utils";
 
 /**
@@ -207,7 +208,7 @@ export function PendenciasView({
         </Card>
       ) : (
         filteredChannels.map((channel) => (
-          <Card key={channel.channelId} className="gap-3">
+          <Card key={channel.channelId} className={cn("gap-3", FLAT_ON_MOBILE)}>
             <CardHeader className="flex flex-row items-start justify-between gap-2">
               <div className="min-w-0 space-y-0.5">
                 <CardTitle className="text-base leading-snug">
@@ -262,7 +263,10 @@ export function PendenciasView({
                     {NEGATIVE_STATUSES.has(activity.status) ? (
                       <StatusBadge status={activity.status} />
                     ) : null}
-                    <ChevronRight className="size-4 text-muted-foreground" />
+                    {/* Só a partir de sm: no celular os selos já enchem a
+                        linha e a seta caía sozinha embaixo deles, virando
+                        um traço solto em vez de "isso abre". */}
+                    <ChevronRight className="hidden size-4 text-muted-foreground sm:block" />
                   </div>
                 </ActivityLink>
               ))}

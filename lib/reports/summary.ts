@@ -56,7 +56,7 @@ function buildExternalSummary(
 
   if (done > 0 && input.problemCount > 0) {
     sentences.push(
-      `${done} ${plural(done, "ação realizada", "ações realizadas")} em ${
+      `${done} ${plural(done, "atividade realizada", "atividades realizadas")} em ${
         input.channelName
       }${harvestLabel}, ${plural(
         done,
@@ -70,7 +70,7 @@ function buildExternalSummary(
     );
   } else if (done > 0) {
     sentences.push(
-      `${done} ${plural(done, "ação realizada", "ações realizadas")} em ${
+      `${done} ${plural(done, "atividade realizada", "atividades realizadas")} em ${
         input.channelName
       }${harvestLabel}.`
     );
@@ -78,8 +78,8 @@ function buildExternalSummary(
     sentences.push(
       `O trabalho em ${input.channelName}${harvestLabel} está em andamento, com ${total} ${plural(
         total,
-        "ação no plano conjunto",
-        "ações no plano conjunto"
+        "atividade no plano conjunto",
+        "atividades no plano conjunto"
       )}.`
     );
   }
@@ -201,8 +201,8 @@ export function buildExecutiveSummary(input: SummaryInput): string {
     sentences.push(
       `${unplanned} ${plural(
         unplanned,
-        "ação fora do plano inicial foi registrada",
-        "ações fora do plano inicial foram registradas"
+        "atividade fora do plano inicial foi registrada",
+        "atividades fora do plano inicial foram registradas"
       )} durante a safra.`
     );
   }

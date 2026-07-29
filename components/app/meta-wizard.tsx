@@ -183,7 +183,7 @@ export function MetaWizard({
                 </fieldset>
               </div>
 
-              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-6 py-4">
+              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-4 py-3 sm:px-6 sm:py-4">
                 {!canSubmit && (
                   <p className="text-xs text-muted-foreground">
                     Dê um título de pelo menos {MIN_TITLE} caracteres

@@ -38,6 +38,7 @@ export function PhotoAttach({
   size = "default",
   busy = false,
   readOnly = false,
+  lockedIds,
   inputRef: externalRef,
 }: {
   photos: PhotoAttachItem[];
@@ -46,6 +47,12 @@ export function PhotoAttach({
   size?: "default" | "compact";
   busy?: boolean;
   readOnly?: boolean;
+  /**
+   * Fotos que aparecem na grade mas NÃO podem ser tiradas dali — o caso
+   * é a evidência que já chegou do campo: ela é o motivo de a tela estar
+   * aberta, e um X que não deveria funcionar é pior do que X nenhum.
+   */
+  lockedIds?: string[];
   inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const internalRef = React.useRef<HTMLInputElement>(null);
@@ -128,7 +135,7 @@ export function PhotoAttach({
                   className="h-full w-full object-cover transition-transform group-hover:scale-105"
                 />
               </button>
-              {canManage && onRemove ? (
+              {canManage && onRemove && !lockedIds?.includes(photo.id) ? (
                 <button
                   type="button"
                   aria-label="Remover foto"
@@ -191,7 +198,7 @@ export function PhotoAttach({
                 Baixar
               </Button>
             ) : null}
-            {canManage && onRemove && preview ? (
+            {canManage && onRemove && preview && !lockedIds?.includes(preview.id) ? (
               <Button
                 variant="destructive"
                 onClick={() => {

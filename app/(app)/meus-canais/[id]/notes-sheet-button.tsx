@@ -16,7 +16,7 @@ export function NotesSheetButton({ count }: { count: number }) {
       onClick={() => window.dispatchEvent(new CustomEvent("open-notes-sheet"))}
     >
       <StickyNote className="size-4" />
-      <span className="hidden md:inline">Notas</span>
+      Notas
       {count > 0 ? (
         <span className="tabular-nums text-muted-foreground">{count}</span>
       ) : null}

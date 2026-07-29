@@ -95,6 +95,7 @@ export function RtvActivitiesTable({
           <ActivityCard
             key={activity.id}
             showCanal
+            showAssignees={false}
             activity={{
               id: activity.id,
               title: activity.title,

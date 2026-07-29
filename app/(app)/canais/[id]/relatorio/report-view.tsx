@@ -487,7 +487,7 @@ export function ReportView({
         id: "fora-do-plano",
         node: (
           <MetaBlock
-            title="Ações fora do plano inicial"
+            title="Atividades fora do plano inicial"
             description="Oportunidades e demandas que surgiram durante a safra e foram atendidas além do plano original."
             activities={unplanned}
             mode={mode}

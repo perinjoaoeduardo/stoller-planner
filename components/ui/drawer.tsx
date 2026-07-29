@@ -141,6 +141,11 @@ function DrawerContent({
             "data-[swipe-axis=y]:inset-x-0 data-[swipe-axis=y]:data-nested-drawer-open:h-(--stack-height)",
             // Axis: x.
             "data-[swipe-axis=x]:inset-y-0 data-[swipe-axis=x]:flex-row",
+            // Área segura: no celular o drawer de baixo encosta na borda
+            // inferior, onde mora a barra de gestos. Sem esta reserva o
+            // botão primário do rodapé fica embaixo dela — clicável só
+            // por sorte. Vale para todos os drawers de uma vez.
+            "data-[swipe-direction=down]:pb-[env(safe-area-inset-bottom)]",
             // Direction: down.
             "data-[swipe-direction=down]:bottom-0 data-[swipe-direction=down]:origin-bottom data-[swipe-direction=down]:[--closed-transform:translate3d(0,calc(100%+var(--drawer-inset,0px)+2px),0)] data-[swipe-direction=down]:[--translate-y:calc(var(--drawer-snap-point-offset,0px)+var(--drawer-swipe-movement-y)-var(--stack-peek-offset)-(var(--stack-shrink)*var(--stack-height)))]",
             // Direction: up.

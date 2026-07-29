@@ -7,6 +7,7 @@ import {
   ListTodo,
   Search,
   SearchX,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import { useActivityDrawer } from "@/components/app/activity-drawer";
@@ -39,9 +40,18 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CATEGORY_LABELS, DEFAULT_PAGE_SIZE, type ActivityCategory } from "@/lib/config";
 import type { ActivityRow } from "@/lib/db/channels";
+import { FLAT_ON_MOBILE } from "@/components/shared/section-card";
 import { cn } from "@/lib/utils";
 
 const OPEN = new Set<ActivityStatus>(OPEN_STATUSES);
@@ -384,6 +394,132 @@ export function MyActivitiesList({
     [sorted, currentPage]
   );
 
+  const isMobile = useIsMobile();
+
+  // Quantos recortes estão de pé além da busca. No celular os campos
+  // ficam guardados na folha, e sem este número não haveria pista de
+  // que a lista está cortada por algo que não se vê.
+  const recortesAtivos = [
+    regionId,
+    channelId,
+    branchId,
+    categoryFilter,
+    metaFilter,
+    responsibleFilter,
+    onlyMine ? "minhas" : null,
+  ].filter(Boolean).length;
+
+  const temCascata =
+    showRegionFilter || showChannelFilter || showBranchFilter || showMetaFilter;
+
+  /**
+   * Os campos existem UMA vez e são posicionados por contexto: soltos na
+   * barra no desktop, empilhados dentro da folha no celular. `w-full` no
+   * celular e largura própria a partir de `md:` resolve os dois sem
+   * duplicar markup — duplicar significaria dois <Switch> "Só minhas"
+   * no DOM e leitor de tela anunciando o filtro duas vezes.
+   */
+  const campoClass =
+    "h-10 w-full border-input bg-card md:w-auto md:min-w-44";
+
+  const quemEOQue = (
+    <>
+      {categoryOptions.length > 0 ? (
+        <SearchableSelect
+          options={categoryOptions}
+          value={categoryFilter}
+          onValueChange={setCategoryFilter}
+          placeholder="Categoria"
+          className={campoClass}
+        />
+      ) : null}
+      {isTeamView ? (
+        <SearchableSelect
+          options={responsibles!}
+          value={responsibleFilter}
+          onValueChange={(value) => {
+            setResponsibleFilter(value);
+            if (value) setOnlyMineRaw(false);
+          }}
+          placeholder="Responsável"
+          className={campoClass}
+        />
+      ) : null}
+      {currentUserId ? (
+        <label className="flex shrink-0 items-center justify-between gap-2 text-sm text-foreground md:justify-start">
+          <span className="md:order-2">Só minhas</span>
+          <Switch
+            checked={onlyMine}
+            onCheckedChange={(checked) => setOnlyMine(checked)}
+            className="md:order-1"
+          />
+        </label>
+      ) : null}
+    </>
+  );
+
+  const onde = (
+    <>
+      {showRegionFilter ? (
+        <SearchableSelect
+          options={regionOptions}
+          value={regionId}
+          onValueChange={setRegionId}
+          placeholder="Todas as regionais"
+          className={campoClass}
+        />
+      ) : null}
+      {/* A seta só desenha a cascata quando os campos estão lado a lado;
+          empilhados no celular ela vira um traço solto no meio da tela. */}
+      {!isMobile && showRegionFilter && showChannelFilter ? (
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 text-muted-foreground"
+        />
+      ) : null}
+      {showChannelFilter ? (
+        <SearchableSelect
+          options={channelOptions}
+          value={channelId}
+          onValueChange={setChannelId}
+          placeholder="Todos os canais"
+          className={campoClass}
+        />
+      ) : null}
+      {!isMobile && showChannelFilter && (showBranchFilter || showMetaFilter) ? (
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 text-muted-foreground"
+        />
+      ) : null}
+      {showBranchFilter ? (
+        <SearchableSelect
+          options={branchOptions}
+          value={branchId}
+          onValueChange={setBranchId}
+          placeholder="Todas as filiais"
+          className={campoClass}
+        />
+      ) : null}
+      {showMetaFilter ? (
+        <SearchableSelect
+          options={metaOptions}
+          value={metaFilter}
+          onValueChange={setMetaFilter}
+          placeholder="Meta"
+          className={campoClass}
+        />
+      ) : null}
+    </>
+  );
+
+  const recortes = (
+    <>
+      {quemEOQue}
+      {temCascata ? onde : null}
+    </>
+  );
+
   const filtersActive =
     (kpiFilter !== null && kpiFilter !== "todos") ||
     search.trim().length > 0 ||
@@ -430,7 +566,7 @@ export function MyActivitiesList({
               : "Nenhuma atividade atribuída a você"}
           </EmptyTitle>
           <EmptyDescription>
-            Use “Nova atividade” no topo da tela para registrar uma ação
+            Use “Nova atividade” no topo da tela para registrar uma atividade
             avulsa a qualquer momento.
           </EmptyDescription>
         </EmptyHeader>
@@ -443,7 +579,7 @@ export function MyActivitiesList({
       {/* KPIs clicáveis */}
       <div
         className={cn(
-          "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4",
+          "grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4",
           !showKpis && "hidden"
         )}
       >
@@ -494,10 +630,17 @@ export function MyActivitiesList({
         Filial e Meta nascem DENTRO da linha do canal, então aparecem
         como desdobramento dele e não como filtros novos empurrando a
         primeira linha para baixo.
+
+        NO CELULAR os campos vão para uma folha atrás de um botão só.
+        Empilhados em largura cheia eram quatro caixas de 40px empurrando
+        a lista para fora da tela — e a seta da cascata caía órfã numa
+        linha própria, porque a hierarquia que ela desenha só existe com
+        os campos lado a lado. A busca fica de fora: é o recorte mais
+        usado e o único que se digita.
       */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-64 flex-1 max-w-md">
+          <div className="relative min-w-0 flex-1 sm:min-w-64 sm:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -506,94 +649,46 @@ export function MyActivitiesList({
               className="h-10 border-input bg-card pl-9"
             />
           </div>
-          {categoryOptions.length > 0 ? (
-            <SearchableSelect
-              options={categoryOptions}
-              value={categoryFilter}
-              onValueChange={setCategoryFilter}
-              placeholder="Categoria"
-              className="h-10 min-w-40 border-input bg-card"
+
+          <Sheet>
+            <SheetTrigger
+              render={
+                <Button
+                  variant="outline"
+                  className="h-10 shrink-0 border-input bg-card md:hidden"
+                >
+                  <SlidersHorizontal />
+                  Filtros
+                  {/* O número é a única pista, no celular, de que a
+                      lista está recortada por algo que não se vê. */}
+                  {recortesAtivos > 0 ? (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-accent-brand text-xs font-medium tabular-nums text-accent-brand-foreground">
+                      {recortesAtivos}
+                    </span>
+                  ) : null}
+                </Button>
+              }
             />
-          ) : null}
-          {isTeamView ? (
-            <SearchableSelect
-              options={responsibles!}
-              value={responsibleFilter}
-              onValueChange={(value) => {
-                setResponsibleFilter(value);
-                if (value) setOnlyMineRaw(false);
-              }}
-              placeholder="Responsável"
-              className="h-10 min-w-44 border-input bg-card"
-            />
-          ) : null}
-          {currentUserId ? (
-            <label className="flex shrink-0 items-center gap-2 text-sm text-foreground">
-              <Switch
-                checked={onlyMine}
-                onCheckedChange={(checked) => setOnlyMine(checked)}
-              />
-              Só minhas
-            </label>
-          ) : null}
+            <SheetContent
+              side="bottom"
+              className="[&_[data-slot=searchable-select]]:w-full"
+            >
+              <SheetHeader>
+                <SheetTitle>Filtros</SheetTitle>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                {recortes}
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {isMobile ? null : quemEOQue}
         </div>
 
         {/* Linha do "onde": Regional → Canal → Filial → Meta, do mais
             largo para o mais estreito, com a seta marcando a cascata. */}
-        {showRegionFilter ||
-        showChannelFilter ||
-        showBranchFilter ||
-        showMetaFilter ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {showRegionFilter ? (
-              <SearchableSelect
-                options={regionOptions}
-                value={regionId}
-                onValueChange={setRegionId}
-                placeholder="Todas as regionais"
-                className="h-10 min-w-44 border-input bg-card"
-              />
-            ) : null}
-            {showRegionFilter && showChannelFilter ? (
-              <ChevronRight
-                aria-hidden
-                className="size-4 shrink-0 text-muted-foreground"
-              />
-            ) : null}
-            {showChannelFilter ? (
-              <SearchableSelect
-                options={channelOptions}
-                value={channelId}
-                onValueChange={setChannelId}
-                placeholder="Todos os canais"
-                className="h-10 min-w-44 border-input bg-card"
-              />
-            ) : null}
-            {showChannelFilter && (showBranchFilter || showMetaFilter) ? (
-              <ChevronRight
-                aria-hidden
-                className="size-4 shrink-0 text-muted-foreground"
-              />
-            ) : null}
-            {showBranchFilter ? (
-              <SearchableSelect
-                options={branchOptions}
-                value={branchId}
-                onValueChange={setBranchId}
-                placeholder="Todas as filiais"
-                className="h-10 min-w-44 border-input bg-card"
-              />
-            ) : null}
-            {showMetaFilter ? (
-              <SearchableSelect
-                options={metaOptions}
-                value={metaFilter}
-                onValueChange={setMetaFilter}
-                placeholder="Meta"
-                className="h-10 min-w-44 border-input bg-card"
-              />
-            ) : null}
-          </div>
+        {!isMobile && temCascata ? (
+          <div className="flex flex-wrap items-center gap-2">{onde}</div>
         ) : null}
 
         <div className="flex items-center gap-3">
@@ -616,7 +711,7 @@ export function MyActivitiesList({
 
       {/* Tabela ou empty */}
       {sorted.length === 0 ? (
-        <Card>
+        <Card className={FLAT_ON_MOBILE}>
           <CardContent>
             <Empty className="py-8">
               <EmptyHeader>
@@ -658,6 +753,7 @@ export function MyActivitiesList({
           <div className="flex flex-col gap-2 md:hidden">
             {paged.map((activity) => (
               <ActivityCard
+                showAssignees={isTeamView}
                 key={activity.id}
                 showCanal={!channelId}
                 activity={activity}

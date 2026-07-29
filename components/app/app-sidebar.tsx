@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { X } from "lucide-react";
 
 import { BrandLogo } from "@/components/app/brand-logo";
 import { NavUser } from "@/components/app/nav-user";
+import { Button } from "@/components/ui/button";
 import type { SettingsUser } from "@/components/app/settings-dialog";
 import { NAV_BY_ROLE, type Role } from "@/lib/auth/nav";
 import {
@@ -13,13 +15,13 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import type { NavItem } from "@/lib/auth/nav";
 
@@ -42,6 +44,7 @@ export function AppSidebar({
   inboxCount?: number;
 }) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const navItems = NAV_BY_ROLE[role];
 
   function renderMenuItem(item: NavItem) {
@@ -57,7 +60,10 @@ export function AppSidebar({
           tooltip={item.title}
           isActive={pathname === item.href}
           render={
-            <Link href={item.href}>
+            /* Fecha o menu ao navegar: no celular o Sheet cobre a tela,
+               e ficar aberto por cima da página que acabou de carregar
+               obriga um segundo toque só para ver aonde se chegou. */
+            <Link href={item.href} onClick={() => setOpenMobile(false)}>
               <item.icon />
               <span>{item.title}</span>
             </Link>
@@ -88,12 +94,29 @@ export function AppSidebar({
           >
             <BrandLogo variant="icon" className="text-sidebar-foreground" />
           </Link>
-          <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
+          {/* No celular o botão de recolher não faz sentido — o menu é um
+              Sheet, não uma coluna. O mesmo canto vira o X de fechar, que
+              é o que a mão procura ali. */}
+          {isMobile ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Fechar menu"
+              onClick={() => setOpenMobile(false)}
+              className="size-9 text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground"
+            >
+              <X />
+            </Button>
+          ) : (
+            <SidebarTrigger className="text-sidebar-foreground/70 hover:bg-card/10 hover:text-sidebar-foreground group-data-[collapsible=icon]:hidden" />
+          )}
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+          {/* Sem rótulo "Navegação": cinco itens em uma coluna já são,
+              visivelmente, a navegação. O rótulo só ocupava a primeira
+              linha da tela com uma palavra que ninguém lê. */}
           <SidebarGroupContent>
             <SidebarMenu>{navItems.map(renderMenuItem)}</SidebarMenu>
           </SidebarGroupContent>

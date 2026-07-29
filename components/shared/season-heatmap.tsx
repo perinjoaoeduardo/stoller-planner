@@ -56,7 +56,7 @@ export function SeasonHeatmap({
   if (data.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        Nenhuma ação registrada no recorte atual.
+        Nenhuma atividade registrada no recorte atual.
       </p>
     );
   }

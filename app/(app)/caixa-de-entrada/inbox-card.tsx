@@ -2,91 +2,100 @@
 
 import * as React from "react";
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import { ImageOff, Images, Link2, Plus, Trash2 } from "lucide-react";
+import { Camera, Check, ImageOff, Images } from "lucide-react";
 
-import { CategoryIconBox } from "@/components/shared/icon-box";
+import { useActivityDrawer } from "@/components/app/activity-drawer";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CATEGORY_LABELS } from "@/lib/config";
 import type { InboxRegistro } from "@/lib/db/inbox";
 import { relativeFromNow } from "@/lib/relative-time";
-import { cn, getInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 /** A partir daqui o registro virou espera, não fila. */
 const DIAS_DE_ESPERA = 7;
 
 /**
- * Ladrilho de um registro — a caixa de entrada é uma fila de FOTOS, e a
- * grade é o formato que a foto pede.
+ * Ladrilho de um registro. O feed é de FOTOS, e a grade é o formato que a
+ * foto pede: lado a lado o olho compara de uma vez, que é a pergunta do
+ * lote ("isso tudo é a mesma coisa?").
  *
- * Linha inteira por registro gastava a largura toda para carregar 80px
- * de foto e três palavras, e no lote (quatro envios do mesmo
- * treinamento) empilhava linhas idênticas que só a miniatura
- * distinguia. Lado a lado, o olho compara as fotos de uma vez — que é
- * exatamente a pergunta da triagem: "isso aqui é tudo a mesma coisa?".
+ * TRÊS LINHAS, e nada mais. A foto já diz quase tudo; o texto só precisa
+ * responder "o quê, onde, quando". Tipo de ação, meta, o que falta
+ * preencher — nada disso muda a decisão de olhar ou não, e cada um deles
+ * era uma linha a mais para varrer em cada ladrilho da grade.
  *
- * O canal não aparece: é o cabeçalho do grupo logo acima.
+ * UM BOTÃO SÓ: "Registrar" — o mesmo verbo e o mesmo ícone do card de
+ * atividade, porque é a mesma coisa que ele faz. Abre a tela de registro
+ * já no canal do envio, com os campos preenchidos com o que veio do
+ * campo. Escolher entre atividade planejada e fora do plano é decisão
+ * daquela tela; duplicá-la no ladrilho obrigava a decidir antes mesmo de
+ * olhar a foto.
  *
- * ORÇAMENTO DE AZUL: zero `accent-brand`. Este ladrilho só lê; a cor de
- * ação entra na triagem.
+ * Registrado não tem botão: a decisão já foi tomada, e a linha do tique
+ * vira o atalho para a atividade que ele virou.
+ *
+ * NÃO existe descartar: tudo que chegou do campo é trabalho de alguém.
+ *
+ * ORÇAMENTO DE AZUL: zero. O ladrilho lê; a cor de ação mora no menu.
  */
 export function InboxCard({
   registro,
-  mostrarAutor,
   onOpenFotos,
-  onVincular,
-  onCriar,
-  onDescartar,
+  onRegistrar,
   ocupado = false,
 }: {
   registro: InboxRegistro;
-  /** Ligado com "Ver de todos": de quem é o envio passa a importar. */
-  mostrarAutor: boolean;
   onOpenFotos: () => void;
-  onVincular: () => void;
-  onCriar: () => void;
-  onDescartar: () => void;
+  onRegistrar: () => void;
   ocupado?: boolean;
 }) {
+  const { openActivity } = useActivityDrawer();
+  const registrado = registro.status === "registrado";
+
   const diasParado = differenceInCalendarDays(
     new Date(),
     parseISO(registro.recebidoEm)
   );
-  const esperando = diasParado >= DIAS_DE_ESPERA;
+  // Espera só conta para quem ainda precisa de decisão: registro já
+  // resolvido não está parado, está pronto.
+  const esperando = !registrado && diasParado >= DIAS_DE_ESPERA;
 
-  const faltando = [
-    !registro.tipoAcao ? "tipo de ação" : null,
-    !registro.titulo ? "título" : null,
-    !registro.metaId ? "meta" : null,
-  ].filter(Boolean) as string[];
+  // Título só quando existe DE VERDADE: a atividade que o envio virou,
+  // ou o que a pessoa escreveu ao mandar. O rótulo da categoria fazendo
+  // as vezes de título batizava o envio com um nome que ninguém deu —
+  // "Reunião de resultado com gerente" parecia o assunto daquela foto
+  // quando era só a gaveta em que ela cai. Sem título, o ladrilho diz o
+  // que dá para saber: de onde veio e quando chegou.
+  const titulo = registro.atividadeTitulo ?? registro.titulo;
 
-  // Quem titula é o título do envio; sem título, o tipo de ação; sem os
-  // dois, o local. O envio cru é legítimo — o ladrilho diz o que é em
-  // vez de fingir um título que ninguém escreveu.
-  const titulo =
-    registro.titulo ??
-    (registro.tipoAcao ? CATEGORY_LABELS[registro.tipoAcao] : null) ??
-    (registro.filialNome ?? "Foto do campo");
+  const moldura = cn(
+    "group/registro flex flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-card transition-[opacity,border-color] duration-base ease-standard hover:border-border-hover",
+    ocupado && "pointer-events-none opacity-50"
+  );
 
-  return (
-    <div
-      className={cn(
-        "group/registro flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card transition-[opacity,border-color] duration-base ease-standard hover:border-border-hover",
-        ocupado && "pointer-events-none opacity-50"
-      )}
-    >
-      {/* A FOTO é o gatilho do lightbox. O ladrilho inteiro não pode ser
-          botão: ele tem botões dentro, e botão dentro de botão é HTML
-          inválido. */}
+  /* Registrado: o ladrilho INTEIRO leva à atividade, porque é tudo que
+     ele é — a foto já virou evidência de lá, e abri-la num lightbox
+     daqui seria um beco. Sem botão dentro, o ladrilho pode ser o botão.
+
+     Pendente: a foto abre o lightbox e o rodapé abre o registro, então
+     a moldura tem de ser uma div — botão dentro de botão é HTML
+     inválido. */
+  const corpo = (
+    <>
+      {registrado ? (
+        <div className="relative">
+          <Foto src={registro.fotos[0]} />
+          {registro.fotos.length > 1 ? (
+            <span className="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-foreground/70 px-1.5 py-0.5 text-xs font-medium text-background">
+              <Images className="size-3" />
+              {registro.fotos.length}
+            </span>
+          ) : null}
+        </div>
+      ) : (
       <button
         type="button"
         onClick={onOpenFotos}
-        aria-label="Ver fotos do registro"
+        aria-label={`Ver fotos de ${titulo ?? registro.canalNome}`}
         className="relative cursor-pointer"
       >
         <Foto src={registro.fotos[0]} />
@@ -97,114 +106,91 @@ export function InboxCard({
             {registro.fotos.length}
           </span>
         ) : null}
-
-        {mostrarAutor ? (
-          <Avatar className="absolute bottom-2 left-2 size-6 border-2 border-card">
-            {registro.autorAvatarUrl ? (
-              <AvatarImage
-                src={registro.autorAvatarUrl}
-                alt={registro.autorNome}
-              />
-            ) : null}
-            <AvatarFallback className="text-[9px]">
-              {getInitials(registro.autorNome)}
-            </AvatarFallback>
-          </Avatar>
-        ) : null}
       </button>
+      )}
 
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <div className="flex min-w-0 items-center gap-2">
-          {registro.tipoAcao ? (
-            <CategoryIconBox
-              category={registro.tipoAcao}
-              size="sm"
-              withTooltip
-            />
+      <div className="flex flex-1 items-start gap-1 p-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          {titulo ? (
+            <p className="truncate text-sm font-medium text-foreground">
+              {titulo}
+            </p>
           ) : null}
-          <p className="truncate text-sm font-medium text-foreground">
-            {titulo}
+
+          {/* Onde e quando. O canal precisa estar aqui porque o feed não
+              tem cabeçalho de grupo — é ele que decide a qual plano a
+              evidência pertence. Sem título ele assume a primeira linha:
+              alguma coisa tem de ancorar o ladrilho. */}
+          <p
+            className={cn(
+              "truncate",
+              titulo
+                ? "text-xs text-muted-foreground"
+                : "text-sm font-medium text-foreground"
+            )}
+          >
+            {[registro.canalNome, registro.filialNome]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
+
+          {registrado ? (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              {/* Verde = concluído, como em todo o app — num tique de
+                  14px, tamanho de confirmação e não de alerta. */}
+              <Check className="size-3.5 shrink-0 text-success" />
+              Registrada
+            </p>
+          ) : (
+            <p className="truncate text-xs text-muted-foreground">
+              {/* Alarme único: quando o registro está esperando, o âmbar
+                  vive no TEXTO. Não existe selo competindo. */}
+              <span className={cn(esperando && "font-medium text-warning")}>
+                {esperando
+                  ? `esperando há ${diasParado} dias`
+                  : relativeFromNow(registro.recebidoEm)}
+              </span>
+            </p>
+          )}
         </div>
-
-        <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-          {registro.filialNome && registro.titulo ? (
-            <>
-              <span className="truncate">{registro.filialNome}</span>
-              <span aria-hidden>·</span>
-            </>
-          ) : null}
-          {/* Alarme único: quando o registro está esperando, o âmbar
-              vive no TEXTO. Não existe badge competindo. */}
-          <span className={cn(esperando && "font-medium text-warning")}>
-            {esperando
-              ? `esperando há ${diasParado} dias`
-              : relativeFromNow(registro.recebidoEm)}
-          </span>
-        </p>
-
-        {/* O que falta, em neutro: faltar informação não é erro, é o
-            fluxo normal do envio rápido. */}
-        {faltando.length > 0 ? (
-          <p className="truncate text-xs text-muted-foreground">
-            Falta {listar(faltando)}
-          </p>
-        ) : registro.metaTitulo ? (
-          <p className="truncate text-xs text-muted-foreground">
-            {registro.metaTitulo}
-          </p>
-        ) : null}
       </div>
 
-      {/* Ações: no hover no desktop, SEMPRE visíveis no toque — a
-          triagem acontece em campo e lá não existe hover.
-
-          "Criar atividade" é a primária e leva o ÚNICO accent-brand do
-          ladrilho. Descartar é ícone: é a saída, não o destino. */}
-      <div className="flex items-center gap-1.5 border-t border-border p-2 opacity-100 transition-opacity duration-base md:opacity-0 md:group-hover/registro:opacity-100 md:focus-within:opacity-100">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 flex-1"
-          onClick={onVincular}
-        >
-          <Link2 />
-          Vincular
-        </Button>
-        <Button
-          variant="brand"
-          size="sm"
-          className="h-9 flex-1"
-          onClick={onCriar}
-        >
-          <Plus />
-          Criar
-        </Button>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={onDescartar}
-                aria-label="Descartar registro"
-                className="size-9 shrink-0 text-muted-foreground hover:text-foreground"
-              >
-                <Trash2 />
-              </Button>
-            }
-          />
-          <TooltipContent>Descartar</TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
+      {/* Ação primária com corpo de botão e rótulo por extenso: o "⋯"
+          anterior não dizia o que fazia e nem parecia apertável num
+          ladrilho cheio de foto. Aqui ela é a única coisa azul. */}
+      {registrado ? null : (
+        <div className="border-t border-border p-2">
+          <Button
+            variant="brand"
+            size="sm"
+            className="h-9 w-full"
+            onClick={onRegistrar}
+          >
+            <Camera />
+            Registrar
+          </Button>
+        </div>
+      )}
+    </>
   );
-}
 
-/** "tipo de ação, título e meta" — vírgula até o penúltimo, "e" no fim. */
-function listar(itens: string[]): string {
-  if (itens.length === 1) return itens[0];
-  return `${itens.slice(0, -1).join(", ")} e ${itens[itens.length - 1]}`;
+  if (registrado) {
+    return (
+      <button
+        type="button"
+        disabled={!registro.atividadeId}
+        onClick={() =>
+          registro.atividadeId && openActivity(registro.atividadeId)
+        }
+        aria-label={`Abrir ${titulo ?? "atividade"}`}
+        className={cn(moldura, "cursor-pointer disabled:cursor-default")}
+      >
+        {corpo}
+      </button>
+    );
+  }
+
+  return <div className={moldura}>{corpo}</div>;
 }
 
 function Foto({ src }: { src: string }) {

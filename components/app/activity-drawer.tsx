@@ -86,7 +86,16 @@ import { cn, getInitials } from "@/lib/utils";
 // Ritmo compartilhado entre os cards do painel (FIX 11): padding de 20px
 // (p-5) e cabeçalho com respiro fixo antes do conteúdo. Aplicar em todos
 // os blocos — Situação, Sobre, Evidências, Linha do tempo.
-const PANEL_CARD = "[--card-spacing:--spacing(5)]";
+/**
+ * Abaixo de md o painel é um drawer que cobre a tela: a moldura de cada
+ * card interno virava caixa dentro de caixa (borda do drawer + borda da
+ * seção + borda do conteúdo). No celular a moldura some e a seção vira
+ * título + conteúdo, como nas páginas; no desktop, onde as colunas
+ * dividem a largura, ela volta a separar uma seção da outra.
+ */
+const PANEL_FLAT =
+  "max-md:gap-0 max-md:rounded-none max-md:border-0 max-md:bg-transparent max-md:py-0 max-md:shadow-none max-md:[&>*]:px-0";
+const PANEL_CARD = cn("[--card-spacing:--spacing(5)]", PANEL_FLAT);
 const PANEL_CARD_HEADER = "pb-4";
 
 // ── Context ──────────────────────────────────────────────────────────
@@ -309,10 +318,16 @@ function DrawerBody({
     activity.events.find((event) => event.type === "criada")?.profileName ??
     activity.responsibleName;
 
+  // No celular a ação primária desce para a barra do polegar; no desktop
+  // o próprio bloco de Evidências já é o CTA e sobra largura.
+  const podeRegistrar = isOpen && activity.canRegister && !hasExecution;
+
   return (
     <>
-      {/* ══ HEADER — container cinza único agrupando identidade + prazo ═ */}
-      <div className="shrink-0 p-6 pt-8 md:pt-6">
+      {/* ══ HEADER — container cinza único agrupando identidade + prazo ═
+          A borda embaixo é o que faz o corte do scroll parecer proposital:
+          sem ela o texto some cortado no meio da linha e lê como bug. */}
+      <div className="shrink-0 border-b border-border p-4 pt-8 md:border-b-0 md:p-6 md:pt-6">
         <HeaderContainer
           activity={activity}
           canChangeStatus={canChangeStatus}
@@ -320,8 +335,9 @@ function DrawerBody({
         />
       </div>
 
-      {/* Corpo com scroll */}
-      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6">
+      {/* Corpo com scroll. Respiro lateral menor no celular: 24px de cada
+          lado numa tela de 375 comem um sexto da largura útil. */}
+      <div className="@container/abody flex flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-6 md:px-6 md:pt-0">
         {/* ══ DETALHE — 2 colunas quando há largura ══════════════════ */}
         <div className="grid gap-4 @xl/abody:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @xl/abody:items-start">
           {/* Coluna A — Sobre */}
@@ -340,19 +356,16 @@ function DrawerBody({
               photos={activity.photos}
               canManage={activity.canRegister && !isCancelled}
               onChanged={onRefresh}
-              onRegister={
-                isOpen && activity.canRegister && !hasExecution
-                  ? handleRegistrar
-                  : undefined
-              }
+              onRegister={podeRegistrar ? handleRegistrar : undefined}
             />
             <TimelineCard activity={activity} />
           </div>
         </div>
-      </div>
 
-      {/* ══ RODAPÉ sticky — criação + autor, sempre no bottom ══════════ */}
-      <div className="shrink-0 border-t border-border bg-card px-6 py-3">
+        {/* Proveniência fecha o painel, junto da linha do tempo — é ali
+            que se pergunta "quem fez o quê e quando". Estava numa barra
+            fixa no rodapé, ocupando no celular o único lugar que a mão
+            alcança sem reposicionar o aparelho. */}
         <p className="text-xs tabular-nums text-muted-foreground">
           Criada em {formatDate(activity.createdAt)}
           {creatorName ? ` por ${creatorName}` : ""}
@@ -362,6 +375,27 @@ function DrawerBody({
         </p>
       </div>
 
+      {/* ══ AÇÃO PRIMÁRIA colada no polegar — só no celular ═══════════ */}
+      {podeRegistrar ? (
+        <div className="shrink-0 border-t border-border bg-card p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+          <Button
+            variant="brand"
+            size="lg"
+            className="h-11 w-full"
+            onClick={handleRegistrar}
+          >
+            <Camera />
+            Registrar execução
+          </Button>
+        </div>
+      ) : (
+        /* Sem barra, o conteúdo encostaria na borda inferior da tela —
+           e em aparelho com gesto de navegação, embaixo dela. */
+        <div
+          aria-hidden
+          className="shrink-0 pb-[env(safe-area-inset-bottom)] md:hidden"
+        />
+      )}
     </>
   );
 }
@@ -760,7 +794,7 @@ function SobreCard({
   const TypeIcon = activity.category ? CATEGORY_ICONS[activity.category] : null;
 
   return (
-    <Card className="gap-0 rounded-xl border-border py-6 shadow-sm [--card-spacing:--spacing(6)]">
+    <Card className={cn("gap-0 rounded-xl border-border py-6 shadow-sm [--card-spacing:--spacing(6)]", PANEL_FLAT)}>
       <CardHeader className="pb-0">
         <CardTitle className="text-base font-semibold">Sobre</CardTitle>
         <CardDescription className="mt-1">
@@ -784,8 +818,8 @@ function SobreCard({
           </p>
         </SobreField>
 
-        {/* Tipo de ação — chip neutro */}
-        <SobreField label="Tipo de ação">
+        {/* Tipo de atividade — chip neutro */}
+        <SobreField label="Tipo de atividade">
           {activity.category && TypeIcon ? (
             <Badge
               variant="secondary"

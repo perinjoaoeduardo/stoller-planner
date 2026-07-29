@@ -285,7 +285,7 @@ export function GlobalSearch({
         open={open}
         onOpenChange={handleOpenChange}
         title="Busca global"
-        description="Busque atividades, canais, metas e ações"
+        description="Busque atividades, canais, metas e pessoas"
         className="sm:max-w-[554px]"
       >
         <Command shouldFilter={false}>
